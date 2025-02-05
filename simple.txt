@@ -1,0 +1,1 @@
+Hello, meta-index repository! This is a simple text file generated as part of a Linear task.
