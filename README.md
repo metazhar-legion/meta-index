@@ -29,13 +29,25 @@ This project implements a web3-based index fund using Solidity smart contracts w
 │   ├── interfaces/              # Contract interfaces
 │   └── mocks/                   # Mock contracts for testing
 ├── script/                      # Deployment scripts
-└── test/                        # Test files
+├── test/                        # Test files
+└── frontend/                    # React TypeScript UI
+    ├── src/
+    │   ├── components/          # Reusable UI components
+    │   ├── contexts/            # React contexts including Web3Context
+    │   ├── hooks/               # Custom hooks for contracts
+    │   ├── pages/               # Page components for different user roles
+    │   ├── theme/               # UI theme configuration
+    │   └── contracts/           # Contract interfaces and ABIs
+    └── public/                  # Static assets
 ```
 
 ## Prerequisites
 
 - [Foundry](https://book.getfoundry.sh/getting-started/installation) installed
 - [Git](https://git-scm.com/downloads)
+- [Node.js](https://nodejs.org/) (v14 or later) for the frontend
+- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+- [MetaMask](https://metamask.io/) or another Ethereum wallet browser extension
 
 ## Installation
 
@@ -158,12 +170,66 @@ Allows token holders to vote on proposals to change the index composition.
 - Reentrancy protection is implemented for critical functions
 - Fee limits are enforced to prevent excessive fees
 
+## Frontend Application
+
+The project includes a React TypeScript frontend that provides a user interface for interacting with the smart contracts.
+
+### Features
+
+- **User Roles**: Support for Investors, DAO Members, and Portfolio Managers
+- **Dark Mode UI**: Modern Material UI design with dark mode
+- **Wallet Integration**: Connect with MetaMask and other Ethereum wallets
+- **Role-Based Dashboards**: Different interfaces for different user types
+
+### Running the Frontend
+
+1. Navigate to the frontend directory:
+
+```shell
+cd frontend
+```
+
+2. Install dependencies:
+
+```shell
+npm install
+```
+
+3. Start the development server:
+
+```shell
+npm start
+```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+### User Workflows
+
+#### Investor
+- View vault statistics and index composition
+- Deposit assets into the vault
+- Withdraw assets by redeeming shares
+
+#### DAO Member
+- View index composition
+- Add, update, and remove tokens from the index
+- (Future) Participate in governance proposals
+
+#### Portfolio Manager
+- Rebalance the portfolio
+- Collect management and performance fees
+- Configure vault parameters
+
+For more details about the frontend, see the [frontend README](./frontend/README.md).
+
 ## Future Enhancements
 
 - Integration with more DEXes for better liquidity
 - Cross-chain asset support
 - Real-world asset (RWA) synthetic tokens
 - Enhanced DAO governance features
+- Advanced analytics dashboard
+- Mobile-responsive design improvements
 
 ## License
 
