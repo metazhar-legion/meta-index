@@ -1,66 +1,176 @@
+# Web3 Index Fund
+
+A decentralized ERC4626-compliant index fund vault that allows participants to deposit tokens and invest in a basket of assets. The indices can be voted on by a DAO, but are initially implemented by the vault owner.
+
+## Overview
+
+This project implements a web3-based index fund using Solidity smart contracts with the following key components:
+
+- **ERC4626 Vault**: A standard-compliant tokenized vault that handles deposits, withdrawals, and accounting
+- **Index Registry**: Manages the composition of the index (tokens and their weights)
+- **DAO Governance**: Allows token holders to vote on index changes (optional)
+- **Price Oracle Integration**: For accurate asset pricing
+- **DEX Integration**: For rebalancing and trading between assets
+
+## Key Features
+
+- **Automated Rebalancing**: Maintains the desired asset allocation
+- **Fee Structure**: Management and performance fees
+- **DAO Governance**: Decentralized control of the index composition
+- **Cross-Chain Support**: Extensible for cross-chain assets (future enhancement)
+- **RWA Support**: Extensible for real-world assets (future enhancement)
+
+## Project Structure
+
+```
+├── src/
+│   ├── IndexFundVault.sol       # Main vault contract
+│   ├── IndexRegistry.sol        # Index composition registry
+│   ├── interfaces/              # Contract interfaces
+│   └── mocks/                   # Mock contracts for testing
+├── script/                      # Deployment scripts
+└── test/                        # Test files
+```
+
+## Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) installed
+- [Git](https://git-scm.com/downloads)
+
+## Installation
+
+1. Clone the repository:
+
+```shell
+git clone https://github.com/yourusername/web3-index-fund.git
+cd web3-index-fund
+```
+
+2. Install dependencies:
+
+```shell
+forge install
+```
+
+## Building
+
+Compile the contracts:
+
+```shell
+forge build
+```
+
+## Testing
+
+Run the test suite:
+
+```shell
+forge test
+```
+
+Run tests with verbosity for more details:
+
+```shell
+forge test -vvv
+```
+
+Run a specific test:
+
+```shell
+forge test --match-test testDeposit -vvv
+```
+
+## Local Deployment
+
+1. Start a local Anvil node:
+
+```shell
+anvil
+```
+
+2. In a new terminal, deploy the contracts to the local node:
+
+```shell
+forge script script/Deploy.s.sol:Deploy --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```
+
+Note: The private key above is the default private key for the first account in Anvil.
+
+## Sepolia Testnet Deployment
+
+1. Create a `.env` file with your private key:
+
+```
+PRIVATE_KEY=your_private_key_here
+```
+
+2. Deploy to Sepolia testnet:
+
+```shell
+source .env
+forge script script/DeploySepolia.s.sol:DeploySepolia --rpc-url https://sepolia.infura.io/v3/YOUR_INFURA_KEY --broadcast
+```
+
+Replace `YOUR_INFURA_KEY` with your actual Infura API key.
+
+## Interacting with the Contracts
+
+### Depositing into the Vault
+
+```shell
+cast send <VAULT_ADDRESS> "deposit(uint256,address)" <AMOUNT> <RECEIVER> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
+```
+
+### Withdrawing from the Vault
+
+```shell
+cast send <VAULT_ADDRESS> "withdraw(uint256,address,address)" <AMOUNT> <RECEIVER> <OWNER> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
+```
+
+### Rebalancing the Index
+
+```shell
+cast send <VAULT_ADDRESS> "rebalance()" --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
+```
+
+## Contract Architecture
+
+### IndexFundVault
+
+The main vault contract that implements the ERC4626 standard. It handles deposits, withdrawals, and rebalancing of the index.
+
+### IndexRegistry
+
+Manages the composition of the index, including token addresses and their weights.
+
+### DAO Governance
+
+Allows token holders to vote on proposals to change the index composition.
+
+## Fee Structure
+
+- **Management Fee**: Annual fee based on total assets under management (default: 1%)
+- **Performance Fee**: Fee on profits above the high water mark (default: 10%)
+
+## Security Considerations
+
+- The contracts use OpenZeppelin's security libraries
+- Reentrancy protection is implemented for critical functions
+- Fee limits are enforced to prevent excessive fees
+
+## Future Enhancements
+
+- Integration with more DEXes for better liquidity
+- Cross-chain asset support
+- Real-world asset (RWA) synthetic tokens
+- Enhanced DAO governance features
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
 ## Foundry
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This project uses Foundry, a blazing fast, portable, and modular toolkit for Ethereum application development written in Rust.
 
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+For more information about Foundry, visit the [documentation](https://book.getfoundry.sh/).
