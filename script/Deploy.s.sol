@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Script} from "forge-std/Script.sol";
+import "forge-std/console.sol";
 import {IndexRegistry} from "../src/IndexRegistry.sol";
 import {IndexFundVault} from "../src/IndexFundVault.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
@@ -14,7 +15,18 @@ import {MockDEX} from "../src/mocks/MockDEX.sol";
  */
 contract Deploy is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey;
+        
+        // Try to get the private key from environment variable
+        try vm.envUint("PRIVATE_KEY") returns (uint256 pk) {
+            deployerPrivateKey = pk;
+            console.log("Using private key from environment variable");
+        } catch {
+            // If environment variable not found, use the default Anvil private key
+            deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+            console.log("Using default Anvil private key");
+        }
+        
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy mock USDC for testing

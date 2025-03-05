@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -365,7 +366,7 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
      * This includes the underlying asset and all tokens in the index
      * @return The total assets in the vault's asset terms
      */
-    function totalAssets() public view override returns (uint256) {
+    function totalAssets() public view override(ERC4626, IERC4626) returns (uint256) {
         // Get the balance of the underlying asset
         uint256 assetBalance = IERC20(asset()).balanceOf(address(this));
         
