@@ -41,7 +41,7 @@ const DAOMemberPage: React.FC = () => {
       return;
     }
 
-    if (!ethers.utils.isAddress(tokenAddress)) {
+    if (!ethers.isAddress(tokenAddress)) {
       setError('Invalid token address');
       return;
     }
@@ -56,7 +56,7 @@ const DAOMemberPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      const weightInWei = ethers.utils.parseEther(tokenWeight);
+      const weightInWei = ethers.parseEther(tokenWeight);
       const tx = await registryContract.addToken(tokenAddress, weightInWei);
       await tx.wait();
       
@@ -77,7 +77,7 @@ const DAOMemberPage: React.FC = () => {
       return;
     }
 
-    if (!ethers.utils.isAddress(tokenAddress)) {
+    if (!ethers.isAddress(tokenAddress)) {
       setError('Invalid token address');
       return;
     }
@@ -92,7 +92,7 @@ const DAOMemberPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      const weightInWei = ethers.utils.parseEther(tokenWeight);
+      const weightInWei = ethers.parseEther(tokenWeight);
       const tx = await registryContract.updateTokenWeight(tokenAddress, weightInWei);
       await tx.wait();
       
@@ -113,7 +113,7 @@ const DAOMemberPage: React.FC = () => {
       return;
     }
 
-    if (!ethers.utils.isAddress(tokenAddress)) {
+    if (!ethers.isAddress(tokenAddress)) {
       setError('Invalid token address');
       return;
     }

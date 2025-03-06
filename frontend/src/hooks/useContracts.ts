@@ -79,7 +79,7 @@ export const useContracts = () => {
               address,
               symbol,
               decimals,
-              weight: ethers.utils.formatUnits(weights[index], 18),
+              weight: ethers.formatUnits(weights[index], 18),
             };
           });
           
@@ -118,7 +118,7 @@ export const useERC20 = (tokenAddress: string) => {
 
   // Initialize token contract
   useEffect(() => {
-    if (provider && tokenAddress && tokenAddress !== ethers.constants.AddressZero) {
+    if (provider && tokenAddress && tokenAddress !== ethers.ZeroAddress) {
       const contract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
       setTokenContract(contract);
       
@@ -149,7 +149,7 @@ export const useERC20 = (tokenAddress: string) => {
         setIsLoading(true);
         try {
           const balance = await tokenContract.balanceOf(account);
-          setTokenBalance(ethers.utils.formatUnits(balance, tokenDecimals));
+          setTokenBalance(ethers.formatUnits(balance, tokenDecimals));
         } catch (err) {
           console.error('Error loading token balance:', err);
         } finally {
@@ -182,7 +182,7 @@ export const useERC20 = (tokenAddress: string) => {
     try {
       const signer = provider?.getSigner();
       const connectedContract = tokenContract.connect(signer);
-      const amountInWei = ethers.utils.parseUnits(amount, tokenDecimals);
+      const amountInWei = ethers.parseUnits(amount, tokenDecimals);
       
       const tx = await connectedContract.approve(spender, amountInWei);
       await tx.wait();

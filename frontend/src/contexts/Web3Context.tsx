@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ethers } from 'ethers';
-import { Web3Provider } from '@ethersproject/providers';
+import { BrowserProvider } from 'ethers';
 import { InjectedConnector } from '@web3-react/injected-connector';
 import { useWeb3React } from '@web3-react/core';
 
@@ -19,7 +19,7 @@ interface Web3ContextType {
   disconnect: () => void;
   isActive: boolean;
   isLoading: boolean;
-  provider: Web3Provider | null;
+  provider: BrowserProvider | null;
   userRole: UserRole;
   setUserRole: (role: UserRole) => void;
 }
@@ -47,7 +47,7 @@ interface Web3ProviderProps {
 }
 
 export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) => {
-  const { activate, deactivate, account, chainId, active, library } = useWeb3React<Web3Provider>();
+  const { activate, deactivate, account, chainId, active, library } = useWeb3React<BrowserProvider>();
   const [isLoading, setIsLoading] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(UserRole.INVESTOR);
 

@@ -30,21 +30,21 @@ const VaultStats: React.FC = () => {
           ]);
 
           // Calculate user's assets
-          const userAssets = userShares.gt(0) && totalSupply.gt(0)
-            ? userShares.mul(totalAssets).div(totalSupply)
-            : ethers.BigNumber.from(0);
+          const userAssets = userShares > 0n && totalSupply > 0n
+            ? (userShares * totalAssets) / totalSupply
+            : 0n;
 
           // Calculate share price
-          const sharePrice = totalSupply.gt(0)
-            ? totalAssets.mul(ethers.utils.parseEther('1')).div(totalSupply)
-            : ethers.BigNumber.from(0);
+          const sharePrice = totalSupply > 0n
+            ? (totalAssets * ethers.parseEther('1')) / totalSupply
+            : 0n;
 
           setStats({
-            totalAssets: ethers.utils.formatEther(totalAssets),
-            totalShares: ethers.utils.formatEther(totalSupply),
-            userShares: ethers.utils.formatEther(userShares),
-            userAssets: ethers.utils.formatEther(userAssets),
-            sharePrice: ethers.utils.formatEther(sharePrice),
+            totalAssets: ethers.formatEther(totalAssets),
+            totalShares: ethers.formatEther(totalSupply),
+            userShares: ethers.formatEther(userShares),
+            userAssets: ethers.formatEther(userAssets),
+            sharePrice: ethers.formatEther(sharePrice),
           });
         } catch (error) {
           console.error('Error loading vault stats:', error);

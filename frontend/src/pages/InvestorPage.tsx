@@ -78,7 +78,7 @@ const InvestorPage: React.FC = () => {
     if (vaultContract && account) {
       try {
         const maxShares = await vaultContract.balanceOf(account);
-        setShares(ethers.utils.formatEther(maxShares));
+        setShares(ethers.formatEther(maxShares));
       } catch (err) {
         console.error('Error getting max shares:', err);
       }
@@ -97,7 +97,7 @@ const InvestorPage: React.FC = () => {
 
     try {
       // First approve the vault to spend tokens
-      const amountInWei = ethers.utils.parseUnits(amount, tokenDecimals);
+      const amountInWei = ethers.parseUnits(amount, tokenDecimals);
       const approved = await approveTokens(vaultContract.address, amount);
       
       if (!approved) {
@@ -129,7 +129,7 @@ const InvestorPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      const sharesInWei = ethers.utils.parseEther(shares);
+      const sharesInWei = ethers.parseEther(shares);
       const tx = await vaultContract.redeem(sharesInWei, account, account);
       await tx.wait();
       
@@ -230,7 +230,7 @@ const InvestorPage: React.FC = () => {
               <Grid item xs={12}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Typography variant="body2">
-                    Shares: {isLoading ? <CircularProgress size={12} /> : parseFloat(vaultContract ? ethers.utils.formatEther(vaultContract.balanceOf(account)) : '0').toFixed(4)}
+                    Shares: {isLoading ? <CircularProgress size={12} /> : parseFloat(vaultContract ? ethers.formatEther(await vaultContract.balanceOf(account)) : '0').toFixed(4)}
                   </Typography>
                   <Button size="small" onClick={handleMaxShares} disabled={isLoading}>
                     Max

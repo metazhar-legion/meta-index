@@ -65,7 +65,7 @@ const PortfolioManagerPage: React.FC = () => {
 
     try {
       const tx = await vaultContract.rebalance();
-      await tx.wait();
+      await tx.wait();  // This is fine in v6
       
       setSuccess('Successfully rebalanced the portfolio');
     } catch (err) {
@@ -88,7 +88,7 @@ const PortfolioManagerPage: React.FC = () => {
 
     try {
       const tx = await vaultContract.collectManagementFee();
-      await tx.wait();
+      await tx.wait();  // This is fine in v6
       
       setSuccess('Successfully collected management fee');
     } catch (err) {
@@ -111,7 +111,7 @@ const PortfolioManagerPage: React.FC = () => {
 
     try {
       const tx = await vaultContract.collectPerformanceFee();
-      await tx.wait();
+      await tx.wait();  // This is fine in v6
       
       setSuccess('Successfully collected performance fee');
     } catch (err) {
@@ -142,7 +142,7 @@ const PortfolioManagerPage: React.FC = () => {
       // Convert percentage to basis points (e.g., 2% = 200 basis points)
       const feeBasisPoints = Math.floor(feeValue * 100);
       const tx = await vaultContract.setManagementFee(feeBasisPoints);
-      await tx.wait();
+      await tx.wait();  // This is fine in v6
       
       setSuccess(`Successfully set management fee to ${managementFee}%`);
       setManagementFee('');
@@ -174,7 +174,7 @@ const PortfolioManagerPage: React.FC = () => {
       // Convert percentage to basis points (e.g., 20% = 2000 basis points)
       const feeBasisPoints = Math.floor(feeValue * 100);
       const tx = await vaultContract.setPerformanceFee(feeBasisPoints);
-      await tx.wait();
+      await tx.wait();  // This is fine in v6
       
       setSuccess(`Successfully set performance fee to ${performanceFee}%`);
       setPerformanceFee('');
@@ -192,7 +192,7 @@ const PortfolioManagerPage: React.FC = () => {
       return;
     }
 
-    if (!ethers.utils.isAddress(priceOracleAddress)) {
+    if (!ethers.isAddress(priceOracleAddress)) {
       setError('Invalid address');
       return;
     }
@@ -203,7 +203,7 @@ const PortfolioManagerPage: React.FC = () => {
 
     try {
       const tx = await vaultContract.setPriceOracle(priceOracleAddress);
-      await tx.wait();
+      await tx.wait();  // This is fine in v6
       
       setSuccess(`Successfully set price oracle to ${priceOracleAddress}`);
       setPriceOracleAddress('');
@@ -221,7 +221,7 @@ const PortfolioManagerPage: React.FC = () => {
       return;
     }
 
-    if (!ethers.utils.isAddress(dexAddress)) {
+    if (!ethers.isAddress(dexAddress)) {
       setError('Invalid address');
       return;
     }
@@ -232,7 +232,7 @@ const PortfolioManagerPage: React.FC = () => {
 
     try {
       const tx = await vaultContract.setDEX(dexAddress);
-      await tx.wait();
+      await tx.wait();  // This is fine in v6
       
       setSuccess(`Successfully set DEX to ${dexAddress}`);
       setDexAddress('');
