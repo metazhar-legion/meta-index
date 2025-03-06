@@ -11,7 +11,6 @@ import {
   Divider
 } from '@mui/material';
 import { Web3ReactProvider } from '@web3-react/core';
-import { Web3Provider } from '@ethersproject/providers';
 import { Web3ContextProvider, useWeb3, UserRole } from './contexts/Web3Context';
 import theme from './theme/theme';
 import ConnectWallet from './components/ConnectWallet';
@@ -20,12 +19,8 @@ import InvestorPage from './pages/InvestorPage';
 import DAOMemberPage from './pages/DAOMemberPage';
 import PortfolioManagerPage from './pages/PortfolioManagerPage';
 
-// Function to get the Web3 library
-const getLibrary = (provider: any): Web3Provider => {
-  const library = new Web3Provider(provider);
-  library.pollingInterval = 12000;
-  return library;
-};
+// Import connectors
+import { connectors } from './connectors';
 
 // Main content component
 const MainContent: React.FC = () => {
@@ -90,7 +85,7 @@ const MainContent: React.FC = () => {
 // App component
 function App() {
   return (
-    <Web3ReactProvider getLibrary={getLibrary}>
+    <Web3ReactProvider connectors={connectors}>
       <Web3ContextProvider>
         <ThemeProvider theme={theme}>
           <CssBaseline />

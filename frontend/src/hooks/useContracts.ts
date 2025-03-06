@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
+// Provider adapters are no longer needed
 import {
   IndexFundVaultInterface,
   IndexRegistryInterface,
@@ -10,15 +11,10 @@ import {
   Token
 } from '../contracts/contractTypes';
 
-// Contract addresses - these should be updated after deployment
-const CONTRACT_ADDRESSES = {
-  // Replace with actual deployed contract addresses
-  VAULT: '0x0000000000000000000000000000000000000000',
-  REGISTRY: '0x0000000000000000000000000000000000000000',
-};
+import { CONTRACT_ADDRESSES } from '../contracts/addresses';
 
 export const useContracts = () => {
-  const { provider, account, isActive } = useWeb3();
+  const { provider, isActive } = useWeb3();
   const [vaultContract, setVaultContract] = useState<IndexFundVaultInterface | null>(null);
   const [registryContract, setRegistryContract] = useState<IndexRegistryInterface | null>(null);
   const [indexTokens, setIndexTokens] = useState<Token[]>([]);
@@ -29,20 +25,21 @@ export const useContracts = () => {
   useEffect(() => {
     if (provider && isActive) {
       try {
-        const signer = provider.getSigner();
+        // Use the provider directly as it's already an ethers v6 BrowserProvider
+        if (!provider) return;
         
-        // Initialize vault contract
+        // Initialize vault contract with provider first
         const vault = new ethers.Contract(
           CONTRACT_ADDRESSES.VAULT,
           IndexFundVaultABI,
-          signer
+          provider
         ) as unknown as IndexFundVaultInterface;
         
-        // Initialize registry contract
+        // Initialize registry contract with provider first
         const registry = new ethers.Contract(
           CONTRACT_ADDRESSES.REGISTRY,
           IndexRegistryABI,
-          signer
+          provider
         ) as unknown as IndexRegistryInterface;
         
         setVaultContract(vault);
@@ -69,6 +66,7 @@ export const useContracts = () => {
           
           // Create token contracts and fetch metadata
           const tokenPromises = tokenAddresses.map(async (address, index) => {
+            if (!provider) throw new Error('Provider not available');
             const tokenContract = new ethers.Contract(address, ERC20ABI, provider);
             const [symbol, decimals] = await Promise.all([
               tokenContract.symbol(),
@@ -79,7 +77,7 @@ export const useContracts = () => {
               address,
               symbol,
               decimals,
-              weight: ethers.formatUnits(weights[index], 18),
+              weight: parseFloat(ethers.formatUnits(weights[index], 18)),
             };
           });
           
@@ -177,11 +175,17 @@ export const useERC20 = (tokenAddress: string) => {
 
   // Approve spending of tokens
   const approveTokens = async (spender: string, amount: string): Promise<boolean> => {
-    if (!tokenContract || !account) return false;
+    if (!tokenContract) return false;
     
     try {
-      const signer = provider?.getSigner();
-      const connectedContract = tokenContract.connect(signer);
+      if (!provider) return false;
+      const signer = await provider.getSigner();
+      if (!signer) return false;
+      
+      // Create a new contract instance with the signer
+      const erc20Interface = new ethers.Interface(ERC20ABI);
+      const tokenAddress = await tokenContract.getAddress();
+      const connectedContract = new ethers.Contract(tokenAddress, erc20Interface, signer);
       const amountInWei = ethers.parseUnits(amount, tokenDecimals);
       
       const tx = await connectedContract.approve(spender, amountInWei);

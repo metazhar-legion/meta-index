@@ -16,6 +16,7 @@ import {
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
 import { useContracts, useERC20 } from '../hooks/useContracts';
+import { CONTRACT_ADDRESSES } from '../contracts/addresses';
 import VaultStats from '../components/VaultStats';
 import TokenList from '../components/TokenList';
 
@@ -44,7 +45,7 @@ const InvestorPage: React.FC = () => {
   const { vaultContract, indexTokens, isLoading: contractsLoading } = useContracts();
   
   // Get the underlying asset (assuming the first token in the index is the asset)
-  const assetAddress = indexTokens.length > 0 ? indexTokens[0].address : ethers.constants.AddressZero;
+  const assetAddress = indexTokens.length > 0 ? indexTokens[0].address : ethers.ZeroAddress;
   const { tokenBalance, tokenSymbol, tokenDecimals, approveTokens, isLoading: tokenLoading } = useERC20(assetAddress);
   
   const [tabValue, setTabValue] = useState(0);
@@ -98,7 +99,9 @@ const InvestorPage: React.FC = () => {
     try {
       // First approve the vault to spend tokens
       const amountInWei = ethers.parseUnits(amount, tokenDecimals);
-      const approved = await approveTokens(vaultContract.address, amount);
+      // Use the vault address from contract addresses
+      const vaultAddress = CONTRACT_ADDRESSES.VAULT;
+      const approved = await approveTokens(vaultAddress, amount);
       
       if (!approved) {
         throw new Error('Failed to approve tokens');
@@ -230,7 +233,7 @@ const InvestorPage: React.FC = () => {
               <Grid item xs={12}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Typography variant="body2">
-                    Shares: {isLoading ? <CircularProgress size={12} /> : parseFloat(vaultContract ? ethers.formatEther(await vaultContract.balanceOf(account)) : '0').toFixed(4)}
+                    Shares: {isLoading ? <CircularProgress size={12} /> : parseFloat(shares || '0').toFixed(4)}
                   </Typography>
                   <Button size="small" onClick={handleMaxShares} disabled={isLoading}>
                     Max

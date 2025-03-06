@@ -10,38 +10,42 @@ export interface Token {
 
 // IndexFundVault interface
 export interface IndexFundVaultInterface {
+  // ERC20 methods
+  balanceOf: (account: string) => Promise<bigint>;
+  totalSupply: () => Promise<bigint>;
+  
   // ERC4626 methods
-  deposit: (assets: ethers.BigNumber, receiver: string) => Promise<ethers.ContractTransaction>;
-  withdraw: (assets: ethers.BigNumber, receiver: string, owner: string) => Promise<ethers.ContractTransaction>;
-  redeem: (shares: ethers.BigNumber, receiver: string, owner: string) => Promise<ethers.ContractTransaction>;
-  mint: (shares: ethers.BigNumber, receiver: string) => Promise<ethers.ContractTransaction>;
+  deposit: (assets: bigint, receiver: string) => Promise<ethers.ContractTransactionResponse>;
+  withdraw: (assets: bigint, receiver: string, owner: string) => Promise<ethers.ContractTransactionResponse>;
+  redeem: (shares: bigint, receiver: string, owner: string) => Promise<ethers.ContractTransactionResponse>;
+  mint: (shares: bigint, receiver: string) => Promise<ethers.ContractTransactionResponse>;
   
   // View methods
-  totalAssets: () => Promise<ethers.BigNumber>;
-  convertToShares: (assets: ethers.BigNumber) => Promise<ethers.BigNumber>;
-  convertToAssets: (shares: ethers.BigNumber) => Promise<ethers.BigNumber>;
-  previewDeposit: (assets: ethers.BigNumber) => Promise<ethers.BigNumber>;
-  previewMint: (shares: ethers.BigNumber) => Promise<ethers.BigNumber>;
-  previewWithdraw: (assets: ethers.BigNumber) => Promise<ethers.BigNumber>;
-  previewRedeem: (shares: ethers.BigNumber) => Promise<ethers.BigNumber>;
-  maxDeposit: (receiver: string) => Promise<ethers.BigNumber>;
-  maxMint: (receiver: string) => Promise<ethers.BigNumber>;
-  maxWithdraw: (owner: string) => Promise<ethers.BigNumber>;
-  maxRedeem: (owner: string) => Promise<ethers.BigNumber>;
+  totalAssets: () => Promise<bigint>;
+  convertToShares: (assets: bigint) => Promise<bigint>;
+  convertToAssets: (shares: bigint) => Promise<bigint>;
+  previewDeposit: (assets: bigint) => Promise<bigint>;
+  previewMint: (shares: bigint) => Promise<bigint>;
+  previewWithdraw: (assets: bigint) => Promise<bigint>;
+  previewRedeem: (shares: bigint) => Promise<bigint>;
+  maxDeposit: (receiver: string) => Promise<bigint>;
+  maxMint: (receiver: string) => Promise<bigint>;
+  maxWithdraw: (owner: string) => Promise<bigint>;
+  maxRedeem: (owner: string) => Promise<bigint>;
   
   // Custom methods
-  rebalance: () => Promise<ethers.ContractTransaction>;
-  collectManagementFee: () => Promise<ethers.ContractTransaction>;
-  collectPerformanceFee: () => Promise<ethers.ContractTransaction>;
-  setManagementFee: (newFee: ethers.BigNumber) => Promise<ethers.ContractTransaction>;
-  setPerformanceFee: (newFee: ethers.BigNumber) => Promise<ethers.ContractTransaction>;
-  setPriceOracle: (newOracle: string) => Promise<ethers.ContractTransaction>;
-  setDEX: (newDEX: string) => Promise<ethers.ContractTransaction>;
+  rebalance: () => Promise<ethers.ContractTransactionResponse>;
+  collectManagementFee: () => Promise<ethers.ContractTransactionResponse>;
+  collectPerformanceFee: () => Promise<ethers.ContractTransactionResponse>;
+  setManagementFee: (newFee: bigint) => Promise<ethers.ContractTransactionResponse>;
+  setPerformanceFee: (newFee: bigint) => Promise<ethers.ContractTransactionResponse>;
+  setPriceOracle: (newOracle: string) => Promise<ethers.ContractTransactionResponse>;
+  setDEX: (newDEX: string) => Promise<ethers.ContractTransactionResponse>;
   
   // Events
   filters: {
-    Deposit: (sender?: string, owner?: string, assets?: ethers.BigNumber, shares?: ethers.BigNumber) => ethers.EventFilter;
-    Withdraw: (sender?: string, receiver?: string, owner?: string, assets?: ethers.BigNumber, shares?: ethers.BigNumber) => ethers.EventFilter;
+    Deposit: (sender?: string, owner?: string, assets?: bigint, shares?: bigint) => ethers.EventFilter;
+    Withdraw: (sender?: string, receiver?: string, owner?: string, assets?: bigint, shares?: bigint) => ethers.EventFilter;
   };
 }
 
@@ -49,19 +53,19 @@ export interface IndexFundVaultInterface {
 export interface IndexRegistryInterface {
   // View methods
   getTokens: () => Promise<string[]>;
-  getTokenWeight: (token: string) => Promise<ethers.BigNumber>;
-  getTokensWithWeights: () => Promise<[string[], ethers.BigNumber[]]>;
+  getTokenWeight: (token: string) => Promise<bigint>;
+  getTokensWithWeights: () => Promise<[string[], bigint[]]>;
   
   // Mutative methods
-  addToken: (token: string, weight: ethers.BigNumber) => Promise<ethers.ContractTransaction>;
-  removeToken: (token: string) => Promise<ethers.ContractTransaction>;
-  updateTokenWeight: (token: string, newWeight: ethers.BigNumber) => Promise<ethers.ContractTransaction>;
+  addToken: (token: string, weight: bigint) => Promise<ethers.ContractTransactionResponse>;
+  removeToken: (token: string) => Promise<ethers.ContractTransactionResponse>;
+  updateTokenWeight: (token: string, newWeight: bigint) => Promise<ethers.ContractTransactionResponse>;
   
   // Events
   filters: {
-    TokenAdded: (token?: string, weight?: ethers.BigNumber) => ethers.EventFilter;
+    TokenAdded: (token?: string, weight?: bigint) => ethers.EventFilter;
     TokenRemoved: (token?: string) => ethers.EventFilter;
-    TokenWeightUpdated: (token?: string, newWeight?: ethers.BigNumber) => ethers.EventFilter;
+    TokenWeightUpdated: (token?: string, newWeight?: bigint) => ethers.EventFilter;
   };
 }
 

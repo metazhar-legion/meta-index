@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+// Import types
+import { metaMask, metaMaskHooks } from '../connectors';
 import { ethers } from 'ethers';
-import { BrowserProvider } from 'ethers';
-import { InjectedConnector } from '@web3-react/injected-connector';
-import { useWeb3React } from '@web3-react/core';
 
 // Define user roles
 export enum UserRole {
@@ -19,7 +18,7 @@ interface Web3ContextType {
   disconnect: () => void;
   isActive: boolean;
   isLoading: boolean;
-  provider: BrowserProvider | null;
+  provider: ethers.BrowserProvider | null;
   userRole: UserRole;
   setUserRole: (role: UserRole) => void;
 }
@@ -37,17 +36,20 @@ const Web3Context = createContext<Web3ContextType>({
   setUserRole: () => {},
 });
 
-// Supported chains
-export const injected = new InjectedConnector({
-  supportedChainIds: [1, 3, 4, 5, 42, 31337], // Mainnet, Ropsten, Rinkeby, Goerli, Kovan, Localhost
-});
+// MetaMask connector is imported from connectors
 
 interface Web3ProviderProps {
   children: ReactNode;
 }
 
 export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) => {
-  const { activate, deactivate, account, chainId, active, library } = useWeb3React<BrowserProvider>();
+  const { useAccount, useChainId, useIsActive, useProvider } = metaMaskHooks;
+  const account = useAccount();
+  const chainId = useChainId();
+  const isActive = useIsActive();
+  const rawProvider = useProvider();
+  // Use the provider directly if it's available
+  const library = rawProvider ? new ethers.BrowserProvider(rawProvider as any) : null;
   const [isLoading, setIsLoading] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(UserRole.INVESTOR);
 
@@ -55,7 +57,7 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
   const connect = async () => {
     setIsLoading(true);
     try {
-      await activate(injected);
+      await metaMask.activate();
       localStorage.setItem('isWalletConnected', 'true');
     } catch (error) {
       console.error('Error connecting to wallet:', error);
@@ -67,7 +69,7 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
   // Disconnect wallet
   const disconnect = () => {
     try {
-      deactivate();
+      metaMask.resetState();
       localStorage.removeItem('isWalletConnected');
     } catch (error) {
       console.error('Error disconnecting wallet:', error);
@@ -79,23 +81,23 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
     const connectWalletOnPageLoad = async () => {
       if (localStorage.getItem('isWalletConnected') === 'true') {
         try {
-          await activate(injected);
+          await metaMask.activate();
         } catch (error) {
           console.error('Error auto-connecting to wallet:', error);
         }
       }
     };
     connectWalletOnPageLoad();
-  }, [activate]);
+  }, []);
 
   return (
     <Web3Context.Provider
       value={{
-        account,
-        chainId,
+        account: account || null,
+        chainId: chainId || null,
         connect,
         disconnect,
-        isActive: active,
+        isActive: isActive || false,
         isLoading,
         provider: library || null,
         userRole,
