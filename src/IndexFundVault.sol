@@ -339,8 +339,16 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
         uint256 expectedAssetAmount = dex.getExpectedAmount(token, assetToken, tokenAmount);
         require(expectedAssetAmount > 0, "Zero expected amount");
         
-        // Approve the DEX to spend the token
-        IERC20(token).approve(address(dex), tokenAmount);
+        // Check if we've already approved the DEX to spend this token
+        uint256 allowance = IERC20(token).allowance(address(this), address(dex));
+        if (allowance < tokenAmount) {
+            // Reset approval to 0 first (some tokens require this)
+            if (allowance > 0) {
+                IERC20(token).approve(address(dex), 0);
+            }
+            // Approve the DEX to spend the token - approve the full balance
+            IERC20(token).approve(address(dex), tokenBalance);
+        }
         
         // Execute the swap
         dex.swap(token, assetToken, tokenAmount, expectedAssetAmount * 95 / 100); // Allow 5% slippage
@@ -359,6 +367,185 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
         // Use the price oracle to get the value
         require(address(priceOracle) != address(0), "Price oracle not set");
         return priceOracle.convertToBaseAsset(token, amount);
+    }
+
+    /**
+     * @dev Ensures the vault has enough liquid assets for a withdrawal
+     * @param assets The amount of assets needed
+     */
+    function _ensureLiquidity(uint256 assets) internal {
+        uint256 assetBalance = IERC20(asset()).balanceOf(address(this));
+        
+        if (assetBalance < assets) {
+            // Need to sell some tokens to get enough liquidity
+            uint256 shortfall = assets - assetBalance;
+            
+            // Add a safety margin to account for slippage and fees (5%)
+            uint256 targetAmount = shortfall + (shortfall * 5 / 100);
+            
+            // Get the current index composition
+            (address[] memory tokens, uint256[] memory weights) = indexRegistry.getCurrentIndex();
+            
+            // First, try to sell tokens proportionally to their weights
+            uint256 remainingShortfall = _sellTokensProportionally(tokens, weights, targetAmount);
+            
+            // If we still have a shortfall, try to sell any available tokens regardless of weight
+            if (remainingShortfall > 0 && remainingShortfall < shortfall) {
+                // We made some progress but not enough, try to sell more aggressively
+                remainingShortfall = _sellRemainingTokens(tokens, remainingShortfall);
+            }
+            
+            // Final check to ensure we have enough liquidity
+            assetBalance = IERC20(asset()).balanceOf(address(this));
+            require(assetBalance >= assets, "IndexFundVault: Insufficient liquidity for withdrawal");
+        }
+    }
+    
+    /**
+     * @dev Sells tokens proportionally to their weights to meet the target amount
+     * @param tokens Array of token addresses
+     * @param weights Array of token weights
+     * @param targetAmount The target amount to raise in asset terms
+     * @return remainingShortfall The amount still needed after selling
+     */
+    function _sellTokensProportionally(
+        address[] memory tokens, 
+        uint256[] memory weights, 
+        uint256 targetAmount
+    ) internal returns (uint256) {
+        uint256 remainingAmount = targetAmount;
+        
+        // First pass: try to sell tokens proportionally to their weights
+        for (uint256 i = 0; i < tokens.length && remainingAmount > 0; i++) {
+            address token = tokens[i];
+            uint256 weight = weights[i];
+            
+            // Skip if token is the asset token
+            if (token == asset()) continue;
+            
+            // Calculate how much of this token to sell
+            uint256 tokenBalance = IERC20(token).balanceOf(address(this));
+            
+            // Skip if we don't have any of this token
+            if (tokenBalance == 0) continue;
+            
+            // Calculate token value in asset terms
+            uint256 tokenValue = _getTokenValue(token, tokenBalance);
+            
+            // Calculate how much to sell based on weight
+            uint256 amountToSell = Math.min(
+                (targetAmount * weight) / BASIS_POINTS,
+                Math.min(tokenValue, remainingAmount)
+            );
+            
+            if (amountToSell > 0) {
+                uint256 received = _executeTokenSale(token, amountToSell);
+                remainingAmount = received >= remainingAmount ? 0 : remainingAmount - received;
+            }
+        }
+        
+        return remainingAmount;
+    }
+    
+    /**
+     * @dev Sells remaining tokens to meet the target amount regardless of weight
+     * @param tokens Array of token addresses
+     * @param targetAmount The target amount to raise in asset terms
+     * @return remainingShortfall The amount still needed after selling
+     */
+    function _sellRemainingTokens(
+        address[] memory tokens, 
+        uint256 targetAmount
+    ) internal returns (uint256) {
+        uint256 remainingAmount = targetAmount;
+        
+        // Second pass: sell any available tokens to cover the shortfall
+        for (uint256 i = 0; i < tokens.length && remainingAmount > 0; i++) {
+            address token = tokens[i];
+            
+            // Skip if token is the asset token
+            if (token == asset()) continue;
+            
+            uint256 tokenBalance = IERC20(token).balanceOf(address(this));
+            
+            // Skip if we don't have any of this token
+            if (tokenBalance == 0) continue;
+            
+            // Calculate token value in asset terms
+            uint256 tokenValue = _getTokenValue(token, tokenBalance);
+            
+            if (tokenValue > 0) {
+                // Sell up to the remaining amount needed
+                uint256 amountToSell = Math.min(tokenValue, remainingAmount);
+                
+                if (amountToSell > 0) {
+                    uint256 received = _executeTokenSale(token, amountToSell);
+                    remainingAmount = received >= remainingAmount ? 0 : remainingAmount - received;
+                }
+            }
+        }
+        
+        return remainingAmount;
+    }
+    
+    /**
+     * @dev Executes a token sale with proper error handling
+     * @param token The token to sell
+     * @param amountToSell The amount to sell in asset terms
+     * @return received The amount of asset tokens received
+     */
+    function _executeTokenSale(address token, uint256 amountToSell) internal returns (uint256) {
+        // Explicitly approve the DEX to spend this token
+        uint256 tokenBalance = IERC20(token).balanceOf(address(this));
+        uint256 allowance = IERC20(token).allowance(address(this), address(dex));
+        
+        if (allowance < tokenBalance) {
+            // Reset approval to 0 first (some tokens require this)
+            if (allowance > 0) {
+                IERC20(token).approve(address(dex), 0);
+            }
+            // Approve the DEX to spend the token - approve the full balance
+            IERC20(token).approve(address(dex), tokenBalance);
+        }
+        
+        // Calculate token amount to sell
+        uint256 tokenAmountToSell = priceOracle.convertFromBaseAsset(token, amountToSell);
+        tokenAmountToSell = Math.min(tokenAmountToSell, tokenBalance);
+        
+        if (tokenAmountToSell == 0) return 0;
+        
+        // Get expected amount of asset token
+        uint256 expectedAssetAmount = dex.getExpectedAmount(token, asset(), tokenAmountToSell);
+        
+        if (expectedAssetAmount == 0) return 0;
+        
+        // Execute the swap with a 5% slippage tolerance
+        uint256 minAmount = expectedAssetAmount * 95 / 100;
+        
+        try dex.swap(token, asset(), tokenAmountToSell, minAmount) returns (uint256 received) {
+            return received;
+        } catch {
+            // If the swap fails with the full amount, try with half the amount
+            uint256 halfAmount = tokenAmountToSell / 2;
+            if (halfAmount > 0) {
+                try dex.swap(token, asset(), halfAmount, 0) returns (uint256 received) {
+                    return received;
+                } catch {
+                    // If it still fails with half the amount, try with a quarter
+                    uint256 quarterAmount = halfAmount / 2;
+                    if (quarterAmount > 0) {
+                        try dex.swap(token, asset(), quarterAmount, 0) returns (uint256 received) {
+                            return received;
+                        } catch {
+                            // If all attempts fail, return 0
+                            return 0;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return 0;
     }
 
     /**
@@ -421,41 +608,6 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
         // Check if rebalancing is needed after withdrawal
         if (isRebalancingNeeded() && block.timestamp >= lastRebalanceTimestamp + 1 days) {
             // Don't rebalance too frequently, at least 1 day between rebalances
-        }
-    }
-
-    /**
-     * @dev Ensures the vault has enough liquid assets for a withdrawal
-     * @param assets The amount of assets needed
-     */
-    function _ensureLiquidity(uint256 assets) internal {
-        uint256 assetBalance = IERC20(asset()).balanceOf(address(this));
-        
-        if (assetBalance < assets) {
-            // Need to sell some tokens to get enough liquidity
-            uint256 shortfall = assets - assetBalance;
-            
-            // Get the current index composition
-            (address[] memory tokens, uint256[] memory weights) = indexRegistry.getCurrentIndex();
-            
-            // Sell tokens proportionally to their weights
-            for (uint256 i = 0; i < tokens.length && shortfall > 0; i++) {
-                address token = tokens[i];
-                uint256 weight = weights[i];
-                
-                // Calculate how much of this token to sell
-                uint256 tokenBalance = IERC20(token).balanceOf(address(this));
-                uint256 tokenValue = _getTokenValue(token, tokenBalance);
-                uint256 amountToSell = Math.min(
-                    (shortfall * weight) / BASIS_POINTS,
-                    tokenValue
-                );
-                
-                if (amountToSell > 0) {
-                    _sellToken(token, amountToSell);
-                    shortfall -= Math.min(amountToSell, shortfall);
-                }
-            }
         }
     }
 

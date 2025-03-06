@@ -1,0 +1,43 @@
+No files changed, compilation skipped
+EIP-3855 is not supported in one or more of the RPCs used.
+Unsupported Chain IDs: 31337.
+Contracts deployed with a Solidity version equal or higher than 0.8.20 might not work properly.
+For more information, please see https://eips.ethereum.org/EIPS/eip-3855
+Script ran successfully.
+
+== Logs ==
+  Using default Anvil private key
+  USDC deployed at: 0x5FbDB2315678afecb367f032d93F642f64180aa3
+  WBTC deployed at: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+  WETH deployed at: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+  LINK deployed at: 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
+  UNI deployed at: 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
+  AAVE deployed at: 0x5FC8d32690cc91D4c39d9d3abcBD16989F875707
+  Price Oracle deployed at: 0x0165878A594ca255338adfa4d48449f69242Eb8F
+  DEX deployed at: 0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0
+  Index Registry deployed at: 0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82
+  Index Fund Vault deployed at: 0x9A676e781A523b5d0C0e43731313A708CB607508
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 31337
+
+Estimated gas price: 2.000000001 gwei
+
+Estimated total gas used for script: 14096859
+
+Estimated amount required: 0.028193718014096859 ETH
+
+==========================
+
+
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+
+Transactions saved to: /Users/azhar/CascadeProjects/web3-index-fund/broadcast/Deploy.s.sol/31337/run-latest.json
+
+Sensitive values saved to: /Users/azhar/CascadeProjects/web3-index-fund/cache/Deploy.s.sol/31337/run-latest.json
+

@@ -72,7 +72,8 @@ contract Deploy is Script {
         indexRegistry.addToken(address(aave), 1000); // 10%
         
         // Mint some tokens for testing
-        usdc.mint(msg.sender, 1_000_000 * 1e6); // 1M USDC
+        address deployer = vm.addr(deployerPrivateKey);
+        usdc.mint(deployer, 1_000_000 * 1e6); // 1M USDC
         wbtc.mint(address(dex), 100 * 1e8);     // 100 BTC
         weth.mint(address(dex), 1000 * 1e18);   // 1000 ETH
         link.mint(address(dex), 100000 * 1e18); // 100,000 LINK
