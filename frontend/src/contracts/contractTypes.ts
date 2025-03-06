@@ -10,6 +10,10 @@ export interface Token {
 
 // IndexFundVault interface
 export interface IndexFundVaultInterface {
+  // Contract properties
+  target: string;  // The contract address
+  runner?: ethers.Provider | ethers.Signer;  // The provider or signer
+  
   // ERC20 methods
   balanceOf: (account: string) => Promise<bigint>;
   totalSupply: () => Promise<bigint>;
@@ -51,10 +55,16 @@ export interface IndexFundVaultInterface {
 
 // IndexRegistry interface
 export interface IndexRegistryInterface {
+  // Contract properties
+  target: string;  // The contract address
+  runner?: ethers.Provider | ethers.Signer;  // The provider or signer
+  
   // View methods
   getTokens: () => Promise<string[]>;
   getTokenWeight: (token: string) => Promise<bigint>;
   getTokensWithWeights: () => Promise<[string[], bigint[]]>;
+  // Add support for different return types from getTokensWithWeights
+  // This is needed because ethers.js v6 might return objects instead of arrays
   
   // Mutative methods
   addToken: (token: string, weight: bigint) => Promise<ethers.ContractTransactionResponse>;
@@ -72,8 +82,8 @@ export interface IndexRegistryInterface {
 // Contract ABIs
 export const IndexFundVaultABI = [
   // ERC20 functions
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
+  "function name() view returns (string memory)",
+  "function symbol() view returns (string memory)",
   "function decimals() view returns (uint8)",
   "function totalSupply() view returns (uint256)",
   "function balanceOf(address account) view returns (uint256)",
@@ -89,16 +99,16 @@ export const IndexFundVaultABI = [
   "function convertToAssets(uint256 shares) view returns (uint256)",
   "function maxDeposit(address receiver) view returns (uint256)",
   "function previewDeposit(uint256 assets) view returns (uint256)",
-  "function deposit(uint256 assets, address receiver) returns (uint256)",
+  "function deposit(uint256 assets, address receiver) returns (uint256 shares)",
   "function maxMint(address receiver) view returns (uint256)",
   "function previewMint(uint256 shares) view returns (uint256)",
-  "function mint(uint256 shares, address receiver) returns (uint256)",
+  "function mint(uint256 shares, address receiver) returns (uint256 assets)",
   "function maxWithdraw(address owner) view returns (uint256)",
   "function previewWithdraw(uint256 assets) view returns (uint256)",
-  "function withdraw(uint256 assets, address receiver, address owner) returns (uint256)",
+  "function withdraw(uint256 assets, address receiver, address owner) returns (uint256 shares)",
   "function maxRedeem(address owner) view returns (uint256)",
   "function previewRedeem(uint256 shares) view returns (uint256)",
-  "function redeem(uint256 shares, address receiver, address owner) returns (uint256)",
+  "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",
   
   // Custom functions
   "function rebalance() external",
@@ -116,9 +126,9 @@ export const IndexFundVaultABI = [
 
 export const IndexRegistryABI = [
   // View functions
-  "function getTokens() view returns (address[])",
+  "function getTokens() view returns (address[] memory)",
   "function getTokenWeight(address token) view returns (uint256)",
-  "function getTokensWithWeights() view returns (address[], uint256[])",
+  "function getTokensWithWeights() view returns (address[] memory tokens, uint256[] memory weights)",
   
   // Mutative functions
   "function addToken(address token, uint256 weight) external",
@@ -133,8 +143,8 @@ export const IndexRegistryABI = [
 
 // ERC20 ABI for interacting with tokens
 export const ERC20ABI = [
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
+  "function name() view returns (string memory)",
+  "function symbol() view returns (string memory)",
   "function decimals() view returns (uint8)",
   "function totalSupply() view returns (uint256)",
   "function balanceOf(address account) view returns (uint256)",
