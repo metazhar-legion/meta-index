@@ -9,7 +9,6 @@ import {
   Grid,
   Alert,
   CircularProgress,
-  Divider,
   Paper
 } from '@mui/material';
 import { ethers } from 'ethers';

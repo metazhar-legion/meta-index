@@ -42,38 +42,108 @@ export const useContracts = (): UseContractsReturn => {
       setIsLoading(true);
       
       try {
+        // Log network information for debugging
+        try {
+          const network = await provider.getNetwork();
+          console.log('Connected to network:', {
+            chainId: network.chainId,
+            name: network.name,
+            provider: provider.constructor.name
+          });
+        } catch (networkError) {
+          console.error('Error getting network information:', networkError);
+        }
+        
         // Get a signer for transactions if available
         let signer;
         try {
           signer = await provider.getSigner();
           console.log('Signer obtained successfully');
+          // Test signer by getting the address
+          const signerAddress = await signer.getAddress();
+          console.log('Signer address:', signerAddress);
         } catch (signerError) {
           console.error('Error getting signer, falling back to provider only:', signerError);
         }
         
+        // Verify contract addresses are valid
+        if (!ethers.isAddress(CONTRACT_ADDRESSES.VAULT)) {
+          throw new Error(`Invalid vault address: ${CONTRACT_ADDRESSES.VAULT}`);
+        }
+        if (!ethers.isAddress(CONTRACT_ADDRESSES.REGISTRY)) {
+          throw new Error(`Invalid registry address: ${CONTRACT_ADDRESSES.REGISTRY}`);
+        }
+        
         // Initialize vault contract with provider for read-only operations
-        const vault = new ethers.Contract(
-          CONTRACT_ADDRESSES.VAULT,
-          IndexFundVaultABI,
-          provider
-        );
+        console.log('Initializing vault contract with address:', CONTRACT_ADDRESSES.VAULT);
+        console.log('Vault ABI first function:', IndexFundVaultABI[0]);
+        console.log('Provider type:', provider.constructor.name);
+        if (signer) {
+          console.log('Signer type:', signer.constructor.name);
+        } else {
+          console.log('No signer available, using provider only');
+        }
+        
+        // Create contracts with error handling
+        let vault, registry;
+        try {
+          vault = new ethers.Contract(
+            CONTRACT_ADDRESSES.VAULT,
+            IndexFundVaultABI,
+            provider
+          );
+          console.log('Vault contract created successfully');
+        } catch (error) {
+          const vaultError = error as Error;
+          console.error('Error creating vault contract:', vaultError);
+          throw new Error(`Failed to create vault contract: ${vaultError.message || 'Unknown error'}`);
+        }
+        
+        try {
+          registry = new ethers.Contract(
+            CONTRACT_ADDRESSES.REGISTRY,
+            IndexRegistryABI,
+            provider
+          );
+          console.log('Registry contract created successfully');
+        } catch (error) {
+          const registryError = error as Error;
+          console.error('Error creating registry contract:', registryError);
+          throw new Error(`Failed to create registry contract: ${registryError.message || 'Unknown error'}`);
+        }
         
         // Connect signer if available
-        const vaultWithSigner = signer ? vault.connect(signer) : vault;
+        let vaultWithSigner, registryWithSigner;
+        if (signer) {
+          try {
+            vaultWithSigner = vault.connect(signer);
+            console.log('Connected signer to vault contract');
+          } catch (connectError) {
+            console.error('Error connecting signer to vault contract:', connectError);
+            vaultWithSigner = vault; // Fallback to provider-only
+          }
+          
+          try {
+            registryWithSigner = registry.connect(signer);
+            console.log('Connected signer to registry contract');
+          } catch (connectError) {
+            console.error('Error connecting signer to registry contract:', connectError);
+            registryWithSigner = registry; // Fallback to provider-only
+          }
+        } else {
+          vaultWithSigner = vault;
+          registryWithSigner = registry;
+        }
         
-        // Initialize registry contract with provider for read-only operations
-        const registry = new ethers.Contract(
-          CONTRACT_ADDRESSES.REGISTRY,
-          IndexRegistryABI,
-          provider
-        );
-        
-        // Connect signer if available
-        const registryWithSigner = signer ? registry.connect(signer) : registry;
-        
-        // Log contract addresses for debugging
-        console.log('Vault address:', CONTRACT_ADDRESSES.VAULT);
-        console.log('Registry address:', CONTRACT_ADDRESSES.REGISTRY);
+        // Test contract connectivity
+        try {
+          // Try a simple read-only call to verify connectivity
+          const totalSupply = await vault.totalSupply();
+          console.log('Successfully connected to vault contract. Total supply:', totalSupply.toString());
+        } catch (testError) {
+          console.warn('Could not verify vault contract connectivity:', testError);
+          // Continue anyway as this might be due to empty vault
+        }
         
         // Cast to the appropriate interfaces
         const typedVault = vaultWithSigner as unknown as IndexFundVaultInterface;
@@ -82,9 +152,10 @@ export const useContracts = (): UseContractsReturn => {
         setVaultContract(typedVault);
         setRegistryContract(typedRegistry);
         setError(null);
-      } catch (err) {
+      } catch (error) {
+        const err = error as Error;
         console.error('Error initializing contracts:', err);
-        setError('Failed to initialize contracts');
+        setError(`Failed to initialize contracts: ${err.message || 'Unknown error'}`);
         setVaultContract(null);
         setRegistryContract(null);
       } finally {
@@ -152,107 +223,503 @@ export const useContracts = (): UseContractsReturn => {
                 
                 // Decode the result manually
                 const decodedResult = iface.decodeFunctionResult('getTokensWithWeights', rawResult);
-                console.log('Decoded result:', decodedResult);
+                console.log('Decoded result type:', typeof decodedResult, Array.isArray(decodedResult));
+                console.log('Decoded result:', JSON.stringify(decodedResult, (key, value) => 
+                  typeof value === 'bigint' ? value.toString() : value
+                ));
                 
                 // Extract tokens and weights from the decoded result
-                if (Array.isArray(decodedResult)) {
-                  if (decodedResult.length >= 2) {
-                    tokenAddresses = decodedResult[0];
-                    weights = decodedResult[1];
-                  }
-                } else if (decodedResult && typeof decodedResult === 'object') {
-                  const resultObj = decodedResult as any;
-                  if (resultObj.tokens && resultObj.weights) {
-                    tokenAddresses = resultObj.tokens;
-                    weights = resultObj.weights;
-                  } else if (resultObj[0] && resultObj[1]) {
-                    tokenAddresses = resultObj[0];
-                    weights = resultObj[1];
+                if (decodedResult) {
+                  console.log('Result keys:', Object.keys(decodedResult || {}));
+                  
+                  // First, check if the result has named properties (as per ABI definition)
+                  if (typeof decodedResult === 'object') {
+                    // Check for named properties as defined in the ABI
+                    if ('tokens' in decodedResult && 'weights' in decodedResult) {
+                      console.log('Found named properties: tokens, weights');
+                      tokenAddresses = decodedResult.tokens as string[];
+                      weights = decodedResult.weights as bigint[];
+                      console.log('Extracted using named properties:', {
+                        tokens: tokenAddresses.length,
+                        weights: weights.length
+                      });
+                    }
+                    // If named properties don't exist, try numeric indices
+                    else if (decodedResult[0] !== undefined && decodedResult[1] !== undefined) {
+                      console.log('Found numeric properties: 0, 1');
+                      tokenAddresses = decodedResult[0] as string[];
+                      weights = decodedResult[1] as bigint[];
+                      console.log('Extracted using numeric indices:', {
+                        tokens: tokenAddresses.length,
+                        weights: weights.length
+                      });
+                    }
+                    // Try with result property (sometimes ethers wraps the result)
+                    else if ('result' in decodedResult && Array.isArray(decodedResult.result)) {
+                      console.log('Found result property');
+                      if (decodedResult.result.length >= 2) {
+                        tokenAddresses = decodedResult.result[0] as string[];
+                        weights = decodedResult.result[1] as bigint[];
+                        console.log('Extracted using result property:', {
+                          tokens: tokenAddresses.length,
+                          weights: weights.length
+                        });
+                      }
+                    }
+                    // Try accessing as a tuple-like structure
+                    else if (typeof decodedResult.length === 'number' && decodedResult.length >= 2) {
+                      console.log('Accessing as array-like object');
+                      tokenAddresses = decodedResult[0] as string[];
+                      weights = decodedResult[1] as bigint[];
+                      console.log('Extracted as array-like:', {
+                        tokens: tokenAddresses?.length,
+                        weights: weights?.length
+                      });
+                    }
                   }
                 }
                 
-                console.log('Extracted tokens:', tokenAddresses);
-                console.log('Extracted weights:', weights);
+                console.log('Extracted tokens:', tokenAddresses ? tokenAddresses.map(addr => addr.toString()) : 'none');
+                console.log('Extracted weights:', weights ? weights.map(w => w.toString()) : 'none');
                 
-                if (!tokenAddresses || !weights || tokenAddresses.length === 0) {
-                  throw new Error('Failed to decode token data');
+                // Validate the extracted data
+                if (!tokenAddresses || !weights) {
+                  console.warn('Failed to extract token addresses or weights, using empty arrays');
+                  tokenAddresses = [];
+                  weights = [];
                 }
+                
+                if (tokenAddresses.length === 0) {
+                  console.warn('Extracted token addresses array is empty');
+                }
+                
+                if (weights.length === 0) {
+                  console.warn('Extracted weights array is empty');
+                }
+                
+                if (tokenAddresses.length !== weights.length) {
+                  console.warn(`Token addresses (${tokenAddresses.length}) and weights (${weights.length}) arrays have different lengths`);
+                  // Truncate the longer array to match the shorter one
+                  const minLength = Math.min(tokenAddresses.length, weights.length);
+                  tokenAddresses = tokenAddresses.slice(0, minLength);
+                  weights = weights.slice(0, minLength);
+                }
+                
+                console.log('Token data extraction complete:', {
+                  tokenCount: tokenAddresses.length,
+                  weightCount: weights.length,
+                  sampleAddress: tokenAddresses[0]?.toString() || 'none',
+                  sampleWeight: weights[0]?.toString() || 'none'
+                });
               } catch (lowLevelError) {
                 console.error('Low-level call failed, trying standard method:', lowLevelError);
                 
                 // Fall back to standard method call
+                console.log('Attempting standard method call to getTokensWithWeights');
                 const result = await registryContract.getTokensWithWeights();
-                console.log('Token result raw:', result);
+                console.log('Token result type:', typeof result, Array.isArray(result));
+                console.log('Token result raw:', JSON.stringify(result, (key, value) => 
+                  typeof value === 'bigint' ? value.toString() : value
+                ));
                 
                 if (result === null || result === undefined) {
-                  console.error('Token result is null or undefined');
-                  throw new Error('Token result is null or undefined');
+                  console.warn('Token result is null or undefined, using empty arrays');
+                  tokenAddresses = [];
+                  weights = [];
+                  // Continue execution instead of throwing
                 }
                   
                 // In ethers v6, the result might be returned as an object with named properties
                 // or as an array depending on the contract method definition
-                if (Array.isArray(result)) {
-                  console.log('Processing array result');
-                  [tokenAddresses, weights] = result;
-                } else if (result && typeof result === 'object') {
-                  // Handle object response format - use type assertion to avoid TS errors
-                  console.log('Processing object result');
-                  console.log('Result keys:', Object.keys(result));
-                  
-                  const resultObj = result as any;
-                  
-                  // Try different property access patterns
-                  if (resultObj.tokens && resultObj.weights) {
-                    tokenAddresses = resultObj.tokens;
-                    weights = resultObj.weights;
-                  } else if (resultObj[0] !== undefined && resultObj[1] !== undefined) {
-                    tokenAddresses = resultObj[0];
-                    weights = resultObj[1];
-                  } else if (resultObj.result && Array.isArray(resultObj.result)) {
-                    [tokenAddresses, weights] = resultObj.result;
+                console.log('Result keys:', Object.keys(result || {}));
+                
+                // First, try accessing as a named property structure (as per ABI)
+                if (typeof result === 'object') {
+                  // Check for named properties as defined in the ABI
+                  if ('tokens' in result && 'weights' in result) {
+                    console.log('Found named properties: tokens, weights');
+                    tokenAddresses = result.tokens as string[];
+                    weights = result.weights as bigint[];
+                    console.log('Extracted using named properties:', {
+                      tokens: tokenAddresses.length,
+                      weights: weights.length
+                    });
+                  }
+                  // If named properties don't exist, try numeric indices
+                  else if (result[0] !== undefined && result[1] !== undefined) {
+                    console.log('Found numeric properties: 0, 1');
+                    tokenAddresses = result[0] as string[];
+                    weights = result[1] as bigint[];
+                    console.log('Extracted using numeric indices:', {
+                      tokens: tokenAddresses.length,
+                      weights: weights.length
+                    });
+                  }
+                  // Try with result property (sometimes ethers wraps the result)
+                  else if ('result' in result && Array.isArray(result.result)) {
+                    console.log('Found result property');
+                    if (result.result.length >= 2) {
+                      tokenAddresses = result.result[0] as string[];
+                      weights = result.result[1] as bigint[];
+                      console.log('Extracted using result property:', {
+                        tokens: tokenAddresses.length,
+                        weights: weights.length
+                      });
+                    }
+                  }
+                  // Try with _value property (some ethers.js v6 responses)
+                  else if ('_value' in result && Array.isArray(result._value)) {
+                    console.log('Found _value property');
+                    if (result._value.length >= 2) {
+                      tokenAddresses = result._value[0] as string[];
+                      weights = result._value[1] as bigint[];
+                      console.log('Extracted using _value property:', {
+                        tokens: tokenAddresses.length,
+                        weights: weights.length
+                      });
+                    }
+                  }
+                  // Try accessing as a tuple-like structure
+                  else if (typeof result.length === 'number' && result.length >= 2) {
+                    console.log('Accessing as array-like object');
+                    tokenAddresses = result[0] as string[];
+                    weights = result[1] as bigint[];
+                    console.log('Extracted as array-like:', {
+                      tokens: tokenAddresses?.length,
+                      weights: weights?.length
+                    });
                   } else {
-                    console.error('Could not extract tokens and weights from result:', resultObj);
-                    throw new Error('Invalid result format');
+                    console.warn('Could not extract tokens and weights from result, using empty arrays');
+                    tokenAddresses = [];
+                    weights = [];
                   }
                 }
+                
+                // Validate the extracted data
+                console.log('Standard call - extracted tokens:', tokenAddresses ? tokenAddresses.map(addr => addr.toString()) : 'none');
+                console.log('Standard call - extracted weights:', weights ? weights.map(w => w.toString()) : 'none');
+                
+                if (!tokenAddresses || !weights) {
+                  console.warn('Standard call - failed to extract token addresses or weights, using empty arrays');
+                  tokenAddresses = [];
+                  weights = [];
+                }
+                
+                if (tokenAddresses.length === 0) {
+                  console.warn('Standard call - extracted token addresses array is empty');
+                }
+                
+                if (weights.length === 0) {
+                  console.warn('Standard call - extracted weights array is empty');
+                }
+                
+                if (tokenAddresses.length !== weights.length) {
+                  console.warn(`Standard call - token addresses (${tokenAddresses.length}) and weights (${weights.length}) arrays have different lengths`);
+                  // Truncate the longer array to match the shorter one
+                  const minLength = Math.min(tokenAddresses.length, weights.length);
+                  tokenAddresses = tokenAddresses.slice(0, minLength);
+                  weights = weights.slice(0, minLength);
+                }
+                
+                console.log('Standard call - token data extraction complete:', {
+                  tokenCount: tokenAddresses.length,
+                  weightCount: weights.length,
+                  sampleAddress: tokenAddresses[0]?.toString() || 'none',
+                  sampleWeight: weights[0]?.toString() || 'none'
+                });
               }
                 
               console.log('Extracted from object:', { tokenAddresses, weights });
+              
+              // Final fallback if both methods failed to extract valid data
+              if (!tokenAddresses) tokenAddresses = [];
+              if (!weights) weights = [];
+              
+              if (tokenAddresses.length === 0 || weights.length === 0) {
+                console.warn('Extraction methods returned empty arrays, trying fallback mechanism');
+                
+                try {
+                  // Try one more approach - call individual methods if available
+                  console.log('Attempting to call individual methods for tokens and weights');
+                  
+                  try {
+                    // Try to get tokens first
+                    if (!tokenAddresses || tokenAddresses.length === 0) {
+                      console.log('Calling getTokens method directly');
+                      // Check if we can access tokens through a custom method or property
+                      if (typeof (registryContract as any).getTokens === 'function') {
+                        const tokensResult = await (registryContract as any).getTokens();
+                        console.log('getTokens result:', tokensResult);
+                        
+                        if (Array.isArray(tokensResult)) {
+                          tokenAddresses = tokensResult;
+                        } else if (tokensResult && typeof tokensResult === 'object') {
+                          // Handle different response formats
+                          const resultObj = tokensResult as any;
+                          if (Array.isArray(resultObj._value)) {
+                            tokenAddresses = resultObj._value;
+                          } else if (Array.isArray(resultObj.result)) {
+                            tokenAddresses = resultObj.result;
+                          } else if (typeof resultObj.length === 'number') {
+                            tokenAddresses = Array.from(resultObj);
+                          }
+                        }
+                      }
+                    }
+                  } catch (tokenError) {
+                    console.error('Failed to get tokens individually:', tokenError);
+                  }
+                  
+                  try {
+                    // Then try to get weights
+                    if (!weights || weights.length === 0) {
+                      console.log('Calling getWeights method directly');
+                      // Check if we can access weights through a custom method or property
+                      if (typeof (registryContract as any).getWeights === 'function') {
+                        const weightsResult = await (registryContract as any).getWeights();
+                        console.log('getWeights result:', weightsResult);
+                        
+                        if (Array.isArray(weightsResult)) {
+                          weights = weightsResult;
+                        } else if (weightsResult && typeof weightsResult === 'object') {
+                          // Handle different response formats
+                          const resultObj = weightsResult as any;
+                          if (Array.isArray(resultObj._value)) {
+                            weights = resultObj._value;
+                          } else if (Array.isArray(resultObj.result)) {
+                            weights = resultObj.result;
+                          } else if (typeof resultObj.length === 'number') {
+                            weights = Array.from(resultObj);
+                          }
+                        }
+                      }
+                    }
+                  } catch (weightError) {
+                    console.error('Failed to get weights individually:', weightError);
+                  }
+                  
+                  // Log the results of individual calls
+                  console.log('After individual calls - tokens:', tokenAddresses?.length, 'weights:', weights?.length);
+                } catch (fallbackError) {
+                  console.error('Fallback mechanism failed:', fallbackError);
+                }
+              }
             } catch (tokenError) {
               console.error('Error getting tokens with weights:', tokenError);
-              throw new Error('Failed to get tokens from registry');
+              
+              // Last resort fallback - provide dummy data for development
+              console.warn('All extraction methods failed, using development fallback data');
+              if (process.env.NODE_ENV === 'development') {
+                console.log('Using development fallback data');
+                tokenAddresses = [
+                  '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', // UNI
+                  '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', // AAVE
+                  '0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e'  // YFI
+                ];
+                weights = [5000000000000000000n, 3000000000000000000n, 2000000000000000000n]; // 50%, 30%, 20%
+                console.log('Development fallback data loaded');
+              } else {
+                console.warn('Failed to get tokens from registry, continuing with empty arrays');
+                tokenAddresses = [];
+                weights = [];
+              }
             }
           }
             
           // Create token contracts and fetch metadata
-          const tokenPromises = tokenAddresses.map(async (address: string, index: number) => {
-            if (!provider) throw new Error('Provider not available');
+          console.log('Starting to load token metadata for', tokenAddresses?.length || 0, 'tokens');
+          
+          // Ensure tokenAddresses is an array
+          const finalTokenAddresses = tokenAddresses || [];
+          const finalWeights = weights || [];
+          
+          const tokenPromises = finalTokenAddresses.map(async (address: string, index: number) => {
+            if (!provider) {
+              console.warn('Provider not available for token metadata loading, using fallback');
+              return {
+                address,
+                symbol: 'ERROR',
+                decimals: 18,
+                weight: 0
+              };
+            }
+            
+            // Skip invalid addresses
+            if (!address || !ethers.isAddress(address)) {
+              console.warn(`Invalid address at index ${index}, skipping`);
+              return {
+                address: ethers.ZeroAddress,
+                symbol: 'INVALID',
+                decimals: 18,
+                weight: 0
+              };
+            }
+            
+            // Common token symbols for known addresses (fallback)
+            // This is a comprehensive list of popular tokens with their correct decimals
+            // Used as a fallback when contract calls fail
+            const knownTokens: Record<string, {symbol: string, decimals: number}> = {
+              // Major tokens
+              '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': { symbol: 'USDC', decimals: 6 },
+              '0xdac17f958d2ee523a2206206994597c13d831ec7': { symbol: 'USDT', decimals: 6 },
+              '0x6b175474e89094c44da98b954eedeac495271d0f': { symbol: 'DAI', decimals: 18 },
+              '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599': { symbol: 'WBTC', decimals: 8 },
+              '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': { symbol: 'WETH', decimals: 18 },
+              
+              // DeFi tokens
+              '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984': { symbol: 'UNI', decimals: 18 },
+              '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9': { symbol: 'AAVE', decimals: 18 },
+              '0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e': { symbol: 'YFI', decimals: 18 },
+              '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2': { symbol: 'MKR', decimals: 18 },
+              '0xba100000625a3754423978a60c9317c58a424e3d': { symbol: 'BAL', decimals: 18 },
+              '0xc944e90c64b2c07662a292be6244bdf05cda44a7': { symbol: 'GRT', decimals: 18 },
+              '0x4e15361fd6b4bb609fa63c81a2be19d873717870': { symbol: 'FTM', decimals: 18 },
+              '0x514910771af9ca656af840dff83e8264ecf986ca': { symbol: 'LINK', decimals: 18 },
+              '0x111111111117dc0aa78b770fa6a738034120c302': { symbol: '1INCH', decimals: 18 },
+              '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0': { symbol: 'MATIC', decimals: 18 },
+              '0x6810e776880c02933d47db1b9fc05908e5386b96': { symbol: 'GNO', decimals: 18 },
+              
+              // Stablecoins
+              '0x4fabb145d64652a948d72533023f6e7a623c7c53': { symbol: 'BUSD', decimals: 18 },
+              '0x8e870d67f660d95d5be530380d0ec0bd388289e1': { symbol: 'PAX', decimals: 18 },
+              '0x056fd409e1d7a124bd7017459dfea2f387b6d5cd': { symbol: 'GUSD', decimals: 2 },
+              '0x0000000000085d4780b73119b644ae5ecd22b376': { symbol: 'TUSD', decimals: 18 },
+              '0x5f98805a4e8be255a32880fdec7f6728c6568ba0': { symbol: 'LUSD', decimals: 18 },
+              '0x853d955acef822db058eb8505911ed77f175b99e': { symbol: 'FRAX', decimals: 18 },
+            };
+            
+            const normalizedAddress = address.toLowerCase();
+            let symbol = 'UNKNOWN';
+            let decimals = 18;
+            let weight = 0;
+            
             try {
+              console.log(`Loading metadata for token at ${address}`);
               const tokenContract = new ethers.Contract(address, ERC20ABI, provider);
-              const symbol = await tokenContract.symbol();
-              const decimals = await tokenContract.decimals();
+              
+              // Try to get symbol
+              try {
+                symbol = await tokenContract.symbol();
+                console.log(`Got symbol for ${address}: ${symbol}`);
+              } catch (symbolError) {
+                console.error(`Error getting symbol for ${address}:`, symbolError);
+                // Try fallback
+                if (knownTokens[normalizedAddress]) {
+                  symbol = knownTokens[normalizedAddress].symbol;
+                  console.log(`Used fallback symbol for ${address}: ${symbol}`);
+                }
+              }
+              
+              // Try to get decimals with multiple approaches
+              try {
+                // First try with standard contract call and timeout protection
+                const decimalsPromise = Promise.race([
+                  tokenContract.decimals(),
+                  new Promise<never>((_, reject) => 
+                    setTimeout(() => reject(new Error('Decimals request timed out')), 3000)
+                  )
+                ]);
+                
+                decimals = await decimalsPromise;
+                console.log(`Got decimals for ${address}: ${decimals}`);
+              } catch (decimalsError) {
+                console.error(`Error getting decimals for ${address}:`, decimalsError);
+                
+                // Try with low-level call approach
+                try {
+                  console.log(`Trying low-level call for decimals on ${address}`);
+                  const iface = new ethers.Interface(['function decimals() view returns (uint8)']);
+                  const calldata = iface.encodeFunctionData('decimals', []);
+                  
+                  const rawResult = await provider.call({
+                    to: address,
+                    data: calldata
+                  });
+                  
+                  if (rawResult && rawResult !== '0x') {
+                    const decodedResult = iface.decodeFunctionResult('decimals', rawResult);
+                    decimals = Number(decodedResult[0]);
+                    console.log(`Got decimals via low-level call for ${address}: ${decimals}`);
+                  } else {
+                    throw new Error('Empty result from low-level call');
+                  }
+                } catch (lowLevelError) {
+                  console.error(`Low-level call for decimals failed for ${address}:`, lowLevelError);
+                  
+                  // Use fallback from known tokens
+                  if (knownTokens[normalizedAddress]) {
+                    decimals = knownTokens[normalizedAddress].decimals;
+                    console.log(`Used fallback decimals for ${address}: ${decimals}`);
+                  }
+                }
+              }
+              
+              // Get weight (with fallback)
+              try {
+                if (finalWeights && finalWeights[index]) {
+                  weight = parseFloat(ethers.formatUnits(finalWeights[index], 18));
+                  console.log(`Got weight for ${address}: ${weight}`);
+                } else {
+                  console.warn(`No weight found for token at index ${index}`);
+                }
+              } catch (weightError) {
+                console.warn(`Error formatting weight for ${address}, using 0:`, weightError);
+              }
               
               return {
                 address,
                 symbol,
                 decimals,
-                weight: parseFloat(ethers.formatUnits(weights[index], 18)),
+                weight,
               };
             } catch (tokenError) {
               console.error(`Error loading token at ${address}:`, tokenError);
-              // Return a placeholder for failed tokens
+              // Return a placeholder with any fallback data we have
               return {
                 address,
-                symbol: 'ERROR',
-                decimals: 18,
-                weight: 0,
+                symbol: knownTokens[normalizedAddress]?.symbol || 'ERROR',
+                decimals: knownTokens[normalizedAddress]?.decimals || 18,
+                weight: finalWeights && finalWeights[index] ? 
+                  parseFloat(ethers.formatUnits(finalWeights[index], 18)) : 0,
               };
             }
           });
           
-          const tokens = await Promise.all(tokenPromises);
-          setIndexTokens(tokens.filter((t: Token) => t.symbol !== 'ERROR'));
-          setError(null);
+          console.log('Waiting for all token metadata promises to resolve...');
+          // Use Promise.allSettled to handle partial failures
+          const results = await Promise.allSettled(tokenPromises);
+          
+          console.log('Token metadata loading results:', 
+            results.map((r, i) => `${i}: ${r.status}`).join(', ')
+          );
+          
+          // Filter successful results
+          const tokens = results
+            .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+            .map(result => result.value as Token)
+            .filter((t: Token) => t.symbol !== 'ERROR'); // Filter out error tokens
+          
+          // Log any failures
+          results
+            .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+            .forEach((result, index) => {
+              console.error(`Token at index ${index} failed to load:`, result.reason);
+            });
+          
+          console.log('Successfully loaded', tokens.length, 'tokens out of', tokenPromises.length);
+          
+          // Even if we have no tokens, don't show an error - just display empty state
+          if (tokens.length === 0 && tokenPromises.length > 0) {
+            console.warn('All token metadata loading failed or returned errors');
+            setIndexTokens([]);
+            setError(null); // Don't set error to avoid breaking the UI
+          } else {
+            // Sort tokens by weight (descending)
+            const sortedTokens = [...tokens].sort((a, b) => (b.weight || 0) - (a.weight || 0));
+            console.log('Final sorted tokens:', sortedTokens.map(t => `${t.symbol}: ${t.weight || 0}`).join(', '));
+            setIndexTokens(sortedTokens);
+            setError(null);
+          }
         } catch (err) {
           console.error('Error loading index tokens:', err);
           setError('Failed to load index tokens');
@@ -345,7 +812,7 @@ export const useERC20 = (tokenAddress: string) => {
     }
   }, [tokenContract, account, tokenDecimals]);
 
-  // Approve spending of tokens - simplified to avoid potential issues
+  // Approve spending of tokens with comprehensive error handling
   const approveTokens = async (spender: string, amount: string): Promise<boolean> => {
     if (!tokenContract) {
       console.error('Token contract not initialized');
@@ -357,30 +824,78 @@ export const useERC20 = (tokenAddress: string) => {
       return false;
     }
     
-    try {      
+    if (!spender || spender === ethers.ZeroAddress) {
+      console.error('Invalid spender address');
+      return false;
+    }
+    
+    try {
+      console.log(`Approving ${amount} ${tokenSymbol} for spender: ${spender}`);
+      
       // Get signer
+      console.log('Getting signer...');
       const signer = await provider.getSigner();
+      const signerAddress = await signer.getAddress();
+      console.log('Signer address:', signerAddress);
       
       // Get token address
+      console.log('Getting token address...');
       const tokenAddress = await tokenContract.getAddress();
+      console.log('Token address:', tokenAddress);
       
       // Create contract with signer
+      console.log('Creating contract with signer...');
       const connectedContract = new ethers.Contract(
         tokenAddress, 
         ERC20ABI, 
         signer
       );
       
+      // Check allowance first
+      console.log('Checking current allowance...');
+      try {
+        const currentAllowance = await connectedContract.allowance(signerAddress, spender);
+        console.log('Current allowance:', ethers.formatUnits(currentAllowance, tokenDecimals), tokenSymbol);
+        
+        // If allowance is already sufficient, no need to approve again
+        const amountInWei = ethers.parseUnits(amount, tokenDecimals);
+        if (currentAllowance >= amountInWei) {
+          console.log('Allowance is already sufficient');
+          return true;
+        }
+      } catch (allowanceError) {
+        console.warn('Error checking allowance, proceeding with approval anyway:', allowanceError);
+      }
+      
       // Parse amount
       const amountInWei = ethers.parseUnits(amount, tokenDecimals);
+      console.log('Amount in wei for approval:', amountInWei.toString());
       
       // Send transaction
-      const tx = await connectedContract.approve(spender, amountInWei);
-      
-      // Wait for confirmation
-      await tx.wait();
-      
-      return true;
+      console.log('Sending approval transaction...');
+      try {
+        const tx = await connectedContract.approve(spender, amountInWei);
+        console.log('Approval transaction sent:', tx.hash);
+        
+        // Wait for confirmation
+        console.log('Waiting for transaction confirmation...');
+        const receipt = await tx.wait();
+        console.log('Approval transaction confirmed in block:', receipt?.blockNumber || 'Unknown block');
+        
+        return true;
+      } catch (txError: unknown) {
+        console.error('Transaction error details:', txError);
+        // Check for specific error messages
+        const errorMessage = typeof txError === 'object' && txError !== null && 'message' in txError 
+          ? String(txError.message) 
+          : 'Unknown error';
+        if (errorMessage.includes('user rejected')) {
+          console.error('User rejected the transaction');
+        } else if (errorMessage.includes('insufficient funds')) {
+          console.error('Insufficient funds for transaction');
+        }
+        throw txError; // Re-throw to be caught by the outer catch
+      }
     } catch (err) {
       console.error('Error approving tokens:', err);
       return false;

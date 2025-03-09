@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
@@ -14,12 +14,10 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
-  IconButton
+  ListItemSecondaryAction
 } from '@mui/material';
 import { ethers } from 'ethers';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import SettingsIcon from '@mui/icons-material/Settings';
 import { useWeb3 } from '../contexts/Web3Context';
 import { useContracts } from '../hooks/useContracts';
 import VaultStats from '../components/VaultStats';
@@ -66,6 +64,7 @@ const PortfolioManagerPage: React.FC = () => {
     try {
       const tx = await vaultContract.rebalance();
       const receipt = await tx.wait();
+      console.log('Rebalance transaction confirmed in block:', receipt?.blockNumber || 'Unknown');
       
       setSuccess('Successfully rebalanced the portfolio');
     } catch (err) {
@@ -89,6 +88,7 @@ const PortfolioManagerPage: React.FC = () => {
     try {
       const tx = await vaultContract.collectManagementFee();
       const receipt = await tx.wait();
+      console.log('Management fee collection confirmed in block:', receipt?.blockNumber || 'Unknown');
       
       setSuccess('Successfully collected management fee');
     } catch (err) {
@@ -112,6 +112,7 @@ const PortfolioManagerPage: React.FC = () => {
     try {
       const tx = await vaultContract.collectPerformanceFee();
       const receipt = await tx.wait();
+      console.log('Performance fee collection confirmed in block:', receipt?.blockNumber || 'Unknown');
       
       setSuccess('Successfully collected performance fee');
     } catch (err) {
@@ -143,6 +144,7 @@ const PortfolioManagerPage: React.FC = () => {
       const feeBasisPoints = Math.floor(feeValue * 100);
       const tx = await vaultContract.setManagementFee(BigInt(feeBasisPoints));
       const receipt = await tx.wait();
+      console.log('Management fee update confirmed in block:', receipt?.blockNumber || 'Unknown');
       
       setSuccess(`Successfully set management fee to ${managementFee}%`);
       setManagementFee('');
@@ -175,6 +177,7 @@ const PortfolioManagerPage: React.FC = () => {
       const feeBasisPoints = Math.floor(feeValue * 100);
       const tx = await vaultContract.setPerformanceFee(BigInt(feeBasisPoints));
       const receipt = await tx.wait();
+      console.log('Performance fee update confirmed in block:', receipt?.blockNumber || 'Unknown');
       
       setSuccess(`Successfully set performance fee to ${performanceFee}%`);
       setPerformanceFee('');
@@ -204,6 +207,7 @@ const PortfolioManagerPage: React.FC = () => {
     try {
       const tx = await vaultContract.setPriceOracle(priceOracleAddress);
       const receipt = await tx.wait();
+      console.log('Price oracle update confirmed in block:', receipt?.blockNumber || 'Unknown');
       
       setSuccess(`Successfully set price oracle to ${priceOracleAddress}`);
       setPriceOracleAddress('');
@@ -233,6 +237,7 @@ const PortfolioManagerPage: React.FC = () => {
     try {
       const tx = await vaultContract.setDEX(dexAddress);
       const receipt = await tx.wait();
+      console.log('DEX address update confirmed in block:', receipt?.blockNumber || 'Unknown');
       
       setSuccess(`Successfully set DEX to ${dexAddress}`);
       setDexAddress('');

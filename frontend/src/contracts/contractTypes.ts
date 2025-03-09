@@ -8,6 +8,122 @@ export interface Token {
   weight?: number;
 }
 
+// Helper type for handling different return formats from ethers.js v6
+export type BigIntish = bigint | string | number;
+
+// Helper function to convert various return types to BigInt with enhanced error handling
+export function toBigInt(value: any): bigint {
+  try {
+    // Log the input value and its type for debugging
+    console.log('toBigInt input:', value, 'type:', typeof value);
+    
+    // Handle null/undefined
+    if (value === undefined || value === null) {
+      console.log('toBigInt: value is null or undefined, returning 0');
+      return BigInt(0);
+    }
+    
+    // Handle BigInt directly
+    if (typeof value === 'bigint') {
+      return value;
+    }
+    
+    // Handle strings and numbers
+    if (typeof value === 'string') {
+      // Handle hex strings (with or without 0x prefix)
+      if (value.startsWith('0x')) {
+        return BigInt(value);
+      }
+      // Handle numeric strings
+      if (/^-?\d+(\.\d+)?$/.test(value)) {
+        // If it has a decimal point, we need to handle it specially
+        if (value.includes('.')) {
+          // For simplicity, just truncate the decimal part
+          return BigInt(value.split('.')[0]);
+        }
+        return BigInt(value);
+      }
+      // Try parsing as is
+      return BigInt(value);
+    }
+    
+    if (typeof value === 'number') {
+      // Handle NaN and Infinity
+      if (isNaN(value) || !isFinite(value)) {
+        console.warn('toBigInt: value is NaN or Infinity, returning 0');
+        return BigInt(0);
+      }
+      // Convert to string to avoid precision issues with large numbers
+      return BigInt(Math.floor(value).toString());
+    }
+    
+    // Handle arrays
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        console.warn('toBigInt: empty array, returning 0');
+        return BigInt(0);
+      }
+      
+      // Try to find the first convertible value
+      for (const item of value) {
+        try {
+          return toBigInt(item);
+        } catch (e) {
+          // Continue to the next item
+          console.debug('toBigInt: skipping array item that cannot be converted:', item);
+        }
+      }
+      
+      // If we get here, no items could be converted
+      console.warn('toBigInt: no convertible items in array, returning 0');
+      return BigInt(0);
+    }
+    
+    // Handle objects
+    if (typeof value === 'object') {
+      // Check for ethers.js Result object (has a _value property)
+      if ('_value' in value) {
+        return toBigInt(value._value);
+      }
+      
+      // Check for objects with a toString method that might return a numeric string
+      if (value.toString && typeof value.toString === 'function') {
+        const stringValue = value.toString();
+        // Only use toString if it looks like a number
+        if (/^-?\d+(\.\d+)?$/.test(stringValue) || stringValue.startsWith('0x')) {
+          console.log('toBigInt: using object toString() value:', stringValue);
+          try {
+            return BigInt(stringValue);
+          } catch (e) {
+            console.debug('toBigInt: toString conversion failed:', e);
+          }
+        }
+      }
+      
+      // Try to extract a numeric value from the object
+      const objValues = Object.values(value);
+      if (objValues.length > 0) {
+        // Try each value until we find one that converts
+        for (const objValue of objValues) {
+          try {
+            return toBigInt(objValue);
+          } catch (e) {
+            // Continue to the next value
+            console.debug('toBigInt: skipping object value that cannot be converted:', objValue);
+          }
+        }
+      }
+    }
+    
+    // If we get here, we couldn't convert the value
+    console.warn('Could not convert value to BigInt:', value);
+    return BigInt(0);
+  } catch (error) {
+    console.error('Error in toBigInt conversion:', error, 'for value:', value);
+    return BigInt(0);
+  }
+}
+
 // IndexFundVault interface
 export interface IndexFundVaultInterface {
   // Contract properties
@@ -15,34 +131,34 @@ export interface IndexFundVaultInterface {
   runner?: ethers.Provider | ethers.Signer;  // The provider or signer
   
   // ERC20 methods
-  balanceOf: (account: string) => Promise<bigint>;
-  totalSupply: () => Promise<bigint>;
+  balanceOf: (account: string) => Promise<any>; // Use 'any' to handle different return formats
+  totalSupply: () => Promise<any>; // Use 'any' to handle different return formats
   
   // ERC4626 methods
-  deposit: (assets: bigint, receiver: string) => Promise<ethers.ContractTransactionResponse>;
-  withdraw: (assets: bigint, receiver: string, owner: string) => Promise<ethers.ContractTransactionResponse>;
-  redeem: (shares: bigint, receiver: string, owner: string) => Promise<ethers.ContractTransactionResponse>;
-  mint: (shares: bigint, receiver: string) => Promise<ethers.ContractTransactionResponse>;
+  deposit: (assets: BigIntish, receiver: string) => Promise<ethers.ContractTransactionResponse>;
+  withdraw: (assets: BigIntish, receiver: string, owner: string) => Promise<ethers.ContractTransactionResponse>;
+  redeem: (shares: BigIntish, receiver: string, owner: string) => Promise<ethers.ContractTransactionResponse>;
+  mint: (shares: BigIntish, receiver: string) => Promise<ethers.ContractTransactionResponse>;
   
   // View methods
-  totalAssets: () => Promise<bigint>;
-  convertToShares: (assets: bigint) => Promise<bigint>;
-  convertToAssets: (shares: bigint) => Promise<bigint>;
-  previewDeposit: (assets: bigint) => Promise<bigint>;
-  previewMint: (shares: bigint) => Promise<bigint>;
-  previewWithdraw: (assets: bigint) => Promise<bigint>;
-  previewRedeem: (shares: bigint) => Promise<bigint>;
-  maxDeposit: (receiver: string) => Promise<bigint>;
-  maxMint: (receiver: string) => Promise<bigint>;
-  maxWithdraw: (owner: string) => Promise<bigint>;
-  maxRedeem: (owner: string) => Promise<bigint>;
+  totalAssets: () => Promise<any>; // Use 'any' to handle different return formats
+  convertToShares: (assets: BigIntish) => Promise<any>;
+  convertToAssets: (shares: BigIntish) => Promise<any>;
+  previewDeposit: (assets: BigIntish) => Promise<any>;
+  previewMint: (shares: BigIntish) => Promise<any>;
+  previewWithdraw: (assets: BigIntish) => Promise<any>;
+  previewRedeem: (shares: BigIntish) => Promise<any>;
+  maxDeposit: (receiver: string) => Promise<any>;
+  maxMint: (receiver: string) => Promise<any>;
+  maxWithdraw: (owner: string) => Promise<any>;
+  maxRedeem: (owner: string) => Promise<any>;
   
   // Custom methods
   rebalance: () => Promise<ethers.ContractTransactionResponse>;
   collectManagementFee: () => Promise<ethers.ContractTransactionResponse>;
   collectPerformanceFee: () => Promise<ethers.ContractTransactionResponse>;
-  setManagementFee: (newFee: bigint) => Promise<ethers.ContractTransactionResponse>;
-  setPerformanceFee: (newFee: bigint) => Promise<ethers.ContractTransactionResponse>;
+  setManagementFee: (newFee: BigIntish) => Promise<ethers.ContractTransactionResponse>;
+  setPerformanceFee: (newFee: BigIntish) => Promise<ethers.ContractTransactionResponse>;
   setPriceOracle: (newOracle: string) => Promise<ethers.ContractTransactionResponse>;
   setDEX: (newDEX: string) => Promise<ethers.ContractTransactionResponse>;
   

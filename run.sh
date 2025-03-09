@@ -86,10 +86,11 @@ echo -e "${GREEN}Contracts deployed successfully!${NC}"
 
 # Extract contract addresses from deployment logs
 echo -e "${YELLOW}Extracting contract addresses...${NC}"
-VAULT_ADDRESS=$(grep -A 2 "IndexFundVault deployed at" deploy.log | tail -n 1 | awk '{print $NF}')
-REGISTRY_ADDRESS=$(grep -A 2 "IndexRegistry deployed at" deploy.log | tail -n 1 | awk '{print $NF}')
+VAULT_ADDRESS=$(grep "Index Fund Vault deployed at:" deploy.log | awk '{print $NF}')
+REGISTRY_ADDRESS=$(grep "Index Registry deployed at:" deploy.log | awk '{print $NF}')
+USDC_ADDRESS=$(grep "USDC deployed at:" deploy.log | awk '{print $NF}')
 
-if [ -z "$VAULT_ADDRESS" ] || [ -z "$REGISTRY_ADDRESS" ]; then
+if [ -z "$VAULT_ADDRESS" ] || [ -z "$REGISTRY_ADDRESS" ] || [ -z "$USDC_ADDRESS" ]; then
     echo -e "${RED}Error: Could not extract contract addresses.${NC}"
     echo -e "${YELLOW}Check deploy.log for details.${NC}"
     kill $anvil_pid
@@ -99,6 +100,7 @@ fi
 echo -e "${GREEN}Contract addresses:${NC}"
 echo -e "${BLUE}Vault: $VAULT_ADDRESS${NC}"
 echo -e "${BLUE}Registry: $REGISTRY_ADDRESS${NC}"
+echo -e "${BLUE}USDC: $USDC_ADDRESS${NC}"
 
 # Create .env file for frontend
 echo -e "\n${YELLOW}Creating frontend environment file...${NC}"
@@ -107,6 +109,7 @@ REACT_APP_CHAIN_ID=31337
 REACT_APP_NETWORK_NAME=Anvil
 REACT_APP_INDEX_FUND_VAULT_ADDRESS=$VAULT_ADDRESS
 REACT_APP_INDEX_REGISTRY_ADDRESS=$REGISTRY_ADDRESS
+REACT_APP_USDC_ADDRESS=$USDC_ADDRESS
 REACT_APP_RPC_URL=http://localhost:8545
 REACT_APP_ENABLE_TESTNET_FAUCET=true
 REACT_APP_DEFAULT_THEME=dark

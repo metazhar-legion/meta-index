@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Box, Card, CardContent, Typography, Grid, Skeleton, Divider } from '@mui/material';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
+import eventBus, { EVENTS } from '../utils/eventBus';
 import { useContracts } from '../hooks/useContracts';
+import { toBigInt } from '../contracts/contractTypes';
 
 const VaultStats: React.FC = () => {
-  const { account } = useWeb3();
+  const { account, provider } = useWeb3();
   const { vaultContract, isLoading: contractsLoading } = useContracts();
   
   const [stats, setStats] = useState({
@@ -17,311 +19,307 @@ const VaultStats: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadVaultStats = async () => {
-      if (vaultContract && account) {
-        setIsLoading(true);
+  // Extract loadVaultStats to a separate function so it can be called from multiple places
+  const loadVaultStats = useCallback(async () => {
+    if (!vaultContract || !account || !provider) {
+      console.log('Missing dependencies:', { 
+        vaultContract: !!vaultContract, 
+        account: !!account, 
+        provider: !!provider 
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      console.log('Loading vault stats...');
+      console.log('Vault contract address:', await vaultContract.target);
+      console.log('Account:', account);
+      
+      // Get vault contract address for debugging
+      const vaultAddress = await vaultContract.target;
+      console.log('Vault contract address:', vaultAddress);
+      
+      // Log provider and signer information
+      console.log('Provider type:', provider.constructor.name);
+      console.log('Is provider connected:', provider ? 'Yes' : 'No');
+      console.log('Chain ID:', await provider.getNetwork().then(n => n.chainId));
+      
+      // Initialize values
+      let totalAssets = BigInt(0);
+      let totalSupply = BigInt(0);
+      let userShares = BigInt(0);
+      
+      // Create a minimal interface with just the methods we need
+      const vaultInterface = new ethers.Interface([
+        "function totalAssets() view returns (uint256)",
+        "function totalSupply() view returns (uint256)",
+        "function balanceOf(address) view returns (uint256)"
+      ]);
+      
+      // Try multiple approaches to get contract data
+      // Approach 1: Direct contract method calls
+      try {
+        console.log('Attempting direct contract method calls...');
+        
         try {
-          // Fetch vault statistics one by one with better error handling
-          let totalAssets: bigint;
-          let totalSupply: bigint;
-          let userShares: bigint;
+          if (typeof vaultContract.totalAssets === 'function') {
+            totalAssets = await vaultContract.totalAssets();
+            console.log('totalAssets from direct call:', totalAssets.toString());
+          }
+        } catch (e) {
+          console.error('Direct totalAssets call failed:', e);
+        }
+        
+        try {
+          if (typeof vaultContract.totalSupply === 'function') {
+            totalSupply = await vaultContract.totalSupply();
+            console.log('totalSupply from direct call:', totalSupply.toString());
+          }
+        } catch (e) {
+          console.error('Direct totalSupply call failed:', e);
+        }
+        
+        try {
+          if (typeof vaultContract.balanceOf === 'function') {
+            userShares = await vaultContract.balanceOf(account);
+            console.log('userShares from direct call:', userShares.toString());
+          }
+        } catch (e) {
+          console.error('Direct balanceOf call failed:', e);
+        }
+      } catch (error) {
+        console.warn('Error in direct contract calls:', error);
+      }
+      
+      // Approach 2: Low-level calls if direct calls failed
+      if (totalAssets === BigInt(0) || totalSupply === BigInt(0)) {
+        console.log('Direct calls failed or returned zero values, trying low-level calls...');
+        
+        // Get total assets
+        try {
+          console.log('Fetching totalAssets via low-level call...');
+          const callData = vaultInterface.encodeFunctionData('totalAssets', []);
+          
+          const result = await provider.call({
+            to: vaultAddress,
+            data: callData
+          });
+          console.log('Raw response for totalAssets:', result);
+          
+          if (result && result !== '0x') {
+            try {
+              // Try to decode the result
+              const decoded = vaultInterface.decodeFunctionResult('totalAssets', result);
+              console.log('Decoded totalAssets result:', decoded);
+              
+              // Use the helper function to handle different return formats
+              totalAssets = toBigInt(decoded);
+              console.log('Final totalAssets value:', totalAssets.toString());
+            } catch (decodeError) {
+              console.error('Error decoding totalAssets result:', decodeError);
+              console.log('Attempting manual decoding...');
+              
+              // Manual decoding as fallback
+              if (result.length >= 66) {  // 0x + 64 hex chars (32 bytes)
+                const hexValue = result.slice(2);  // Remove '0x'
+                totalAssets = BigInt('0x' + hexValue);
+                console.log('Manually decoded totalAssets:', totalAssets.toString());
+              }
+            }
+          } else {
+            console.warn('Received empty result from totalAssets call:', result);
+          }
+        } catch (error) {
+          console.error('Failed to get totalAssets via low-level call:', error);
+        }
+        
+        // Get total supply
+        try {
+          console.log('Fetching totalSupply via low-level call...');
+          const callData = vaultInterface.encodeFunctionData('totalSupply', []);
+          
+          const result = await provider.call({
+            to: vaultAddress,
+            data: callData
+          });
+          console.log('Raw response for totalSupply:', result);
+          
+          if (result && result !== '0x') {
+            try {
+              // Try to decode the result
+              const decoded = vaultInterface.decodeFunctionResult('totalSupply', result);
+              console.log('Decoded totalSupply result:', decoded);
+              
+              // Use the helper function to handle different return formats
+              totalSupply = toBigInt(decoded);
+              console.log('Final totalSupply value:', totalSupply.toString());
+            } catch (decodeError) {
+              console.error('Error decoding totalSupply result:', decodeError);
+              console.log('Attempting manual decoding...');
+              
+              // Manual decoding as fallback
+              if (result.length >= 66) {  // 0x + 64 hex chars (32 bytes)
+                const hexValue = result.slice(2);  // Remove '0x'
+                totalSupply = BigInt('0x' + hexValue);
+                console.log('Manually decoded totalSupply:', totalSupply.toString());
+              }
+            }
+          } else {
+            console.warn('Received empty result from totalSupply call:', result);
+          }
+        } catch (error) {
+          console.error('Failed to get totalSupply via low-level call:', error);
+        }
+        
+        // Get user shares
+        try {
+          console.log('Fetching balanceOf via low-level call...');
+          const callData = vaultInterface.encodeFunctionData('balanceOf', [account]);
+          
+          const result = await provider.call({
+            to: vaultAddress,
+            data: callData
+          });
+          console.log('Raw response for balanceOf:', result);
+          
+          if (result && result !== '0x') {
+            try {
+              // Try to decode the result
+              const decoded = vaultInterface.decodeFunctionResult('balanceOf', result);
+              console.log('Decoded balanceOf result:', decoded);
+              
+              // Use the helper function to handle different return formats
+              userShares = toBigInt(decoded);
+              console.log('Final userShares value:', userShares.toString());
+            } catch (decodeError) {
+              console.error('Error decoding balanceOf result:', decodeError);
+              console.log('Attempting manual decoding...');
+              
+              // Manual decoding as fallback
+              if (result.length >= 66) {  // 0x + 64 hex chars (32 bytes)
+                const hexValue = result.slice(2);  // Remove '0x'
+                userShares = BigInt('0x' + hexValue);
+                console.log('Manually decoded userShares:', userShares.toString());
+              }
+            }
+          } else {
+            console.warn('Received empty result from balanceOf call:', result);
+          }
+        } catch (error) {
+          console.error('Failed to get balanceOf via low-level call:', error);
+        }
+      }
+      
+      // Approach 3: Create a new contract instance if all else fails
+      if (totalAssets === BigInt(0) || totalSupply === BigInt(0)) {
+        console.log('Low-level calls failed, trying with a fresh contract instance...');
+        
+        try {
+          // Create a fresh contract instance
+          const freshContract = new ethers.Contract(
+            vaultAddress,
+            vaultInterface,
+            provider
+          );
+          
+          // Try to get data from the fresh contract
+          try {
+            totalAssets = await freshContract.totalAssets();
+            console.log('totalAssets from fresh contract:', totalAssets.toString());
+          } catch (e) {
+            console.error('Fresh contract totalAssets call failed:', e);
+          }
           
           try {
-            // Log contract info for debugging
-            console.log('Vault contract:', vaultContract);
-            console.log('Account:', account);
-            console.log('Vault contract methods:', Object.keys(vaultContract));
-            // Use a safer way to get the contract address without relying on getAddress
-            try {
-              // For ethers v6, we can use the contract address directly if available
-              const address = vaultContract.target || 'Unknown address';
-              console.log('Vault contract address:', address);
-            } catch (addrError) {
-              console.error('Error getting contract address:', addrError);
-            }
-            
-            // Try to call totalAssets with explicit parameters
-            try {
-              console.log('Checking if totalAssets method exists...');
-              if (typeof vaultContract.totalAssets !== 'function') {
-                console.error('totalAssets method not found on vault contract');
-                throw new Error('totalAssets method not found');
-              }
-              
-              // Try with a lower-level call first to avoid ABI decoding issues
-              try {
-                const provider = vaultContract.runner;
-                if (!provider) throw new Error('No provider available');
-                
-                const iface = new ethers.Interface([
-                  "function totalAssets() view returns (uint256)"
-                ]);
-                
-                const calldata = iface.encodeFunctionData('totalAssets', []);
-                console.log('Encoded totalAssets call:', calldata);
-                
-                const rawResult = await provider.call({
-                  to: vaultContract.target,
-                  data: calldata
-                });
-                
-                console.log('Raw totalAssets result:', rawResult);
-                
-                // Decode the result manually
-                const decodedResult = iface.decodeFunctionResult('totalAssets', rawResult);
-                console.log('Decoded totalAssets result:', decodedResult);
-                
-                // Extract the value
-                if (decodedResult && decodedResult[0]) {
-                  totalAssets = BigInt(decodedResult[0].toString());
-                  console.log('Extracted totalAssets:', totalAssets);
-                } else {
-                  throw new Error('Failed to decode totalAssets data');
-                }
-              } catch (lowLevelError) {
-                console.error('Low-level totalAssets call failed, trying standard method:', lowLevelError);
-                
-                // Fall back to standard method call
-                console.log('Calling totalAssets...');
-                const totalAssetsResult = await vaultContract.totalAssets();
-                console.log('Total assets raw result:', totalAssetsResult);
-                
-                // Handle different response formats
-                if (typeof totalAssetsResult === 'object' && totalAssetsResult !== null) {
-                  // If it's an object, try to extract the value
-                  if ('toBigInt' in totalAssetsResult) {
-                    totalAssets = (totalAssetsResult as any).toBigInt();
-                  } else if ('toString' in totalAssetsResult) {
-                    totalAssets = BigInt((totalAssetsResult as any).toString());
-                  } else {
-                    console.error('Object does not have toBigInt or toString method:', totalAssetsResult);
-                    totalAssets = BigInt(0);
-                  }
-                } else {
-                  // Otherwise, convert directly
-                  totalAssets = BigInt(totalAssetsResult as any);
-                }
-              }
-              
-              console.log('Total assets processed:', totalAssets);
-            } catch (error) {
-              console.error('Error loading totalAssets:', error);
-              totalAssets = 0n;
-            }
-            
-            // Try to call totalSupply with explicit parameters
-            try {
-              console.log('Checking if totalSupply method exists...');
-              if (typeof vaultContract.totalSupply !== 'function') {
-                console.error('totalSupply method not found on vault contract');
-                throw new Error('totalSupply method not found');
-              }
-              
-              // Try with a lower-level call first to avoid ABI decoding issues
-              try {
-                const provider = vaultContract.runner;
-                if (!provider) throw new Error('No provider available');
-                
-                const iface = new ethers.Interface([
-                  "function totalSupply() view returns (uint256)"
-                ]);
-                
-                const calldata = iface.encodeFunctionData('totalSupply', []);
-                console.log('Encoded totalSupply call:', calldata);
-                
-                const rawResult = await provider.call({
-                  to: vaultContract.target,
-                  data: calldata
-                });
-                
-                console.log('Raw totalSupply result:', rawResult);
-                
-                // Decode the result manually
-                const decodedResult = iface.decodeFunctionResult('totalSupply', rawResult);
-                console.log('Decoded totalSupply result:', decodedResult);
-                
-                // Extract the value
-                if (decodedResult && decodedResult[0]) {
-                  totalSupply = BigInt(decodedResult[0].toString());
-                  console.log('Extracted totalSupply:', totalSupply);
-                } else {
-                  throw new Error('Failed to decode totalSupply data');
-                }
-              } catch (lowLevelError) {
-                console.error('Low-level totalSupply call failed, trying standard method:', lowLevelError);
-                
-                // Fall back to standard method call
-                console.log('Calling totalSupply...');
-                const totalSupplyResult = await vaultContract.totalSupply();
-                console.log('Total supply raw result:', totalSupplyResult);
-                
-                // Handle different response formats
-                if (typeof totalSupplyResult === 'object' && totalSupplyResult !== null) {
-                  // If it's an object, try to extract the value
-                  if ('toBigInt' in totalSupplyResult) {
-                    totalSupply = (totalSupplyResult as any).toBigInt();
-                  } else if ('toString' in totalSupplyResult) {
-                    totalSupply = BigInt((totalSupplyResult as any).toString());
-                  } else {
-                    console.error('Object does not have toBigInt or toString method:', totalSupplyResult);
-                    totalSupply = BigInt(0);
-                  }
-                } else {
-                  // Otherwise, convert directly
-                  totalSupply = BigInt(totalSupplyResult as any);
-                }
-              }
-              
-              console.log('Total supply processed:', totalSupply);
-            } catch (error) {
-              console.error('Error loading totalSupply:', error);
-              totalSupply = 0n;
-            }
-            
-            // Try to call balanceOf with explicit parameters
-            try {
-              console.log('Checking if balanceOf method exists...');
-              if (typeof vaultContract.balanceOf !== 'function') {
-                console.error('balanceOf method not found on vault contract');
-                throw new Error('balanceOf method not found');
-              }
-              
-              // Try with a lower-level call first to avoid ABI decoding issues
-              try {
-                const provider = vaultContract.runner;
-                if (!provider) throw new Error('No provider available');
-                
-                const iface = new ethers.Interface([
-                  "function balanceOf(address account) view returns (uint256)"
-                ]);
-                
-                const calldata = iface.encodeFunctionData('balanceOf', [account]);
-                console.log('Encoded balanceOf call:', calldata);
-                
-                const rawResult = await provider.call({
-                  to: vaultContract.target,
-                  data: calldata
-                });
-                
-                console.log('Raw balanceOf result:', rawResult);
-                
-                // Decode the result manually
-                const decodedResult = iface.decodeFunctionResult('balanceOf', rawResult);
-                console.log('Decoded balanceOf result:', decodedResult);
-                
-                // Extract the value
-                if (decodedResult && decodedResult[0]) {
-                  userShares = BigInt(decodedResult[0].toString());
-                  console.log('Extracted userShares:', userShares);
-                } else {
-                  throw new Error('Failed to decode balanceOf data');
-                }
-              } catch (lowLevelError) {
-                console.error('Low-level balanceOf call failed, trying standard method:', lowLevelError);
-                
-                // Fall back to standard method call
-                console.log('Calling balanceOf with account:', account);
-                const userSharesResult = await vaultContract.balanceOf(account);
-                console.log('User shares raw result:', userSharesResult);
-                
-                // Handle different response formats
-                if (typeof userSharesResult === 'object' && userSharesResult !== null) {
-                  // If it's an object, try to extract the value
-                  if ('toBigInt' in userSharesResult) {
-                    userShares = (userSharesResult as any).toBigInt();
-                  } else if ('toString' in userSharesResult) {
-                    userShares = BigInt((userSharesResult as any).toString());
-                  } else {
-                    console.error('Object does not have toBigInt or toString method:', userSharesResult);
-                    userShares = BigInt(0);
-                  }
-                } else {
-                  // Otherwise, convert directly
-                  userShares = BigInt(userSharesResult as any);
-                }
-              }
-              
-              console.log('User shares processed:', userShares);
-            } catch (error) {
-              console.error('Error loading balanceOf:', error);
-              userShares = 0n;
-            }
-          } catch (error) {
-            console.error('Error in contract calls wrapper:', error);
-            totalAssets = 0n;
-            totalSupply = 0n;
-            userShares = 0n;
+            totalSupply = await freshContract.totalSupply();
+            console.log('totalSupply from fresh contract:', totalSupply.toString());
+          } catch (e) {
+            console.error('Fresh contract totalSupply call failed:', e);
           }
-
-          // Use fallback values if any of the values are still zero
-          const finalTotalAssets = totalAssets || BigInt('946100');
-          const finalTotalSupply = totalSupply || BigInt('1099997');
-          const finalUserShares = userShares || BigInt('100000');
           
-          console.log('Final values before calculation:', {
-            totalAssets: finalTotalAssets.toString(),
-            totalSupply: finalTotalSupply.toString(),
-            userShares: finalUserShares.toString()
-          });
-          
-          // Calculate user's assets
-          const userAssets = finalUserShares > 0n && finalTotalSupply > 0n
-            ? (finalUserShares * finalTotalAssets) / finalTotalSupply
-            : 0n;
-
-          // Calculate share price
-          const sharePrice = finalTotalSupply > 0n
-            ? (finalTotalAssets * ethers.parseEther('1')) / finalTotalSupply
-            : 0n;
-
-          setStats({
-            totalAssets: ethers.formatEther(finalTotalAssets),
-            totalShares: ethers.formatEther(finalTotalSupply),
-            userShares: ethers.formatEther(finalUserShares),
-            userAssets: ethers.formatEther(userAssets),
-            sharePrice: ethers.formatEther(sharePrice),
-          });
-          
-          console.log('Stats set:', {
-            totalAssets: ethers.formatEther(finalTotalAssets),
-            totalShares: ethers.formatEther(finalTotalSupply),
-            userShares: ethers.formatEther(finalUserShares),
-            userAssets: ethers.formatEther(userAssets),
-            sharePrice: ethers.formatEther(sharePrice),
-          });
+          try {
+            userShares = await freshContract.balanceOf(account);
+            console.log('userShares from fresh contract:', userShares.toString());
+          } catch (e) {
+            console.error('Fresh contract balanceOf call failed:', e);
+          }
         } catch (error) {
-          console.error('Error loading vault stats:', error);
-          
-          // Use fallback values in case of error
-          const fallbackTotalAssets = BigInt('946100');
-          const fallbackTotalSupply = BigInt('1099997');
-          const fallbackUserShares = BigInt('100000');
-          
-          // Calculate derived values
-          const fallbackUserAssets = (fallbackUserShares * fallbackTotalAssets) / fallbackTotalSupply;
-          const fallbackSharePrice = (fallbackTotalAssets * ethers.parseEther('1')) / fallbackTotalSupply;
-          
-          // Set fallback stats
-          setStats({
-            totalAssets: ethers.formatEther(fallbackTotalAssets),
-            totalShares: ethers.formatEther(fallbackTotalSupply),
-            userShares: ethers.formatEther(fallbackUserShares),
-            userAssets: ethers.formatEther(fallbackUserAssets),
-            sharePrice: ethers.formatEther(fallbackSharePrice),
-          });
-          
-          console.log('Using fallback stats due to error');
-        } finally {
-          setIsLoading(false);
+          console.error('Error with fresh contract instance:', error);
         }
-      } else {
-        setIsLoading(false);
       }
+      
+      console.log('Final retrieved values:', {
+        totalAssets: totalAssets.toString(),
+        totalSupply: totalSupply.toString(),
+        userShares: userShares.toString()
+      });
+      
+      // Calculate derived values
+      let userAssets = BigInt(0);
+      let sharePrice = BigInt(0);
+      
+      if (totalSupply > BigInt(0)) {
+        // Calculate user assets based on their share of the pool
+        if (userShares > BigInt(0)) {
+          userAssets = (userShares * totalAssets) / totalSupply;
+          console.log('Calculated userAssets:', userAssets.toString());
+        }
+        
+        // Calculate share price (price per 1 full share)
+        sharePrice = (totalAssets * ethers.parseEther('1')) / totalSupply;
+        console.log('Calculated sharePrice:', sharePrice.toString());
+      }
+      
+      // Update state with the fetched and calculated values
+      setStats({
+        totalAssets: ethers.formatEther(totalAssets),
+        totalShares: ethers.formatEther(totalSupply),
+        userShares: ethers.formatEther(userShares),
+        userAssets: ethers.formatEther(userAssets),
+        sharePrice: ethers.formatEther(sharePrice),
+      });
+      
+      console.log('Vault stats loaded successfully');
+    } catch (error) {
+      console.error('Error loading vault stats:', error);
+      
+      // Just show zeros in case of error - no hardcoded values
+      setStats({
+        totalAssets: '0',
+        totalShares: '0',
+        userShares: '0',
+        userAssets: '0',
+        sharePrice: '0',
+      });
+      
+      console.log('Error occurred, showing zero values');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [vaultContract, account, provider]);
+  
+  // Add effect to listen for vault transaction events
+  useEffect(() => {
+    // Subscribe to vault transaction completed events
+    const handleVaultTransactionCompleted = () => {
+      console.log('VaultStats: Vault transaction completed event received, refreshing stats...');
+      loadVaultStats();
     };
-
+    
+    eventBus.on(EVENTS.VAULT_TRANSACTION_COMPLETED, handleVaultTransactionCompleted);
+    
+    // Cleanup subscription when component unmounts
+    return () => {
+      eventBus.off(EVENTS.VAULT_TRANSACTION_COMPLETED, handleVaultTransactionCompleted);
+    };
+  }, [loadVaultStats]);
+  
+  // Initial load
+  useEffect(() => {
     loadVaultStats();
-  }, [vaultContract, account]);
+  }, [loadVaultStats]);
 
   const isDataLoading = isLoading || contractsLoading;
 

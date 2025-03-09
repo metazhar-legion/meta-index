@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -10,8 +10,7 @@ import {
   Alert,
   Tabs,
   Tab,
-  CircularProgress,
-  Divider
+  CircularProgress
 } from '@mui/material';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
@@ -19,6 +18,8 @@ import { useContracts, useERC20 } from '../hooks/useContracts';
 import { CONTRACT_ADDRESSES } from '../contracts/addresses';
 import VaultStats from '../components/VaultStats';
 import TokenList from '../components/TokenList';
+import TestingTools from '../components/TestingTools';
+import eventBus, { EVENTS } from '../utils/eventBus';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -75,11 +76,40 @@ const InvestorPage: React.FC = () => {
     setAmount(tokenBalance);
   };
 
+  // Helper function to format numbers with proper decimal places
+  const formatNumber = (value: string | number, decimals: number = 4): string => {
+    try {
+      // Convert to number first
+      const num = typeof value === 'string' ? parseFloat(value) : value;
+      
+      // Check if it's a valid number
+      if (isNaN(num) || !isFinite(num)) {
+        console.warn('Invalid number for formatting:', value);
+        return '0.0000';
+      }
+      
+      // Format with fixed decimals
+      return num.toFixed(decimals);
+    } catch (err) {
+      console.error('Error formatting number:', err, value);
+      return '0.0000';
+    }
+  };
+  
+  // Memoize formatted token balance to avoid unnecessary re-renders
+  const formattedTokenBalance = useMemo(() => {
+    return formatNumber(tokenBalance);
+  }, [tokenBalance]);
+
   const handleMaxShares = async () => {
     if (vaultContract && account) {
       try {
+        console.log('Getting max shares for account:', account);
         const maxShares = await vaultContract.balanceOf(account);
-        setShares(ethers.formatEther(maxShares));
+        console.log('Max shares raw value:', maxShares.toString());
+        const formattedShares = ethers.formatEther(maxShares);
+        console.log('Formatted max shares:', formattedShares);
+        setShares(formattedShares);
       } catch (err) {
         console.error('Error getting max shares:', err);
       }
@@ -97,25 +127,64 @@ const InvestorPage: React.FC = () => {
     setSuccess(null);
 
     try {
+      console.log('Starting deposit process...');
+      console.log('Account:', account);
+      console.log('Amount to deposit:', amount, tokenSymbol);
+      console.log('Token decimals:', tokenDecimals);
+      
       // First approve the vault to spend tokens
       const amountInWei = ethers.parseUnits(amount, tokenDecimals);
+      console.log('Amount in wei:', amountInWei.toString());
+      
       // Use the vault address from contract addresses
       const vaultAddress = CONTRACT_ADDRESSES.VAULT;
+      console.log('Vault address for approval:', vaultAddress);
+      
+      // Approve tokens
+      console.log('Approving tokens...');
       const approved = await approveTokens(vaultAddress, amount);
       
       if (!approved) {
         throw new Error('Failed to approve tokens');
       }
+      console.log('Token approval successful');
       
       // Then deposit into the vault
-      const tx = await vaultContract.deposit(amountInWei, account);
-      await tx.wait();
-      
-      setSuccess(`Successfully deposited ${amount} ${tokenSymbol}`);
-      setAmount('');
+      console.log('Depositing into vault...');
+      try {
+        // Ensure we're using BigInt for the transaction
+        const tx = await vaultContract.deposit(amountInWei, account);
+        console.log('Deposit transaction sent:', tx.hash);
+        
+        console.log('Waiting for transaction confirmation...');
+        const receipt = await tx.wait();
+        console.log('Transaction confirmed:', receipt?.hash || 'No hash available');
+        
+        setSuccess(`Successfully deposited ${amount} ${tokenSymbol}`);
+        setAmount('');
+        
+        // Emit event to notify other components that a transaction was completed
+        eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED);
+      } catch (txError) {
+        console.error('Transaction error details:', txError);
+        // Check for specific error messages
+        const errorMessage = typeof txError === 'object' && txError !== null && 'message' in txError 
+          ? String(txError.message) 
+          : 'Unknown error';
+        if (errorMessage.includes('user rejected')) {
+          setError('Transaction was rejected by the user');
+        } else if (errorMessage.includes('insufficient funds')) {
+          setError('Insufficient funds for transaction');
+        } else {
+          setError(`Transaction failed: ${errorMessage.substring(0, 100)}...`);
+        }
+        throw txError; // Re-throw to be caught by the outer catch
+      }
     } catch (err) {
-      console.error('Error depositing:', err);
-      setError('Transaction failed. Please try again.');
+      console.error('Error in deposit process:', err);
+      if (!error) { // Only set error if not already set by inner catch
+        setError('Transaction failed. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -132,15 +201,49 @@ const InvestorPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      const sharesInWei = ethers.parseEther(shares);
-      const tx = await vaultContract.redeem(sharesInWei, account, account);
-      await tx.wait();
+      console.log('Starting withdrawal process...');
+      console.log('Account:', account);
+      console.log('Shares to redeem:', shares);
       
-      setSuccess(`Successfully redeemed ${shares} shares`);
-      setShares('');
+      // Convert shares to wei (18 decimals)
+      const sharesInWei = ethers.parseEther(shares);
+      console.log('Shares in wei:', sharesInWei.toString());
+      
+      console.log('Redeeming shares...');
+      try {
+        // Call the redeem function with proper parameters
+        const tx = await vaultContract.redeem(sharesInWei, account, account);
+        console.log('Redeem transaction sent:', tx.hash);
+        
+        console.log('Waiting for transaction confirmation...');
+        const receipt = await tx.wait();
+        console.log('Transaction confirmed:', receipt?.hash || 'No hash available');
+        
+        setSuccess(`Successfully redeemed ${shares} shares`);
+        setShares('');
+        
+        // Emit event to notify other components that a transaction was completed
+        eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED);
+      } catch (txError) {
+        console.error('Transaction error details:', txError);
+        // Check for specific error messages
+        const errorMessage = typeof txError === 'object' && txError !== null && 'message' in txError 
+          ? String(txError.message) 
+          : 'Unknown error';
+        if (errorMessage.includes('user rejected')) {
+          setError('Transaction was rejected by the user');
+        } else if (errorMessage.includes('insufficient')) {
+          setError('Insufficient shares for redemption');
+        } else {
+          setError(`Transaction failed: ${errorMessage.substring(0, 100)}...`);
+        }
+        throw txError; // Re-throw to be caught by the outer catch
+      }
     } catch (err) {
-      console.error('Error withdrawing:', err);
-      setError('Transaction failed. Please try again.');
+      console.error('Error in withdrawal process:', err);
+      if (!error) { // Only set error if not already set by inner catch
+        setError('Transaction failed. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -194,7 +297,7 @@ const InvestorPage: React.FC = () => {
               <Grid item xs={12}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Typography variant="body2">
-                    Balance: {isLoading ? <CircularProgress size={12} /> : `${parseFloat(tokenBalance).toFixed(4)} ${tokenSymbol}`}
+                    Balance: {isLoading ? <CircularProgress size={12} /> : `${formattedTokenBalance} ${tokenSymbol}`}
                   </Typography>
                   <Button size="small" onClick={handleMaxAmount} disabled={isLoading}>
                     Max
@@ -233,7 +336,7 @@ const InvestorPage: React.FC = () => {
               <Grid item xs={12}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Typography variant="body2">
-                    Shares: {isLoading ? <CircularProgress size={12} /> : parseFloat(shares || '0').toFixed(4)}
+                    Shares: {isLoading ? <CircularProgress size={12} /> : formatNumber(shares || '0')}
                   </Typography>
                   <Button size="small" onClick={handleMaxShares} disabled={isLoading}>
                     Max
@@ -268,6 +371,11 @@ const InvestorPage: React.FC = () => {
           </TabPanel>
         </CardContent>
       </Card>
+      
+      {/* Testing Tools Section */}
+      {process.env.NODE_ENV === 'development' && (
+        <TestingTools />
+      )}
     </Box>
   );
 };

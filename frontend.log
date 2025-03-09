@@ -1,0 +1,118 @@
+
+> frontend@0.1.0 start
+> react-scripts start
+
+(node:89785) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:89785) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+Starting the development server...
+
+Compiled with warnings.
+
+[eslint] 
+src/components/TestingTools.tsx
+  Line 355:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 613:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/TestingTools.tsx
+  Line 355:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 613:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+Files successfully emitted, waiting for typecheck results...
+Issues checking in progress...
+No issues found.
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/TestingTools.tsx
+  Line 356:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 614:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/TestingTools.tsx
+  Line 356:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 614:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+No issues found.
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/TestingTools.tsx
+  Line 399:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 657:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/TestingTools.tsx
+  Line 399:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 657:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+No issues found.
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/TestingTools.tsx
+  Line 438:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 696:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/TestingTools.tsx
+  Line 438:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 696:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+No issues found.
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/TestingTools.tsx
+  Line 477:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 735:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/TestingTools.tsx
+  Line 477:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 735:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+No issues found.
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/TestingTools.tsx
+  Line 552:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 810:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/TestingTools.tsx
+  Line 552:6:  React Hook useCallback has an unnecessary dependency: 'formatUSDC'. Either exclude it or remove the dependency array           react-hooks/exhaustive-deps
+  Line 810:6:  React Hook useCallback has a missing dependency: 'loadBalancesWithProvider'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+No issues found.
