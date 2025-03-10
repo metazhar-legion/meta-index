@@ -219,10 +219,12 @@ export const useContracts = (): UseContractsReturn => {
           registryWithSigner = registry;
         }
         
-        // Test contract connectivity
+        // Test contract connectivity with more detailed logging
         try {
+          console.log('Testing vault contract connectivity...');
           // Try a simple read-only call to verify connectivity
-          await vault.totalSupply();
+          const totalSupply = await vault.totalSupply();
+          console.log('Vault contract connectivity verified. Total supply:', totalSupply.toString());
           // Reset retry count on success
           setRetryCount(0);
         } catch (testError) {
@@ -247,11 +249,17 @@ export const useContracts = (): UseContractsReturn => {
             }
           }
           // Continue anyway as this might be due to empty vault
+          console.log('Continuing with contract initialization despite connectivity test failure');
         }
         
-        // Cast to the appropriate interfaces
+        // Cast to the appropriate interfaces with additional logging
+        console.log('Casting contracts to appropriate interfaces');
         const typedVault = vaultWithSigner as unknown as IndexFundVaultInterface;
         const typedRegistry = registryWithSigner as unknown as IndexRegistryInterface;
+        
+        // Log contract addresses for verification
+        console.log('Setting vault contract with address:', await vault.target);
+        console.log('Setting registry contract with address:', await registry.target);
         
         setVaultContract(typedVault);
         setRegistryContract(typedRegistry);

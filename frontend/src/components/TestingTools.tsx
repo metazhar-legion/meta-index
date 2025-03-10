@@ -15,13 +15,13 @@ const ADDRESSES = {
   VAULT: CONTRACT_ADDRESSES.VAULT,
 };
 
-// Log addresses for debugging
-console.log('TestingTools - Using contract addresses:', ADDRESSES);
-console.log('TestingTools - Environment variables:', {
-  VAULT_ADDRESS: process.env.REACT_APP_INDEX_FUND_VAULT_ADDRESS,
-  REGISTRY_ADDRESS: process.env.REACT_APP_INDEX_REGISTRY_ADDRESS,
-  CHAIN_ID: process.env.REACT_APP_CHAIN_ID,
-});
+// Only log addresses in development mode
+if (process.env.NODE_ENV === 'development') {
+  console.log('TestingTools - Contract addresses:', {
+    USDC: ADDRESSES.USDC.slice(0, 6) + '...' + ADDRESSES.USDC.slice(-4),
+    VAULT: ADDRESSES.VAULT.slice(0, 6) + '...' + ADDRESSES.VAULT.slice(-4)
+  });
+}
 
 const TestingTools: React.FC = () => {
   const { account, provider, refreshProvider } = useWeb3();
@@ -105,7 +105,10 @@ const TestingTools: React.FC = () => {
         bigintAmount = amount;
       }
       
-      return ethers.formatEther(bigintAmount);
+      // First convert to ETH units (divide by 10^18)
+      const ethValue = ethers.formatEther(bigintAmount);
+      // Then format to a reasonable number of decimals for display
+      return Number(ethValue).toFixed(2);
     } catch (error) {
       console.error('Error formatting ETH amount:', error, 'Value was:', amount);
       return 'Error';
@@ -124,19 +127,15 @@ const TestingTools: React.FC = () => {
 
   // Helper function to load balances with a specific provider
   const loadBalancesWithProvider = async (currentProvider: ethers.Provider) => {
-    console.log('Loading balances with provider...');
-    console.log('USDC contract address:', ADDRESSES.USDC);
-    console.log('Vault address:', ADDRESSES.VAULT);
+    setStatus('Loading balances...');
     
     try {
       // Validate inputs first
       if (!currentProvider) {
-        console.error('Provider is null or undefined');
         throw new Error('Provider is not available');
       }
       
       if (!account) {
-        console.error('Account is null or undefined');
         throw new Error('Account is not available');
       }
       
@@ -149,24 +148,27 @@ const TestingTools: React.FC = () => {
             setTimeout(() => reject(new Error('Network check timed out')), 3000)
           )
         ]);
-        console.log('Connected to network:', network.chainId.toString());
+        // Only log in development mode
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Network:', network.chainId.toString());
+        }
       } catch (networkError) {
-        console.error('Error checking network:', networkError);
-        throw new Error('Failed to connect to network: ' + (networkError instanceof Error ? networkError.message : String(networkError)));
+        console.error('Network connection error:', networkError instanceof Error ? networkError.message : String(networkError));
+        throw new Error('Failed to connect to network');
       }
       
       // Get the latest block number to check blockchain state with timeout protection
       try {
-        const blockNumber = await Promise.race([
+        await Promise.race([
           currentProvider.getBlockNumber(),
           new Promise<never>((_, reject) => 
             setTimeout(() => reject(new Error('Block number request timed out')), 3000)
           )
         ]);
-        console.log('Current block number:', blockNumber);
+        // Block number check successful, but no need to log it
       } catch (blockError) {
-        console.error('Error getting block number:', blockError);
         // Continue despite this error - it's not critical
+        console.debug('Block number check failed, continuing anyway');
       }
       
       // Create contract instances - verify they're valid
@@ -185,19 +187,18 @@ const TestingTools: React.FC = () => {
           )
         ]);
         
-        console.log('Contract code length at USDC address:', code.length);
         if (code === '0x') {
-          console.error('No contract code found at USDC address');
-          throw new Error('No contract code found at USDC address: ' + ADDRESSES.USDC);
+          throw new Error('No contract code found at USDC address');
         }
       } catch (contractError) {
-        console.error('Error creating or verifying contracts:', contractError);
-        throw new Error('Failed to initialize contracts: ' + (contractError instanceof Error ? contractError.message : String(contractError)));
+        const errorMsg = contractError instanceof Error ? contractError.message : String(contractError);
+        console.error('Contract initialization error:', errorMsg);
+        throw new Error('Failed to initialize contracts');
       }
       
       // Get USDC balance with timeout protection and improved error handling
       try {
-        console.log('Requesting USDC balance for account:', account);
+        setStatus('Fetching USDC balance...');
         
         // First try with standard contract call
         const balancePromise = Promise.race([
@@ -210,9 +211,9 @@ const TestingTools: React.FC = () => {
         let balance;
         try {
           balance = await balancePromise;
-          console.log('USDC balance raw:', balance, typeof balance);
+          // Success - no need to log raw balance
         } catch (initialBalanceError) {
-          console.error('Initial balance request failed, trying low-level call:', initialBalanceError);
+          console.debug('Using fallback method for USDC balance');
           
           // If standard call fails, try with low-level call
           try {
@@ -227,40 +228,37 @@ const TestingTools: React.FC = () => {
             if (rawResult && rawResult !== '0x') {
               const decodedResult = iface.decodeFunctionResult('balanceOf', rawResult);
               balance = decodedResult[0];
-              console.log('Got balance via low-level call:', balance.toString());
             } else {
               throw new Error('Empty result from low-level call');
             }
           } catch (lowLevelError) {
-            console.error('Low-level call for balance failed:', lowLevelError);
+            console.error('USDC balance retrieval failed');
             throw lowLevelError; // Re-throw to be caught by outer catch
           }
         }
         
         // Validate balance is not null before using it
         if (balance === null || balance === undefined) {
-          console.error('USDC balance is null or undefined');
           setUsdcBalance('Error');
         } else {
           // Ensure balance is treated as BigInt
           try {
             // Convert to BigInt if it's not already
             const bigintBalance = typeof balance === 'bigint' ? balance : BigInt(balance.toString());
-            console.log('USDC balance converted to BigInt:', bigintBalance.toString());
             setUsdcBalance(formatUSDC(bigintBalance));
           } catch (conversionError) {
-            console.error('Error converting balance to BigInt:', conversionError);
+            console.error('Error converting USDC balance');
             setUsdcBalance('Error');
           }
         }
       } catch (balanceError) {
-        console.error('Error getting USDC balance:', balanceError);
+        console.error('USDC balance error:', balanceError instanceof Error ? balanceError.message : 'Unknown error');
         setUsdcBalance('Error');
       }
       
       // Get USDC allowance for vault with timeout protection and improved error handling
       try {
-        console.log('Requesting USDC allowance for account:', account);
+        setStatus('Fetching allowance...');
         
         // First try with standard contract call
         const allowancePromise = Promise.race([
@@ -273,10 +271,8 @@ const TestingTools: React.FC = () => {
         let currentAllowance;
         try {
           currentAllowance = await allowancePromise;
-          console.log('USDC allowance raw:', currentAllowance, typeof currentAllowance);
+          // Success - no need to log raw allowance
         } catch (initialAllowanceError) {
-          console.error('Initial allowance request failed, trying low-level call:', initialAllowanceError);
-          
           // If standard call fails, try with low-level call
           try {
             const iface = new ethers.Interface(['function allowance(address,address) view returns (uint256)']);
@@ -290,40 +286,37 @@ const TestingTools: React.FC = () => {
             if (rawResult && rawResult !== '0x') {
               const decodedResult = iface.decodeFunctionResult('allowance', rawResult);
               currentAllowance = decodedResult[0];
-              console.log('Got allowance via low-level call:', currentAllowance.toString());
             } else {
               throw new Error('Empty result from low-level call');
             }
           } catch (lowLevelError) {
-            console.error('Low-level call for allowance failed:', lowLevelError);
+            console.error('Allowance retrieval failed');
             throw lowLevelError; // Re-throw to be caught by outer catch
           }
         }
         
         // Validate allowance is not null before using it
         if (currentAllowance === null || currentAllowance === undefined) {
-          console.error('USDC allowance is null or undefined');
           setAllowance('Error');
         } else {
           // Ensure allowance is treated as BigInt
           try {
             // Convert to BigInt if it's not already
             const bigintAllowance = typeof currentAllowance === 'bigint' ? currentAllowance : BigInt(currentAllowance.toString());
-            console.log('USDC allowance converted to BigInt:', bigintAllowance.toString());
             setAllowance(formatUSDC(bigintAllowance));
           } catch (conversionError) {
-            console.error('Error converting allowance to BigInt:', conversionError);
+            console.error('Error converting allowance value');
             setAllowance('Error');
           }
         }
       } catch (allowanceError) {
-        console.error('Error getting USDC allowance:', allowanceError);
+        console.error('Allowance error:', allowanceError instanceof Error ? allowanceError.message : 'Unknown error');
         setAllowance('Error');
       }
       
       // Get vault balance if available - with improved error handling
       try {
-        console.log('Requesting vault balance for account:', account);
+        setStatus('Fetching vault balance...');
         
         // Get vault balance with timeout protection
         let vaultBalance;
@@ -336,10 +329,7 @@ const TestingTools: React.FC = () => {
           ]);
           
           vaultBalance = await vaultBalancePromise;
-          console.log('Vault balance raw:', vaultBalance, typeof vaultBalance);
         } catch (balanceError) {
-          console.error('Initial vault balance request failed, trying low-level call:', balanceError);
-          
           // If standard call fails, try with low-level call
           try {
             const iface = new ethers.Interface(['function balanceOf(address) view returns (uint256)']);
@@ -353,29 +343,31 @@ const TestingTools: React.FC = () => {
             if (rawResult && rawResult !== '0x') {
               const decodedResult = iface.decodeFunctionResult('balanceOf', rawResult);
               vaultBalance = decodedResult[0];
-              console.log('Got vault balance via low-level call:', vaultBalance.toString());
             } else {
               throw new Error('Empty result from low-level call');
             }
           } catch (lowLevelError) {
-            console.error('Low-level call for vault balance failed:', lowLevelError);
+            console.error('Vault balance retrieval failed');
             throw lowLevelError; // Re-throw to be caught by outer catch
           }
         }
         
         // Validate vault balance is not null before using it
         if (vaultBalance === null || vaultBalance === undefined) {
-          console.error('Vault balance is null or undefined');
           setVaultBalance('Error');
         } else {
           // Ensure vault balance is treated as BigInt
           try {
             // Convert to BigInt if it's not already
             const bigintBalance = typeof vaultBalance === 'bigint' ? vaultBalance : BigInt(vaultBalance.toString());
-            console.log('Vault balance converted to BigInt:', bigintBalance.toString());
-            setVaultBalance(formatEther(bigintBalance));
+            // Format with 6 decimals (not 18) to match the vault contract's implementation
+            // and 2 decimal places for display
+            console.log('TestingTools: Raw vault balance:', bigintBalance.toString());
+            const formattedBalance = Number(ethers.formatUnits(bigintBalance, 6)).toFixed(2);
+            console.log('TestingTools: Formatted vault balance:', formattedBalance);
+            setVaultBalance(formattedBalance);
           } catch (conversionError) {
-            console.error('Error converting vault balance to BigInt:', conversionError);
+            console.error('Error converting vault balance');
             setVaultBalance('Error');
           }
         }
@@ -394,8 +386,6 @@ const TestingTools: React.FC = () => {
           ]);
           
           const maxShares = await maxWithdrawPromise;
-          console.log('Max withdrawable shares:', maxShares.toString());
-          
           // Then convert those shares to assets (USDC)
           if (maxShares && maxShares > 0n) {
             const assetsPromise = Promise.race([
@@ -406,15 +396,11 @@ const TestingTools: React.FC = () => {
             ]);
             
             vaultValue = await assetsPromise;
-            console.log('Vault value raw (convertToAssets):', vaultValue.toString());
           } else {
             // If no shares, value is 0
             vaultValue = 0n;
-            console.log('No shares to withdraw, setting vault value to 0');
           }
         } catch (valueError) {
-          console.error('Initial vault value request failed, trying alternative approach:', valueError);
-          
           // If the first approach fails, try with maxWithdraw directly
           try {
             const maxWithdrawPromise = Promise.race([
@@ -425,43 +411,54 @@ const TestingTools: React.FC = () => {
             ]);
             
             vaultValue = await maxWithdrawPromise;
-            console.log('Got vault value via maxWithdraw:', vaultValue.toString());
           } catch (alternativeError) {
-            console.error('Alternative approach for vault value failed:', alternativeError);
+            console.error('Failed to calculate withdrawable value');
             throw alternativeError; // Re-throw to be caught by outer catch
           }
         }
         
         // Validate vault value is not null before using it
         if (vaultValue === null || vaultValue === undefined) {
-          console.error('Vault value is null or undefined');
           setVaultValue('Error');
         } else {
           // Ensure vault value is treated as BigInt
           try {
             // Convert to BigInt if it's not already
             const bigintValue = typeof vaultValue === 'bigint' ? vaultValue : BigInt(vaultValue.toString());
-            console.log('Vault value converted to BigInt:', bigintValue.toString());
-            setVaultValue(formatUSDC(bigintValue));
+            console.log('TestingTools: Raw vault value:', bigintValue.toString());
+            // Format with 6 decimals for USDC
+            const formattedValue = Number(ethers.formatUnits(bigintValue, 6)).toFixed(2);
+            console.log('TestingTools: Formatted vault value:', formattedValue);
+            setVaultValue(formattedValue);
           } catch (conversionError) {
-            console.error('Error converting vault value to BigInt:', conversionError);
+            console.error('Error converting vault value');
             setVaultValue('Error');
           }
         }
+        
+        // Clear status when done
+        setStatus('Balances loaded');
+        setTimeout(() => setStatus(''), 2000); // Clear status after 2 seconds
       } catch (vaultError) {
-        console.error('Error getting vault balance or value:', vaultError);
+        console.error('Vault data error:', vaultError instanceof Error ? vaultError.message : 'Unknown error');
         setVaultBalance('Error');
         setVaultValue('Error');
+        setStatus('Error loading data');
       }
     } catch (error) {
-      console.error('Error in loadBalancesWithProvider:', error);
       // Set all values to error state
       setUsdcBalance('Error');
       setAllowance('Error');
       setVaultBalance('Error');
       setVaultValue('Error');
+      
+      // Log a concise error message
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Balance loading failed: ${errorMessage}`);
+      
       // Set error message for UI
-      setError('Failed to load balances: ' + (error instanceof Error ? error.message : String(error)));
+      setError('Failed to load balances: ' + errorMessage);
+      setStatus('Error loading data');
       // Don't rethrow - handle it here completely
     }
   };
@@ -502,6 +499,9 @@ const TestingTools: React.FC = () => {
         }
         setStatus('Balances loaded successfully');
         setError(null);
+        
+        // Emit event to notify other components to refresh vault stats
+        eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED);
       } catch (initialError) {
         console.error('Error with initial provider, trying fresh provider:', initialError);
         
@@ -522,6 +522,9 @@ const TestingTools: React.FC = () => {
             successProvider = 'fresh';
             setStatus('Balances loaded with fresh provider');
             setError(null);
+            
+            // Emit event to notify other components to refresh vault stats
+            eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED);
           } else {
             throw new Error('No window.ethereum available');
           }
@@ -536,6 +539,9 @@ const TestingTools: React.FC = () => {
               successProvider = 'refreshed';
               setStatus('Balances loaded with refreshed provider');
               setError(null);
+              
+              // Emit event to notify other components to refresh vault stats
+              eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED);
             } else {
               throw new Error('Failed to get refreshed provider');
             }
@@ -647,24 +653,38 @@ const TestingTools: React.FC = () => {
     }
 
     try {
+      console.log('TestingTools: Starting deposit process');
       setStatus('Depositing to vault...');
       setError(null);
       
       const vaultContract = new ethers.Contract(ADDRESSES.VAULT, IndexFundVaultABI, signer);
+      console.log('TestingTools: Vault contract initialized');
       
       // Deposit USDC to the vault
-      const tx = await vaultContract.deposit(parseUSDC(amount), account);
+      console.log(`TestingTools: Depositing ${amount} USDC to vault`);
+      const parsedAmount = parseUSDC(amount);
+      console.log('TestingTools: Parsed amount:', parsedAmount.toString());
+      
+      const tx = await vaultContract.deposit(parsedAmount, account);
+      console.log('TestingTools: Deposit transaction submitted:', tx.hash);
       
       setStatus('Waiting for transaction confirmation...');
-      await tx.wait();
+      const receipt = await tx.wait();
+      console.log('TestingTools: Transaction confirmed, receipt:', receipt.hash);
       
       setStatus(`Successfully deposited ${amount} USDC to the vault`);
       
-      // Refresh balances
-      await loadBalances();
+      // Refresh balances with a slight delay to ensure blockchain state is updated
+      console.log('TestingTools: Refreshing balances after deposit');
+      setTimeout(async () => {
+        await loadBalances();
+        console.log('TestingTools: Balances refreshed');
+      }, 1000);
       
       // Emit event to notify other components that a transaction was completed
+      console.log('TestingTools: Emitting VAULT_TRANSACTION_COMPLETED event');
       eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED);
+      console.log('TestingTools: Event emitted');
     } catch (error) {
       console.warn('Error depositing to vault:', error);
       setError('Failed to deposit to vault. Make sure you have approved enough USDC.');
@@ -693,6 +713,11 @@ const TestingTools: React.FC = () => {
         setStatus('');
         return;
       }
+      
+      // Display formatted share balance for better UX
+      // Use formatUnits with 6 decimals to match the vault contract's implementation
+      const formattedShares = Number(ethers.formatUnits(sharesBalance, 6)).toFixed(2);
+      console.log(`TestingTools: Withdrawing ${formattedShares} shares`);
       
       // Calculate shares to withdraw based on amount
       // For simplicity, we'll withdraw all shares
@@ -757,6 +782,9 @@ const TestingTools: React.FC = () => {
           // Wait a moment before loading balances
           await new Promise(resolve => setTimeout(resolve, 1000));
           await loadBalances();
+          
+          // Emit vault transaction event to update vault stats
+          eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED);
           return;
         } catch (networkError) {
           console.error('Error checking network after provider refresh:', networkError);
@@ -811,6 +839,9 @@ const TestingTools: React.FC = () => {
             await loadBalancesWithProvider(manualProvider);
             setStatus('Balances loaded successfully after reset');
             setError(null);
+            
+            // Emit vault transaction event to update vault stats
+            eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED);
           } catch (balanceError) {
             console.error('Error loading balances after reset:', balanceError);
             setStatus('Connection reset, but balances failed to load');
@@ -880,10 +911,10 @@ const TestingTools: React.FC = () => {
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2">
+              <Typography variant="body2" fontWeight="bold">
                 Vault Balance: {vaultBalance} shares
               </Typography>
-              <Typography variant="body2">
+              <Typography variant="body2" fontWeight="bold">
                 Value: {vaultValue} USDC
               </Typography>
             </Box>

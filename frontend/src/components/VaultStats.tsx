@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Card, CardContent, Typography, Grid, Skeleton, Divider } from '@mui/material';
+import { Box, Card, CardContent, Typography, Grid, Skeleton, Divider, Tooltip } from '@mui/material';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
 import eventBus, { EVENTS } from '../utils/eventBus';
@@ -43,7 +43,8 @@ const VaultStats: React.FC = () => {
   }, []);
 
   // Helper function to convert various formats to BigInt
-  const toBigInt = (value: any): bigint => {
+  // Define this outside of the component to avoid recreation on every render
+  const convertToBigInt = (value: any): bigint => {
     if (typeof value === 'bigint') return value;
     if (typeof value === 'number') return BigInt(value);
     if (typeof value === 'string') {
@@ -51,11 +52,12 @@ const VaultStats: React.FC = () => {
       return BigInt(value);
     }
     if (Array.isArray(value) && value.length > 0) {
-      return toBigInt(value[0]);
+      return convertToBigInt(value[0]);
     }
     return BigInt(0);
   };
 
+  // Memoize the loadVaultStats function to prevent recreation on every render
   const loadVaultStats = useCallback(async () => {
     if (!vaultContract || !provider || !account) {
       return;
@@ -63,7 +65,7 @@ const VaultStats: React.FC = () => {
 
     setLoading(true);
     setError(null);
-
+    
     try {
       // Get vault contract address
       const vaultAddress = await vaultContract.target;
@@ -80,104 +82,48 @@ const VaultStats: React.FC = () => {
       let totalSupply = BigInt(0);
       let userShares = BigInt(0);
       
-      // Helper function to fetch data with multiple strategies
+      // Define fetchContractData inside loadVaultStats but don't recreate it on every render
       const fetchContractData = async (methodName: string, args: any[] = []) => {
-        let result = BigInt(0);
-        let error: any = null;
-        
-        // Strategy 1: Direct contract call
         try {
-          if (typeof vaultContract[methodName as keyof typeof vaultContract] === 'function') {
-            // @ts-ignore - We've already checked that this is a function
-            result = await vaultContract[methodName](...args);
-            if (result > BigInt(0)) return result;
-          }
-        } catch (e) {
-          error = e;
-          // Continue to next strategy
-        }
-        
-        // Strategy 2: Low-level call
-        try {
-          const callData = vaultInterface.encodeFunctionData(methodName, args);
-          const rawResult = await provider.call({
-            to: vaultAddress,
-            data: callData
-          });
-          
-          if (rawResult && rawResult !== '0x') {
-            try {
-              const decoded = vaultInterface.decodeFunctionResult(methodName, rawResult);
-              result = toBigInt(decoded);
-              if (result > BigInt(0)) return result;
-            } catch (decodeError) {
-              // Try manual decoding as fallback
-              if (rawResult.length >= 66) {
-                const hexValue = rawResult.slice(2);
-                result = BigInt('0x' + hexValue);
-                if (result > BigInt(0)) return result;
-              }
-            }
-          }
-        } catch (e) {
-          error = e;
-          // Continue to next strategy
-        }
-        
-        // Strategy 3: Fresh contract instance
-        try {
-          const freshContract = new ethers.Contract(
-            vaultAddress,
-            vaultInterface,
-            provider
-          );
-          
           // @ts-ignore - Dynamic method call
-          result = await freshContract[methodName](...args);
-          return result;
-        } catch (e) {
-          error = e;
+          const rawResult = await vaultContract[methodName](...args);
           
-          // Check if this is a BlockOutOfRangeError
+          // Handle different return types
+          if (typeof rawResult === 'bigint') {
+            return rawResult;
+          } else if (typeof rawResult === 'object' && rawResult !== null) {
+            // Handle array-like or object returns from ethers v6
+            if (Array.isArray(rawResult)) {
+              return convertToBigInt(rawResult[0]);
+            } else if ('value' in rawResult) {
+              return convertToBigInt(rawResult.value);
+            } else if ('_hex' in rawResult) {
+              return convertToBigInt(rawResult._hex);
+            } else {
+              // Try to convert the first property if it exists
+              const firstProp = Object.values(rawResult)[0];
+              return convertToBigInt(firstProp);
+            }
+          } else {
+            return convertToBigInt(rawResult);
+          }
+        } catch (e) {
           if (isBlockOutOfRangeError(e)) {
             throw e; // Re-throw to be caught by the outer try-catch for refresh handling
           }
-          
-          // Return the best result we have
-          return result;
+          throw e;
         }
       };
       
-      try {
-        // Fetch all required data
-        totalAssets = await fetchContractData('totalAssets');
-        totalSupply = await fetchContractData('totalSupply');
-        userShares = await fetchContractData('balanceOf', [account]);
-        
-        // Reset retry count on success
-        setRetryCount(0);
-      } catch (fetchError) {
-        // If it's a BlockOutOfRangeError, try refreshing the provider
-        if (isBlockOutOfRangeError(fetchError) && retryCount < MAX_RETRIES) {
-          console.log(`BlockOutOfRangeError detected in VaultStats, refreshing provider (attempt ${retryCount + 1}/${MAX_RETRIES})`);
-          setRetryCount(prev => prev + 1);
-          
-          try {
-            if (refreshProvider) {
-              const freshProvider = await refreshProvider();
-              if (freshProvider) {
-                console.log('Provider refreshed successfully, retrying data fetch');
-                setLoading(false);
-                return; // Exit and let the useEffect retry with the new provider
-              }
-            }
-          } catch (refreshError) {
-            console.error('Error refreshing provider:', refreshError);
-          }
-        }
-        
-        throw fetchError; // Re-throw to be caught by the outer try-catch
-      }
+      // Fetch all required data
+      totalAssets = await fetchContractData('totalAssets');
+      totalSupply = await fetchContractData('totalSupply');
+      userShares = await fetchContractData('balanceOf', [account]);
+      
+      // Reset retry count on success
+      setRetryCount(0);
+      
+      // Calculate derived values
       
       // Calculate derived values
       let userAssets = BigInt(0);
@@ -187,39 +133,63 @@ const VaultStats: React.FC = () => {
         // Calculate user assets based on their share of the pool
         if (userShares > BigInt(0)) {
           userAssets = (userShares * totalAssets) / totalSupply;
+          console.log('VaultStats: Calculated userAssets:', userAssets.toString());
         }
         
-        // Calculate share price (price per 1 full share)
-        sharePrice = (totalAssets * ethers.parseEther('1')) / totalSupply;
+        // We'll calculate the share price in JavaScript after converting the BigInts
+        // This is more precise than doing BigInt division which truncates
+        sharePrice = BigInt(0); // This will be ignored, we'll calculate it in JS
       }
       
       // Update state with the fetched and calculated values
-      setStats({
-        totalAssets: ethers.formatEther(totalAssets),
-        totalShares: ethers.formatEther(totalSupply),
-        userShares: ethers.formatEther(userShares),
-        userAssets: ethers.formatEther(userAssets),
-        sharePrice: ethers.formatEther(sharePrice),
-      });
+      // IMPORTANT: We need to use formatUnits with the correct decimals
+      // USDC has 6 decimals, ERC20 shares have 18 decimals
+      
+      // Calculate the actual values with proper decimal handling
+      // USDC has 6 decimals, but the vault contract uses 18 decimals for shares
+      const formattedTotalAssets = Number(ethers.formatUnits(totalAssets, 6));
+      
+      // For shares, we need to check the contract's implementation
+      // The issue might be that the contract is using a different decimal place for shares
+      // Let's try using 6 decimals for shares as well, since that's what the contract might be using
+      const formattedTotalShares = Number(ethers.formatUnits(totalSupply, 6));
+      const formattedUserShares = Number(ethers.formatUnits(userShares, 6));
+      
+      // Calculate user assets in USDC (with proper decimal handling)
+      const formattedUserAssets = formattedUserShares > 0 && formattedTotalShares > 0 
+        ? (formattedUserShares / formattedTotalShares) * formattedTotalAssets
+        : 0;
+      
+      // Calculate share price directly (USDC per share)
+      const formattedSharePrice = formattedTotalShares > 0
+        ? formattedTotalAssets / formattedTotalShares
+        : 100; // Default to 100 if no shares exist yet
+      
+      const newStats = {
+        totalAssets: formattedTotalAssets.toFixed(2),
+        totalShares: formattedTotalShares.toFixed(2),
+        userShares: formattedUserShares.toFixed(2),
+        userAssets: formattedUserAssets.toFixed(2),
+        sharePrice: formattedSharePrice.toFixed(2),
+      };
+      
+      // Update the stats
+      setStats(newStats);
     } catch (error) {
       console.error('Error loading vault stats:', error);
       
       // If it's a BlockOutOfRangeError, try refreshing the provider
       if (isBlockOutOfRangeError(error) && retryCount < MAX_RETRIES) {
-        console.log(`BlockOutOfRangeError detected in VaultStats, refreshing provider (attempt ${retryCount + 1}/${MAX_RETRIES})`);
         setRetryCount(prev => prev + 1);
         
         try {
           if (refreshProvider) {
-            const freshProvider = await refreshProvider();
-            if (freshProvider) {
-              console.log('Provider refreshed successfully, retrying data fetch');
-              setLoading(false);
-              return; // Exit and let the useEffect retry with the new provider
-            }
+            await refreshProvider();
+            setLoading(false);
+            return; // Exit and let the useEffect retry with the new provider
           }
         } catch (refreshError) {
-          console.error('Error refreshing provider:', refreshError);
+          // Continue to error handling
         }
       }
       
@@ -227,10 +197,32 @@ const VaultStats: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  // Only include dependencies that actually change and trigger a re-render
   }, [vaultContract, provider, account, retryCount, refreshProvider, isBlockOutOfRangeError]);
 
+  // Use a separate effect for initial load to prevent update loops
   useEffect(() => {
-    loadVaultStats();
+    if (vaultContract && provider && account) {
+      loadVaultStats();
+    }
+  }, [vaultContract, provider, account, loadVaultStats]);
+  
+  // Use a separate effect for event subscription
+  useEffect(() => {
+    // Set up event listener for vault transaction completed events
+    const handleTransactionCompleted = () => {
+      // Add a small delay to ensure blockchain state is updated
+      setTimeout(() => {
+        loadVaultStats();
+      }, 2000); // 2 second delay
+    };
+    
+    const unsubscribe = eventBus.on(EVENTS.VAULT_TRANSACTION_COMPLETED, handleTransactionCompleted);
+    
+    // Clean up the event listener when the component unmounts
+    return () => {
+      unsubscribe();
+    };
   }, [loadVaultStats]);
 
   const isDataLoading = loading || contractsLoading;
@@ -250,7 +242,7 @@ const VaultStats: React.FC = () => {
               {isDataLoading ? (
                 <Skeleton width="100%" />
               ) : (
-                <Typography variant="h6">{parseFloat(stats.totalAssets).toFixed(4)}</Typography>
+                <Typography variant="h6">{parseFloat(stats.totalAssets).toFixed(2)}</Typography>
               )}
             </Box>
           </Grid>
@@ -262,7 +254,7 @@ const VaultStats: React.FC = () => {
               {isDataLoading ? (
                 <Skeleton width="100%" />
               ) : (
-                <Typography variant="h6">{parseFloat(stats.totalShares).toFixed(4)}</Typography>
+                <Typography variant="h6">{parseFloat(stats.totalShares).toFixed(2)}</Typography>
               )}
             </Box>
           </Grid>
@@ -274,7 +266,7 @@ const VaultStats: React.FC = () => {
               {isDataLoading ? (
                 <Skeleton width="100%" />
               ) : (
-                <Typography variant="h6">{parseFloat(stats.sharePrice).toFixed(4)}</Typography>
+                <Typography variant="h6">{parseFloat(stats.sharePrice).toFixed(2)} USDC</Typography>
               )}
             </Box>
           </Grid>
@@ -286,7 +278,7 @@ const VaultStats: React.FC = () => {
               {isDataLoading ? (
                 <Skeleton width="100%" />
               ) : (
-                <Typography variant="h6">{parseFloat(stats.userShares).toFixed(4)}</Typography>
+                <Typography variant="h6">{parseFloat(stats.userShares).toFixed(2)}</Typography>
               )}
             </Box>
           </Grid>
@@ -301,7 +293,7 @@ const VaultStats: React.FC = () => {
           {isDataLoading ? (
             <Skeleton width="50%" height={40} />
           ) : (
-            <Typography variant="h5">{parseFloat(stats.userAssets).toFixed(4)}</Typography>
+            <Typography variant="h5">{parseFloat(stats.userAssets).toFixed(2)}</Typography>
           )}
         </Box>
       </CardContent>

@@ -2,22 +2,65 @@
 > frontend@0.1.0 start
 > react-scripts start
 
-(node:35013) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:50135) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
 (Use `node --trace-deprecation ...` to show where the warning was created)
-(node:35013) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:50135) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
 Starting the development server...
 
-Compiled successfully!
+Compiled with warnings.
 
-You can now view frontend in the browser.
+[eslint] 
+src/components/VaultStats.tsx
+  Line 2:71:   'Tooltip' is defined but never used                                                                                                                                                    @typescript-eslint/no-unused-vars
+  Line 7:10:   'toBigInt' is defined but never used                                                                                                                                                   @typescript-eslint/no-unused-vars
+  Line 20:10:  'error' is assigned a value but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+  Line 46:9:   The 'toBigInt' function makes the dependencies of useCallback Hook (at line 198) change on every render. To fix this, wrap the definition of 'toBigInt' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  Line 69:13:  'vaultAddress' is assigned a value but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+  Line 72:13:  'vaultInterface' is assigned a value but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  Line 139:9:  'sharePrice' is assigned a value but never used                                                                                                                                        @typescript-eslint/no-unused-vars
 
-  Local:            http://localhost:3000
-  On Your Network:  http://192.168.1.155:3000
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
 
-Note that the development build is not optimized.
-To create a production build, use npm run build.
+WARNING in [eslint] 
+src/components/VaultStats.tsx
+  Line 2:71:   'Tooltip' is defined but never used                                                                                                                                                    @typescript-eslint/no-unused-vars
+  Line 7:10:   'toBigInt' is defined but never used                                                                                                                                                   @typescript-eslint/no-unused-vars
+  Line 20:10:  'error' is assigned a value but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+  Line 46:9:   The 'toBigInt' function makes the dependencies of useCallback Hook (at line 198) change on every render. To fix this, wrap the definition of 'toBigInt' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  Line 69:13:  'vaultAddress' is assigned a value but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+  Line 72:13:  'vaultInterface' is assigned a value but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  Line 139:9:  'sharePrice' is assigned a value but never used                                                                                                                                        @typescript-eslint/no-unused-vars
 
-webpack compiled successfully
+webpack compiled with 1 warning
 Files successfully emitted, waiting for typecheck results...
 Issues checking in progress...
+No issues found.
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/VaultStats.tsx
+  Line 2:71:   'Tooltip' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+  Line 7:10:   'toBigInt' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  Line 20:10:  'error' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 71:13:  'vaultAddress' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  Line 74:13:  'vaultInterface' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  Line 141:9:  'sharePrice' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  Line 201:6:  React Hook useCallback has a missing dependency: 'convertToBigInt'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/VaultStats.tsx
+  Line 2:71:   'Tooltip' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+  Line 7:10:   'toBigInt' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  Line 20:10:  'error' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 71:13:  'vaultAddress' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  Line 74:13:  'vaultInterface' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  Line 141:9:  'sharePrice' is assigned a value but never used                                                                       @typescript-eslint/no-unused-vars
+  Line 201:6:  React Hook useCallback has a missing dependency: 'convertToBigInt'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
 No issues found.

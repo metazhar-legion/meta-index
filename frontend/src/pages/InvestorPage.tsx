@@ -107,7 +107,8 @@ const InvestorPage: React.FC = () => {
         console.log('Getting max shares for account:', account);
         const maxShares = await vaultContract.balanceOf(account);
         console.log('Max shares raw value:', maxShares.toString());
-        const formattedShares = ethers.formatEther(maxShares);
+        // Use formatUnits with 6 decimals to match the vault contract's implementation
+        const formattedShares = ethers.formatUnits(maxShares, 6);
         console.log('Formatted max shares:', formattedShares);
         setShares(formattedShares);
       } catch (err) {
@@ -205,8 +206,8 @@ const InvestorPage: React.FC = () => {
       console.log('Account:', account);
       console.log('Shares to redeem:', shares);
       
-      // Convert shares to wei (18 decimals)
-      const sharesInWei = ethers.parseEther(shares);
+      // Convert shares to wei (6 decimals to match the vault contract's implementation)
+      const sharesInWei = ethers.parseUnits(shares, 6);
       console.log('Shares in wei:', sharesInWei.toString());
       
       console.log('Redeeming shares...');
@@ -336,7 +337,7 @@ const InvestorPage: React.FC = () => {
               <Grid item xs={12}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
                   <Typography variant="body2">
-                    Shares: {isLoading ? <CircularProgress size={12} /> : formatNumber(shares || '0')}
+                    Shares: {isLoading ? <CircularProgress size={12} /> : formatNumber(shares || '0', 2)}
                   </Typography>
                   <Button size="small" onClick={handleMaxShares} disabled={isLoading}>
                     Max

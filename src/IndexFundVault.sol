@@ -24,6 +24,10 @@ import {IDEX} from "./interfaces/IDEX.sol";
 contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
     using SafeERC20 for IERC20;
     using Math for uint256;
+    
+    // Target share price in USDC
+    // Setting this to 100 means 1 share will be worth ~100 USDC initially
+    uint256 private constant TARGET_SHARE_PRICE = 100;
 
     // Registry that maintains the index composition
     IIndexRegistry public indexRegistry;
@@ -618,5 +622,40 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
      */
     function getCurrentIndex() external view returns (address[] memory tokens, uint256[] memory weights) {
         return indexRegistry.getCurrentIndex();
+    }
+    
+    /**
+     * @dev Override the conversion function to make share price more intuitive.
+     * This directly controls the initial share price to be around TARGET_SHARE_PRICE.
+     */
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual override returns (uint256) {
+        uint256 supply = totalSupply();
+        uint256 totalAssetAmount = totalAssets();
+        
+        if (supply == 0 || totalAssetAmount == 0) {
+            // For the first deposit, set the share price to TARGET_SHARE_PRICE
+            // This means 100 USDC = 1 share
+            return assets / TARGET_SHARE_PRICE;
+        }
+        
+        // For subsequent deposits, use the standard formula
+        return assets.mulDiv(supply, totalAssetAmount, rounding);
+    }
+    
+    /**
+     * @dev Override the conversion function to make share price more intuitive.
+     * This is the inverse of _convertToShares.
+     */
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual override returns (uint256) {
+        uint256 supply = totalSupply();
+        uint256 totalAssetAmount = totalAssets();
+        
+        if (supply == 0 || totalAssetAmount == 0) {
+            // For the first withdrawal (unlikely), maintain the TARGET_SHARE_PRICE
+            return shares * TARGET_SHARE_PRICE;
+        }
+        
+        // For subsequent withdrawals, use the standard formula
+        return shares.mulDiv(totalAssetAmount, supply, rounding);
     }
 }
