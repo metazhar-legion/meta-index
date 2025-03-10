@@ -39,8 +39,14 @@ const TestingTools: React.FC = () => {
     const getSigner = async () => {
       if (provider) {
         try {
-          const newSigner = await provider.getSigner();
-          setSigner(newSigner);
+          // Check if the provider is a BrowserProvider (which has getSigner)
+          if ('getSigner' in provider && typeof provider.getSigner === 'function') {
+            const newSigner = await (provider as ethers.BrowserProvider).getSigner();
+            setSigner(newSigner);
+          } else {
+            console.log('Provider does not have getSigner method');
+            setSigner(null);
+          }
         } catch (error) {
           console.warn('Error getting signer:', error);
           setSigner(null);
@@ -117,7 +123,7 @@ const TestingTools: React.FC = () => {
   };
 
   // Helper function to load balances with a specific provider
-  const loadBalancesWithProvider = async (currentProvider: ethers.BrowserProvider) => {
+  const loadBalancesWithProvider = async (currentProvider: ethers.Provider) => {
     console.log('Loading balances with provider...');
     console.log('USDC contract address:', ADDRESSES.USDC);
     console.log('Vault address:', ADDRESSES.VAULT);
@@ -374,42 +380,55 @@ const TestingTools: React.FC = () => {
           }
         }
         
-        // Get vault USDC value with timeout protection
+        // Get vault USDC value with timeout protection - using maxWithdraw and convertToAssets from ERC4626 standard
         let vaultValue;
         try {
           console.log('Requesting withdrawable amount for account:', account);
-          const vaultValuePromise = Promise.race([
-            vaultContract.getWithdrawableAmount(account),
+          
+          // First get the maximum amount of shares that can be withdrawn
+          const maxWithdrawPromise = Promise.race([
+            vaultContract.maxRedeem(account),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Vault value request timed out')), 5000)
+              setTimeout(() => reject(new Error('Max withdraw request timed out')), 5000)
             )
           ]);
           
-          vaultValue = await vaultValuePromise;
-          console.log('Vault value raw:', vaultValue, typeof vaultValue);
-        } catch (valueError) {
-          console.error('Initial vault value request failed, trying low-level call:', valueError);
+          const maxShares = await maxWithdrawPromise;
+          console.log('Max withdrawable shares:', maxShares.toString());
           
-          // If standard call fails, try with low-level call
+          // Then convert those shares to assets (USDC)
+          if (maxShares && maxShares > 0n) {
+            const assetsPromise = Promise.race([
+              vaultContract.convertToAssets(maxShares),
+              new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Convert to assets request timed out')), 5000)
+              )
+            ]);
+            
+            vaultValue = await assetsPromise;
+            console.log('Vault value raw (convertToAssets):', vaultValue.toString());
+          } else {
+            // If no shares, value is 0
+            vaultValue = 0n;
+            console.log('No shares to withdraw, setting vault value to 0');
+          }
+        } catch (valueError) {
+          console.error('Initial vault value request failed, trying alternative approach:', valueError);
+          
+          // If the first approach fails, try with maxWithdraw directly
           try {
-            const iface = new ethers.Interface(['function getWithdrawableAmount(address) view returns (uint256)']);
-            const calldata = iface.encodeFunctionData('getWithdrawableAmount', [account]);
+            const maxWithdrawPromise = Promise.race([
+              vaultContract.maxWithdraw(account),
+              new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Max withdraw direct request timed out')), 5000)
+              )
+            ]);
             
-            const rawResult = await currentProvider.call({
-              to: ADDRESSES.VAULT,
-              data: calldata
-            });
-            
-            if (rawResult && rawResult !== '0x') {
-              const decodedResult = iface.decodeFunctionResult('getWithdrawableAmount', rawResult);
-              vaultValue = decodedResult[0];
-              console.log('Got vault value via low-level call:', vaultValue.toString());
-            } else {
-              throw new Error('Empty result from low-level call');
-            }
-          } catch (lowLevelError) {
-            console.error('Low-level call for vault value failed:', lowLevelError);
-            throw lowLevelError; // Re-throw to be caught by outer catch
+            vaultValue = await maxWithdrawPromise;
+            console.log('Got vault value via maxWithdraw:', vaultValue.toString());
+          } catch (alternativeError) {
+            console.error('Alternative approach for vault value failed:', alternativeError);
+            throw alternativeError; // Re-throw to be caught by outer catch
           }
         }
         
@@ -477,8 +496,10 @@ const TestingTools: React.FC = () => {
       
       try {
         // Try with current provider first
-        await loadBalancesWithProvider(provider);
-        successProvider = 'current';
+        if (provider) {
+          await loadBalancesWithProvider(provider);
+          successProvider = 'current';
+        }
         setStatus('Balances loaded successfully');
         setError(null);
       } catch (initialError) {

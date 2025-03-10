@@ -89,6 +89,13 @@ echo -e "${YELLOW}Extracting contract addresses...${NC}"
 VAULT_ADDRESS=$(grep "Index Fund Vault deployed at:" deploy.log | awk '{print $NF}')
 REGISTRY_ADDRESS=$(grep "Index Registry deployed at:" deploy.log | awk '{print $NF}')
 USDC_ADDRESS=$(grep "USDC deployed at:" deploy.log | awk '{print $NF}')
+WBTC_ADDRESS=$(grep "WBTC deployed at:" deploy.log | awk '{print $NF}')
+WETH_ADDRESS=$(grep "WETH deployed at:" deploy.log | awk '{print $NF}')
+LINK_ADDRESS=$(grep "LINK deployed at:" deploy.log | awk '{print $NF}')
+UNI_ADDRESS=$(grep "UNI deployed at:" deploy.log | awk '{print $NF}')
+AAVE_ADDRESS=$(grep "AAVE deployed at:" deploy.log | awk '{print $NF}')
+PRICE_ORACLE_ADDRESS=$(grep "Price Oracle deployed at:" deploy.log | awk '{print $NF}')
+DEX_ADDRESS=$(grep "DEX deployed at:" deploy.log | awk '{print $NF}')
 
 if [ -z "$VAULT_ADDRESS" ] || [ -z "$REGISTRY_ADDRESS" ] || [ -z "$USDC_ADDRESS" ]; then
     echo -e "${RED}Error: Could not extract contract addresses.${NC}"
@@ -101,6 +108,13 @@ echo -e "${GREEN}Contract addresses:${NC}"
 echo -e "${BLUE}Vault: $VAULT_ADDRESS${NC}"
 echo -e "${BLUE}Registry: $REGISTRY_ADDRESS${NC}"
 echo -e "${BLUE}USDC: $USDC_ADDRESS${NC}"
+echo -e "${BLUE}WBTC: $WBTC_ADDRESS${NC}"
+echo -e "${BLUE}WETH: $WETH_ADDRESS${NC}"
+echo -e "${BLUE}LINK: $LINK_ADDRESS${NC}"
+echo -e "${BLUE}UNI: $UNI_ADDRESS${NC}"
+echo -e "${BLUE}AAVE: $AAVE_ADDRESS${NC}"
+echo -e "${BLUE}Price Oracle: $PRICE_ORACLE_ADDRESS${NC}"
+echo -e "${BLUE}DEX: $DEX_ADDRESS${NC}"
 
 # Create .env file for frontend
 echo -e "\n${YELLOW}Creating frontend environment file...${NC}"
@@ -116,6 +130,29 @@ REACT_APP_DEFAULT_THEME=dark
 EOL
 
 echo -e "${GREEN}Frontend environment file created at ./frontend/.env.local${NC}"
+
+# Update the frontend's addresses.ts file
+echo -e "\n${YELLOW}Updating frontend contract addresses...${NC}"
+cat > ./frontend/src/contracts/addresses.ts << EOL
+// Contract addresses - automatically updated by run.sh script
+export const CONTRACT_ADDRESSES = {
+  // Updated with the latest deployment addresses
+  VAULT: '$VAULT_ADDRESS',
+  REGISTRY: '$REGISTRY_ADDRESS',
+  // Mock tokens
+  USDC: '$USDC_ADDRESS',
+  WBTC: '$WBTC_ADDRESS',
+  WETH: '$WETH_ADDRESS',
+  LINK: '$LINK_ADDRESS',
+  UNI: '$UNI_ADDRESS',
+  AAVE: '$AAVE_ADDRESS',
+  // Infrastructure
+  PRICE_ORACLE: '$PRICE_ORACLE_ADDRESS',
+  DEX: '$DEX_ADDRESS',
+};
+EOL
+
+echo -e "${GREEN}Frontend contract addresses updated at ./frontend/src/contracts/addresses.ts${NC}"
 
 # Start frontend in the background
 echo -e "\n${YELLOW}Starting frontend application...${NC}"

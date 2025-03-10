@@ -18,10 +18,10 @@ interface Web3ContextType {
   disconnect: () => void;
   isActive: boolean;
   isLoading: boolean;
-  provider: ethers.BrowserProvider | null;
+  provider: ethers.Provider | null;
   userRole: UserRole;
   setUserRole: (role: UserRole) => void;
-  refreshProvider: () => Promise<ethers.BrowserProvider | null>;
+  refreshProvider: () => Promise<ethers.Provider | null>;
 }
 
 // Create context with default values
@@ -61,9 +61,7 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
   
   // Create a function to get a provider on demand instead of storing it
   const getProvider = useCallback(async () => {
-    console.log('getProvider called, rawProviderFromHook:', !!rawProviderFromHook);
     if (!rawProviderFromHook) {
-      console.log('No raw provider available');
       return null;
     }
     
@@ -71,24 +69,16 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
       // Create a minimal provider that only uses the ethereum object
       // This approach completely avoids circular references
       if (typeof window !== 'undefined' && window.ethereum) {
-        console.log('Creating provider from window.ethereum');
-        console.log('window.ethereum properties:', Object.keys(window.ethereum));
-        // Safely check for MetaMask property
-        console.log('window.ethereum.isMetaMask:', window.ethereum && 'isMetaMask' in window.ethereum ? window.ethereum.isMetaMask : 'not available');
-        
         // Try to get the chainId using the request method with timeout protection
         try {
           if (window.ethereum && 'request' in window.ethereum) {
             // Use Promise.race to add timeout protection
             await Promise.race([
-              window.ethereum.request({ method: 'eth_chainId' })
-                .then((chainId: string) => console.log('Chain ID from request:', chainId))
-                .catch((error: any) => console.error('Error getting chainId:', error)),
+              window.ethereum.request({ method: 'eth_chainId' }),
               new Promise((_, reject) => setTimeout(() => reject(new Error('chainId request timed out')), 3000))
             ]);
           }
         } catch (chainIdError) {
-          console.error('Error or timeout checking chainId:', chainIdError);
           // Continue despite this error - it's not critical
         }
         
@@ -97,38 +87,29 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
           const provider = new ethers.BrowserProvider(window.ethereum);
           
           // Verify provider is working by checking network with timeout
-          const network = await Promise.race([
+          await Promise.race([
             provider.getNetwork(),
             new Promise<never>((_, reject) => 
               setTimeout(() => reject(new Error('Network check timed out')), 3000)
             )
           ]);
           
-          console.log('Provider created successfully, connected to network:', network.chainId.toString());
           return provider;
         } catch (providerError) {
-          console.error('Error creating or verifying provider:', providerError);
-          
           // If provider creation or verification fails, try a different approach
-          console.log('Trying alternative provider creation method...');
-          
           // Force a refresh of accounts first
           try {
             await window.ethereum.request({ method: 'eth_requestAccounts' });
             const freshProvider = new ethers.BrowserProvider(window.ethereum);
-            console.log('Alternative provider created successfully');
             return freshProvider;
           } catch (alternativeError) {
-            console.error('Alternative provider creation failed:', alternativeError);
             return null;
           }
         }
       } else {
-        console.error('No ethereum object found in window');
         return null;
       }
     } catch (error) {
-      console.error('Error creating provider:', error);
       return null;
     }
   }, [rawProviderFromHook]);
@@ -168,43 +149,32 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
 
   // Connect to wallet with improved error handling
   const connect = async () => {
-    console.log('Connect wallet called');
     setIsLoading(true);
     try {
       // Clear any previous state
-      console.log('Resetting MetaMask state');
       await metaMask.resetState();
       
       // Small delay to ensure clean state
-      console.log('Waiting for clean state');
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Activate the connector
-      console.log('Activating MetaMask connector');
       await metaMask.activate();
-      console.log('MetaMask activated successfully');
       
       // Create a new provider after successful connection
-      console.log('Creating new provider');
       const newProvider = await getProvider();
       if (newProvider) {
-        console.log('Provider created successfully, setting library');
         setLibrary(newProvider);
         // Save connection state
         localStorage.setItem('isWalletConnected', 'true');
-        console.log('Wallet connection state saved');
       } else {
-        console.error('Failed to create provider after connection');
         throw new Error('Failed to create provider after connection');
       }
     } catch (error) {
       console.error('Error connecting to wallet:', error);
       // Make sure to clear any partial state
       localStorage.removeItem('isWalletConnected');
-      console.log('Wallet connection state cleared due to error');
     } finally {
       setIsLoading(false);
-      console.log('Connect wallet process completed');
     }
   };
 
@@ -252,7 +222,7 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
                   const provider = new ethers.BrowserProvider(window.ethereum as any);
                   setLibrary(provider);
                 } catch (providerError) {
-                  console.error('Error creating provider during auto-connect:', providerError);
+                  console.error('Error creating provider during auto-connect');
                 }
               }
             }
@@ -282,27 +252,21 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
   
   // Function to refresh the provider - useful for handling BlockOutOfRange errors
   const refreshProvider = useCallback(async () => {
-    console.log('Refreshing provider...');
-    
     // Prevent refreshing more than once every 3 seconds
     const now = Date.now();
     const timeSinceLastRefresh = now - lastRefreshTime;
     if (timeSinceLastRefresh < 3000) {
-      console.log(`Skipping refresh, last refresh was ${timeSinceLastRefresh}ms ago`);
       return library; // Return existing provider if we've refreshed recently
     }
     
     try {
       // Only proceed if we're connected
       if (!isActive) {
-        console.log('Not active, cannot refresh provider');
         return null;
       }
       
       // Use window.ethereum directly to create a fresh provider
       if (typeof window !== 'undefined' && window.ethereum) {
-        console.log('Creating fresh provider from window.ethereum');
-        
         try {
           // Request accounts to ensure connection is fresh
           await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -311,25 +275,61 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
           const freshProvider = new ethers.BrowserProvider(window.ethereum);
           
           // Check network and block number to verify provider is working
-          const network = await freshProvider.getNetwork();
-          console.log('Network after refresh:', network.chainId.toString());
+          await freshProvider.getNetwork();
+          const latestBlock = await freshProvider.getBlockNumber();
+          console.log('Connected to network with latest block:', latestBlock);
           
-          const blockNumber = await freshProvider.getBlockNumber();
-          console.log('Block number after refresh:', blockNumber);
+          // Create a wrapper around the provider to handle block height errors
+          const enhancedProvider = freshProvider;
+          
+          // Store the original call method
+          const originalCall = freshProvider.call.bind(freshProvider);
+          
+          // Override the call method to handle block height errors
+          const enhancedCall = async (transaction: ethers.TransactionRequest): Promise<string> => {
+            try {
+              // First try with the original method
+              return await originalCall(transaction);
+            } catch (error: any) {
+              // Check if this is a block height error
+              const errorMsg = error?.message || '';
+              const errorData = error?.data?.message || '';
+              const isBlockHeightError = 
+                errorMsg.includes('block height') || 
+                errorMsg.includes('BlockOutOfRange') ||
+                errorData.includes('block height') ||
+                errorData.includes('BlockOutOfRange');
+              
+              if (isBlockHeightError) {
+                console.log(`Block height error detected, forcing latest block`);
+                // Force the transaction to use the latest block
+                const txWithLatestBlock = {
+                  ...transaction,
+                  blockTag: 'latest'
+                };
+                return await originalCall(txWithLatestBlock);
+              }
+              
+              // Re-throw other errors
+              throw error;
+            }
+          };
+          
+          // Replace the call method
+          (enhancedProvider as any).call = enhancedCall;
           
           // Update the library state
-          setLibrary(freshProvider);
+          setLibrary(enhancedProvider);
           
           // Update last refresh time
           setLastRefreshTime(now);
           
-          return freshProvider;
+          return enhancedProvider;
         } catch (error) {
           console.error('Error refreshing provider:', error);
           return library; // Return existing provider as fallback
         }
       } else {
-        console.error('No ethereum object found in window');
         return library; // Return existing provider as fallback
       }
     } catch (error) {

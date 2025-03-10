@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
-// Provider adapters are no longer needed
 import {
   IndexFundVaultInterface,
   IndexRegistryInterface,
@@ -10,8 +9,30 @@ import {
   ERC20ABI,
   Token
 } from '../contracts/contractTypes';
-
 import { CONTRACT_ADDRESSES } from '../contracts/addresses';
+
+// Declare module augmentation to extend ethers.Provider with getSigner method
+declare module 'ethers' {
+  interface Provider {
+    getSigner?: () => Promise<ethers.Signer>;
+  }
+}
+
+// Helper function to safely get a signer from a provider
+const getSafeSignerFromProvider = async (provider: ethers.Provider): Promise<ethers.Signer | null> => {
+  if (!provider) return null;
+  
+  try {
+    // Check if the provider has getSigner method
+    if (provider.getSigner) {
+      return await provider.getSigner();
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting signer from provider:', error);
+    return null;
+  }
+};
 
 interface UseContractsReturn {
   vaultContract: IndexFundVaultInterface | null;
@@ -22,12 +43,37 @@ interface UseContractsReturn {
 }
 
 export const useContracts = (): UseContractsReturn => {
-  const { provider, isActive } = useWeb3();
+  const { provider, isActive, refreshProvider } = useWeb3();
   const [vaultContract, setVaultContract] = useState<IndexFundVaultInterface | null>(null);
   const [registryContract, setRegistryContract] = useState<IndexRegistryInterface | null>(null);
   const [indexTokens, setIndexTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Helper function to check if an error is a BlockOutOfRangeError
+  const isBlockOutOfRangeError = useCallback((error: any): boolean => {
+    if (!error) return false;
+    
+    // Handle different error formats
+    const errorMessage = typeof error === 'string' 
+      ? error 
+      : error.message || '';
+      
+    // Check for nested error data (common in RPC errors)
+    const errorData = error?.data?.message || '';
+    const nestedError = error?.error?.message || '';
+    const errorJson = typeof error?.error === 'string' ? error.error : '';
+    
+    return errorMessage.includes('BlockOutOfRange') || 
+           errorData.includes('BlockOutOfRange') ||
+           nestedError.includes('BlockOutOfRange') ||
+           errorJson.includes('BlockOutOfRange') ||
+           errorMessage.includes('block height') || 
+           errorData.includes('block height') ||
+           nestedError.includes('block height') ||
+           errorJson.includes('block height');
+  }, []);
 
   // Initialize contracts when provider is available - simplified to avoid circular references
   useEffect(() => {
@@ -47,23 +93,35 @@ export const useContracts = (): UseContractsReturn => {
           const network = await provider.getNetwork();
           console.log('Connected to network:', {
             chainId: network.chainId,
-            name: network.name,
-            provider: provider.constructor.name
+            name: network.name
           });
         } catch (networkError) {
           console.error('Error getting network information:', networkError);
+          
+          // Check if this is a BlockOutOfRangeError and handle it
+          if (isBlockOutOfRangeError(networkError) && retryCount < 3) {
+            console.log(`BlockOutOfRangeError detected, refreshing provider (attempt ${retryCount + 1}/3)`);
+            setRetryCount(prev => prev + 1);
+            
+            try {
+              if (refreshProvider) {
+                const freshProvider = await refreshProvider();
+                if (freshProvider) {
+                  console.log('Provider refreshed successfully, retrying contract initialization');
+                  setIsLoading(false);
+                  return; // Exit and let the useEffect retry with the new provider
+                }
+              }
+            } catch (refreshError) {
+              console.error('Error refreshing provider:', refreshError);
+            }
+          }
         }
         
-        // Get a signer for transactions if available
-        let signer;
-        try {
-          signer = await provider.getSigner();
-          console.log('Signer obtained successfully');
-          // Test signer by getting the address
-          const signerAddress = await signer.getAddress();
-          console.log('Signer address:', signerAddress);
-        } catch (signerError) {
-          console.error('Error getting signer, falling back to provider only:', signerError);
+        // Get a signer for transactions if available using our helper function
+        let signer = await getSafeSignerFromProvider(provider);
+        if (!signer) {
+          console.log('Provider does not have getSigner method or getting signer failed, using provider only');
         }
         
         // Verify contract addresses are valid
@@ -74,16 +132,6 @@ export const useContracts = (): UseContractsReturn => {
           throw new Error(`Invalid registry address: ${CONTRACT_ADDRESSES.REGISTRY}`);
         }
         
-        // Initialize vault contract with provider for read-only operations
-        console.log('Initializing vault contract with address:', CONTRACT_ADDRESSES.VAULT);
-        console.log('Vault ABI first function:', IndexFundVaultABI[0]);
-        console.log('Provider type:', provider.constructor.name);
-        if (signer) {
-          console.log('Signer type:', signer.constructor.name);
-        } else {
-          console.log('No signer available, using provider only');
-        }
-        
         // Create contracts with error handling
         let vault, registry;
         try {
@@ -92,10 +140,29 @@ export const useContracts = (): UseContractsReturn => {
             IndexFundVaultABI,
             provider
           );
-          console.log('Vault contract created successfully');
         } catch (error) {
           const vaultError = error as Error;
           console.error('Error creating vault contract:', vaultError);
+          
+          // Check if this is a BlockOutOfRangeError and handle it
+          if (isBlockOutOfRangeError(vaultError) && retryCount < 3) {
+            console.log(`BlockOutOfRangeError detected, refreshing provider (attempt ${retryCount + 1}/3)`);
+            setRetryCount(prev => prev + 1);
+            
+            try {
+              if (refreshProvider) {
+                const freshProvider = await refreshProvider();
+                if (freshProvider) {
+                  console.log('Provider refreshed successfully, retrying contract initialization');
+                  setIsLoading(false);
+                  return; // Exit and let the useEffect retry with the new provider
+                }
+              }
+            } catch (refreshError) {
+              console.error('Error refreshing provider:', refreshError);
+            }
+          }
+          
           throw new Error(`Failed to create vault contract: ${vaultError.message || 'Unknown error'}`);
         }
         
@@ -105,10 +172,29 @@ export const useContracts = (): UseContractsReturn => {
             IndexRegistryABI,
             provider
           );
-          console.log('Registry contract created successfully');
         } catch (error) {
           const registryError = error as Error;
           console.error('Error creating registry contract:', registryError);
+          
+          // Check if this is a BlockOutOfRangeError and handle it
+          if (isBlockOutOfRangeError(registryError) && retryCount < 3) {
+            console.log(`BlockOutOfRangeError detected, refreshing provider (attempt ${retryCount + 1}/3)`);
+            setRetryCount(prev => prev + 1);
+            
+            try {
+              if (refreshProvider) {
+                const freshProvider = await refreshProvider();
+                if (freshProvider) {
+                  console.log('Provider refreshed successfully, retrying contract initialization');
+                  setIsLoading(false);
+                  return; // Exit and let the useEffect retry with the new provider
+                }
+              }
+            } catch (refreshError) {
+              console.error('Error refreshing provider:', refreshError);
+            }
+          }
+          
           throw new Error(`Failed to create registry contract: ${registryError.message || 'Unknown error'}`);
         }
         
@@ -117,7 +203,6 @@ export const useContracts = (): UseContractsReturn => {
         if (signer) {
           try {
             vaultWithSigner = vault.connect(signer);
-            console.log('Connected signer to vault contract');
           } catch (connectError) {
             console.error('Error connecting signer to vault contract:', connectError);
             vaultWithSigner = vault; // Fallback to provider-only
@@ -125,7 +210,6 @@ export const useContracts = (): UseContractsReturn => {
           
           try {
             registryWithSigner = registry.connect(signer);
-            console.log('Connected signer to registry contract');
           } catch (connectError) {
             console.error('Error connecting signer to registry contract:', connectError);
             registryWithSigner = registry; // Fallback to provider-only
@@ -138,10 +222,30 @@ export const useContracts = (): UseContractsReturn => {
         // Test contract connectivity
         try {
           // Try a simple read-only call to verify connectivity
-          const totalSupply = await vault.totalSupply();
-          console.log('Successfully connected to vault contract. Total supply:', totalSupply.toString());
+          await vault.totalSupply();
+          // Reset retry count on success
+          setRetryCount(0);
         } catch (testError) {
           console.warn('Could not verify vault contract connectivity:', testError);
+          
+          // If it's a BlockOutOfRangeError, try refreshing the provider
+          if (isBlockOutOfRangeError(testError) && retryCount < 3) {
+            console.log(`BlockOutOfRangeError detected, refreshing provider (attempt ${retryCount + 1}/3)`);
+            setRetryCount(prev => prev + 1);
+            
+            try {
+              if (refreshProvider) {
+                const freshProvider = await refreshProvider();
+                if (freshProvider) {
+                  console.log('Provider refreshed successfully, retrying contract initialization');
+                  setIsLoading(false);
+                  return; // Exit and let the useEffect retry with the new provider
+                }
+              }
+            } catch (refreshError) {
+              console.error('Error refreshing provider:', refreshError);
+            }
+          }
           // Continue anyway as this might be due to empty vault
         }
         
@@ -155,6 +259,26 @@ export const useContracts = (): UseContractsReturn => {
       } catch (error) {
         const err = error as Error;
         console.error('Error initializing contracts:', err);
+        
+        // If it's a BlockOutOfRangeError, try refreshing the provider
+        if (isBlockOutOfRangeError(err) && retryCount < 3) {
+          console.log(`BlockOutOfRangeError detected in contract initialization, refreshing provider (attempt ${retryCount + 1}/3)`);
+          setRetryCount(prev => prev + 1);
+          
+          try {
+            if (refreshProvider) {
+              const freshProvider = await refreshProvider();
+              if (freshProvider) {
+                console.log('Provider refreshed successfully, retrying contract initialization');
+                setIsLoading(false);
+                return; // Exit and let the useEffect retry with the new provider
+              }
+            }
+          } catch (refreshError) {
+            console.error('Error refreshing provider:', refreshError);
+          }
+        }
+        
         setError(`Failed to initialize contracts: ${err.message || 'Unknown error'}`);
         setVaultContract(null);
         setRegistryContract(null);
@@ -164,7 +288,7 @@ export const useContracts = (): UseContractsReturn => {
     };
     
     initializeContracts();
-  }, [provider, isActive]);
+  }, [provider, isActive, refreshProvider, retryCount, isBlockOutOfRangeError]);
 
   // Load index tokens when registry contract is available
   useEffect(() => {
@@ -182,13 +306,51 @@ export const useContracts = (): UseContractsReturn => {
           const useHardcodedValues = true; // Set to false in production
           
           if (useHardcodedValues) {
-            console.log('Using hardcoded token values for testing');
-            // Example tokens - replace with your test tokens
-            tokenAddresses = [
-              '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
-              '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
-              '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'  // WBTC
-            ];
+            console.log('Using hardcoded token values for index testing');
+            
+            // Check if we're on a local testnet (Anvil) with chainId 31337
+            // If so, use the deployed contract addresses from addresses.ts
+            let usingLocalAddresses = false;
+            
+            try {
+              // Import the contract addresses dynamically
+              const { CONTRACT_ADDRESSES } = await import('../contracts/addresses');
+              
+              // Use provider.getNetwork() to check the chain ID
+              if (provider) {
+                const network = await provider.getNetwork();
+                const chainId = network.chainId;
+                const localChainId = 31337;
+                
+                const isLocalNetwork = typeof chainId === 'bigint' ? 
+                  chainId === BigInt(localChainId) : 
+                  Number(chainId) === localChainId;
+                
+                if (isLocalNetwork) {
+                  console.log('Using local testnet token addresses for index');
+                  tokenAddresses = [
+                    CONTRACT_ADDRESSES.USDC, // USDC
+                    CONTRACT_ADDRESSES.WETH, // WETH
+                    CONTRACT_ADDRESSES.WBTC  // WBTC
+                  ];
+                  usingLocalAddresses = true;
+                }
+              }
+            } catch (error) {
+              console.error('Error determining chain or loading contract addresses:', error);
+            }
+            
+            // If not on local testnet or if there was an error, use mainnet addresses
+            if (!usingLocalAddresses) {
+              console.log('Using mainnet token addresses for index');
+              tokenAddresses = [
+                '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
+                '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
+                '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'  // WBTC
+              ];
+            }
+            
+            // Weights are the same regardless of network
             weights = [
               BigInt('500000000000000000'), // 50%
               BigInt('300000000000000000'), // 30%
@@ -558,35 +720,83 @@ export const useContracts = (): UseContractsReturn => {
             // Common token symbols for known addresses (fallback)
             // This is a comprehensive list of popular tokens with their correct decimals
             // Used as a fallback when contract calls fail
-            const knownTokens: Record<string, {symbol: string, decimals: number}> = {
-              // Major tokens
-              '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': { symbol: 'USDC', decimals: 6 },
-              '0xdac17f958d2ee523a2206206994597c13d831ec7': { symbol: 'USDT', decimals: 6 },
-              '0x6b175474e89094c44da98b954eedeac495271d0f': { symbol: 'DAI', decimals: 18 },
-              '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599': { symbol: 'WBTC', decimals: 8 },
-              '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': { symbol: 'WETH', decimals: 18 },
+            let knownTokens: Record<string, {symbol: string, decimals: number}> = {};
+            
+            // Check if we're on a local testnet (Anvil) with chainId 31337
+            // If so, use the deployed contract addresses from addresses.ts
+            try {
+              // Use provider.getNetwork() which is available on all provider types
+              const network = await provider.getNetwork();
+              const chainId = network.chainId;
+              console.log(`Current chain ID: ${chainId}`);
               
-              // DeFi tokens
-              '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984': { symbol: 'UNI', decimals: 18 },
-              '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9': { symbol: 'AAVE', decimals: 18 },
-              '0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e': { symbol: 'YFI', decimals: 18 },
-              '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2': { symbol: 'MKR', decimals: 18 },
-              '0xba100000625a3754423978a60c9317c58a424e3d': { symbol: 'BAL', decimals: 18 },
-              '0xc944e90c64b2c07662a292be6244bdf05cda44a7': { symbol: 'GRT', decimals: 18 },
-              '0x4e15361fd6b4bb609fa63c81a2be19d873717870': { symbol: 'FTM', decimals: 18 },
-              '0x514910771af9ca656af840dff83e8264ecf986ca': { symbol: 'LINK', decimals: 18 },
-              '0x111111111117dc0aa78b770fa6a738034120c302': { symbol: '1INCH', decimals: 18 },
-              '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0': { symbol: 'MATIC', decimals: 18 },
-              '0x6810e776880c02933d47db1b9fc05908e5386b96': { symbol: 'GNO', decimals: 18 },
+              // In ethers v6, chainId is returned as a bigint
+              // Convert to number for comparison or compare with BigInt
+              const localChainId = 31337;
+              const isLocalNetwork = typeof chainId === 'bigint' ? 
+                chainId === BigInt(localChainId) : 
+                Number(chainId) === localChainId;
               
-              // Stablecoins
-              '0x4fabb145d64652a948d72533023f6e7a623c7c53': { symbol: 'BUSD', decimals: 18 },
-              '0x8e870d67f660d95d5be530380d0ec0bd388289e1': { symbol: 'PAX', decimals: 18 },
-              '0x056fd409e1d7a124bd7017459dfea2f387b6d5cd': { symbol: 'GUSD', decimals: 2 },
-              '0x0000000000085d4780b73119b644ae5ecd22b376': { symbol: 'TUSD', decimals: 18 },
-              '0x5f98805a4e8be255a32880fdec7f6728c6568ba0': { symbol: 'LUSD', decimals: 18 },
-              '0x853d955acef822db058eb8505911ed77f175b99e': { symbol: 'FRAX', decimals: 18 },
-            };
+              if (isLocalNetwork) {
+                console.log('Using local testnet contract addresses for token metadata');
+                // Import the contract addresses from addresses.ts
+                const { CONTRACT_ADDRESSES } = await import('../contracts/addresses');
+                
+                // Add local testnet token addresses with their symbols and decimals
+                knownTokens = {
+                  // Convert addresses to lowercase for case-insensitive matching
+                  [CONTRACT_ADDRESSES.USDC.toLowerCase()]: { symbol: 'USDC', decimals: 6 },
+                  [CONTRACT_ADDRESSES.WBTC.toLowerCase()]: { symbol: 'WBTC', decimals: 8 },
+                  [CONTRACT_ADDRESSES.WETH.toLowerCase()]: { symbol: 'WETH', decimals: 18 },
+                  [CONTRACT_ADDRESSES.LINK.toLowerCase()]: { symbol: 'LINK', decimals: 18 },
+                  [CONTRACT_ADDRESSES.UNI.toLowerCase()]: { symbol: 'UNI', decimals: 18 },
+                  [CONTRACT_ADDRESSES.AAVE.toLowerCase()]: { symbol: 'AAVE', decimals: 18 },
+                };
+                console.log('Local testnet token addresses loaded:', knownTokens);
+              } else {
+                // For mainnet and other networks, use the standard token addresses
+                knownTokens = {
+                  // Major tokens
+                  '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': { symbol: 'USDC', decimals: 6 },
+                  '0xdac17f958d2ee523a2206206994597c13d831ec7': { symbol: 'USDT', decimals: 6 },
+                  '0x6b175474e89094c44da98b954eedeac495271d0f': { symbol: 'DAI', decimals: 18 },
+                  '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599': { symbol: 'WBTC', decimals: 8 },
+                  '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': { symbol: 'WETH', decimals: 18 },
+                  
+                  // DeFi tokens
+                  '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984': { symbol: 'UNI', decimals: 18 },
+                  '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9': { symbol: 'AAVE', decimals: 18 },
+                  '0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e': { symbol: 'YFI', decimals: 18 },
+                  '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2': { symbol: 'MKR', decimals: 18 },
+                  '0xba100000625a3754423978a60c9317c58a424e3d': { symbol: 'BAL', decimals: 18 },
+                  '0xc944e90c64b2c07662a292be6244bdf05cda44a7': { symbol: 'GRT', decimals: 18 },
+                  '0x4e15361fd6b4bb609fa63c81a2be19d873717870': { symbol: 'FTM', decimals: 18 },
+                  '0x514910771af9ca656af840dff83e8264ecf986ca': { symbol: 'LINK', decimals: 18 },
+                  '0x111111111117dc0aa78b770fa6a738034120c302': { symbol: '1INCH', decimals: 18 },
+                  '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0': { symbol: 'MATIC', decimals: 18 },
+                  '0x6810e776880c02933d47db1b9fc05908e5386b96': { symbol: 'GNO', decimals: 18 },
+                  
+                  // Stablecoins
+                  '0x4fabb145d64652a948d72533023f6e7a623c7c53': { symbol: 'BUSD', decimals: 18 },
+                  '0x8e870d67f660d95d5be530380d0ec0bd388289e1': { symbol: 'PAX', decimals: 18 },
+                  '0x056fd409e1d7a124bd7017459dfea2f387b6d5cd': { symbol: 'GUSD', decimals: 2 },
+                  '0x0000000000085d4780b73119b644ae5ecd22b376': { symbol: 'TUSD', decimals: 18 },
+                  '0x5f98805a4e8be255a32880fdec7f6728c6568ba0': { symbol: 'LUSD', decimals: 18 },
+                  '0x853d955acef822db058eb8505911ed77f175b99e': { symbol: 'FRAX', decimals: 18 },
+                };
+              }
+            } catch (error) {
+              console.error('Error determining chain or loading contract addresses:', error);
+              // Fallback to mainnet addresses if there's an error
+              knownTokens = {
+                '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': { symbol: 'USDC', decimals: 6 },
+                '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599': { symbol: 'WBTC', decimals: 8 },
+                '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': { symbol: 'WETH', decimals: 18 },
+                '0x514910771af9ca656af840dff83e8264ecf986ca': { symbol: 'LINK', decimals: 18 },
+                '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984': { symbol: 'UNI', decimals: 18 },
+                '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9': { symbol: 'AAVE', decimals: 18 }
+              };
+            }
             
             const normalizedAddress = address.toLowerCase();
             let symbol = 'UNKNOWN';
@@ -834,6 +1044,10 @@ export const useERC20 = (tokenAddress: string) => {
       
       // Get signer
       console.log('Getting signer...');
+      if (!provider.getSigner) {
+        console.error('Provider does not have getSigner method');
+        return false;
+      }
       const signer = await provider.getSigner();
       const signerAddress = await signer.getAddress();
       console.log('Signer address:', signerAddress);
