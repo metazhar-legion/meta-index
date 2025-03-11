@@ -172,10 +172,17 @@ const VaultStats: React.FC = () => {
       const userSharesBigInt = userShares ? BigInt(userShares.toString()) : BigInt(0);
       const totalAssetsBigInt = totalAssets ? BigInt(totalAssets.toString()) : BigInt(0);
       
+      logger.debug('BigInt values for calculation:');
+      logger.debug('- totalSupplyBigInt:', totalSupplyBigInt.toString());
+      logger.debug('- userSharesBigInt:', userSharesBigInt.toString());
+      logger.debug('- totalAssetsBigInt:', totalAssetsBigInt.toString());
+      
       if (totalSupplyBigInt > BigInt(0) && userSharesBigInt > BigInt(0)) {
         // Calculate user assets based on their share of the pool
         userAssets = (userSharesBigInt * totalAssetsBigInt) / totalSupplyBigInt;
         logger.debug('Calculated userAssets:', userAssets.toString());
+      } else {
+        logger.debug('Cannot calculate userAssets: totalSupply or userShares is zero');
       }
       
       // Format the values using our standardized formatting utilities
@@ -184,15 +191,27 @@ const VaultStats: React.FC = () => {
       const formattedTotalShares = formatTokenAmount(totalSupplyBigInt, 18);
       const formattedUserShares = formatTokenAmount(userSharesBigInt, 18);
       
+      logger.debug('Formatted values:');
+      logger.debug('- formattedTotalAssets:', formattedTotalAssets);
+      logger.debug('- formattedTotalShares:', formattedTotalShares);
+      logger.debug('- formattedUserShares:', formattedUserShares);
+      
       // Calculate user assets in USDC - remove the $ prefix from formatted values for calculations
       const totalAssetsNum = parseFloat(formattedTotalAssets.replace('$', '').replace(/,/g, ''));
       const totalSharesNum = parseFloat(formattedTotalShares.replace(/,/g, ''));
       const userSharesNum = parseFloat(formattedUserShares.replace(/,/g, ''));
       
+      logger.debug('Parsed numeric values:');
+      logger.debug('- totalAssetsNum:', totalAssetsNum);
+      logger.debug('- totalSharesNum:', totalSharesNum);
+      logger.debug('- userSharesNum:', userSharesNum);
+      
       // Calculate user assets in USDC
       const formattedUserAssets: number = userSharesNum > 0 && totalSharesNum > 0 
         ? (userSharesNum / totalSharesNum) * totalAssetsNum
         : 0;
+      
+      logger.debug('Calculated formattedUserAssets:', formattedUserAssets);
       
       // Calculate share price (USDC per share)
       const formattedSharePrice = totalSharesNum > 0
