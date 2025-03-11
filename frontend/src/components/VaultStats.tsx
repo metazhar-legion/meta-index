@@ -92,6 +92,17 @@ const VaultStats: React.FC = () => {
   // Generate sample data for the chart and persist it between renders
   const [chartData, setChartData] = useState(() => generateSampleData());
   
+  // Function to update chart data with real values when available
+  const updateChartData = useCallback((sharePrice: number) => {
+    // In a real implementation, we would fetch historical data
+    // For now, we'll just update the last data point with the current share price
+    if (chartData.length > 0) {
+      const newData = [...chartData];
+      newData[newData.length - 1].value = sharePrice;
+      setChartData(newData);
+    }
+  }, [chartData]);
+  
   // Constants
   const MAX_RETRIES = 3;
 
@@ -115,17 +126,26 @@ const VaultStats: React.FC = () => {
       
       // Use safe contract calls with standardized error handling
       const totalAssets = await withRetry(
-        () => safeContractCall(vaultContract, 'totalAssets', []), 
+        async () => {
+          const result = await safeContractCall(vaultContract, 'totalAssets', []); 
+          return result;
+        }, 
         MAX_RETRIES
       );
       
       const totalSupply = await withRetry(
-        () => safeContractCall(vaultContract, 'totalSupply', []), 
+        async () => {
+          const result = await safeContractCall(vaultContract, 'totalSupply', []);
+          return result;
+        }, 
         MAX_RETRIES
       );
       
       const userShares = await withRetry(
-        () => safeContractCall(vaultContract, 'balanceOf', [account]), 
+        async () => {
+          const result = await safeContractCall(vaultContract, 'balanceOf', [account]);
+          return result;
+        }, 
         MAX_RETRIES
       );
       
@@ -135,28 +155,38 @@ const VaultStats: React.FC = () => {
       // Calculate derived values
       let userAssets = BigInt(0);
       
-      if (totalSupply && totalSupply > BigInt(0)) {
+      if (totalSupply && BigInt(totalSupply) > BigInt(0)) {
         // Calculate user assets based on their share of the pool
-        if (userShares && userShares > BigInt(0)) {
-          userAssets = (userShares * totalAssets) / totalSupply;
+        if (userShares && BigInt(userShares) > BigInt(0)) {
+          // Ensure all values are BigInt for calculation
+          const userSharesBigInt = BigInt(userShares);
+          const totalAssetsBigInt = BigInt(totalAssets);
+          const totalSupplyBigInt = BigInt(totalSupply);
+          
+          userAssets = (userSharesBigInt * totalAssetsBigInt) / totalSupplyBigInt;
           logger.debug('Calculated userAssets:', userAssets.toString());
         }
       }
       
       // Format the values using our standardized formatting utilities
       // USDC has 6 decimals, shares have 18 decimals
-      const formattedTotalAssets = formatCurrency(totalAssets || BigInt(0), 6);
-      const formattedTotalShares = formatTokenAmount(totalSupply || BigInt(0), 6);
-      const formattedUserShares = formatTokenAmount(userShares || BigInt(0), 6);
+      const formattedTotalAssets = formatCurrency(totalAssets || BigInt(0), 2);
+      const formattedTotalShares = formatTokenAmount(totalSupply || BigInt(0), 18, 4);
+      const formattedUserShares = formatTokenAmount(userShares || BigInt(0), 18, 4);
+      
+      // Calculate user assets in USDC - remove the $ prefix from formatted values for calculations
+      const totalAssetsNum = parseFloat(formattedTotalAssets.replace('$', '').replace(/,/g, ''));
+      const totalSharesNum = parseFloat(formattedTotalShares.replace(/,/g, ''));
+      const userSharesNum = parseFloat(formattedUserShares.replace(/,/g, ''));
       
       // Calculate user assets in USDC
-      const formattedUserAssets = Number(formattedUserShares) > 0 && Number(formattedTotalShares) > 0 
-        ? (Number(formattedUserShares) / Number(formattedTotalShares)) * Number(formattedTotalAssets)
+      const formattedUserAssets = userSharesNum > 0 && totalSharesNum > 0 
+        ? (userSharesNum / totalSharesNum) * totalAssetsNum
         : 0;
       
       // Calculate share price (USDC per share)
-      const formattedSharePrice = Number(formattedTotalShares) > 0
-        ? Number(formattedTotalAssets) / Number(formattedTotalShares)
+      const formattedSharePrice = totalSharesNum > 0
+        ? totalAssetsNum / totalSharesNum
         : 100; // Default to 100 if no shares exist yet
       
       const newStats = {
@@ -166,6 +196,9 @@ const VaultStats: React.FC = () => {
         userAssets: formattedUserAssets.toFixed(2),
         sharePrice: formattedSharePrice.toFixed(2),
       };
+      
+      // Update chart data with the latest share price
+      updateChartData(formattedSharePrice);
       
       logger.info('Vault statistics loaded successfully');
       
@@ -212,33 +245,53 @@ const VaultStats: React.FC = () => {
   }, [vaultContract, provider, account, loadVaultStats, isInitialLoad]);
   
   // Use the standardized blockchain events hook for event subscription
-  useBlockchainEvents(
-    EVENTS.VAULT_TRANSACTION_COMPLETED,
-    () => {
+  useBlockchainEvents({
+    eventName: EVENTS.VAULT_TRANSACTION_COMPLETED,
+    handler: () => {
       logger.info('Vault transaction completed, refreshing statistics');
       // Skip loading state for transaction events to avoid UI flicker
       loadVaultStats(true);
     },
-    2000 // 2 second delay to ensure blockchain state is updated
-  );
+    delay: 2000 // 2 second delay to ensure blockchain state is updated
+  });
 
   // Only show loading state for the initial load or explicit refresh actions
   const isDataLoading = (loading && isInitialLoad) || contractsLoading;
   
-  // Format numbers with commas
-  const formatNumber = (value: string | number) => {
-    const num = typeof value === 'string' ? parseFloat(value) : value;
+  // Format numbers with commas - using our standardized formatting utility
+  const formatNumber = (value: string | number | bigint | null | undefined): string => {
+    if (value === null || value === undefined) return '0.00';
+    
+    let num: number;
+    if (typeof value === 'bigint') {
+      num = Number(value.toString());
+    } else if (typeof value === 'string') {
+      num = parseFloat(value);
+    } else {
+      num = value;
+    }
+    
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(num);
+    }).format(isNaN(num) ? 0 : num);
   };
   
   // Calculate percentage change (for demo purposes)
   const calculateChange = () => {
-    if (chartData.length < 2) return { value: 0, isPositive: true };
-    const firstValue = chartData[0].value;
-    const lastValue = chartData[chartData.length - 1].value;
+    if (chartData.length < 2) return { value: '0', isPositive: true };
+    
+    // Ensure values are numbers for calculation
+    const firstValue = typeof chartData[0].value === 'string' ? 
+      parseFloat(chartData[0].value) : chartData[0].value;
+    
+    const lastValue = typeof chartData[chartData.length - 1].value === 'string' ? 
+      parseFloat(chartData[chartData.length - 1].value) : chartData[chartData.length - 1].value;
+    
+    if (isNaN(firstValue) || isNaN(lastValue) || firstValue === 0) {
+      return { value: '0', isPositive: true };
+    }
+    
     const change = ((lastValue - firstValue) / firstValue) * 100;
     return { value: Math.abs(change).toFixed(2), isPositive: change >= 0 };
   };
@@ -292,7 +345,7 @@ const VaultStats: React.FC = () => {
                 prefix="$"
                 decimals={2}
                 change={{
-                  value: change.value,
+                  value: change.value.toString(),
                   isPositive: change.isPositive,
                   period: '7d'
                 }}

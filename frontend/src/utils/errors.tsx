@@ -89,7 +89,8 @@ export const withRetry = async <T extends any>(
       lastError = error;
       
       // Don't retry user rejections
-      if (error.message && error.message.includes('user rejected')) {
+      if (error && typeof error === 'object' && 'message' in error && 
+          typeof error.message === 'string' && error.message.includes('user rejected')) {
         throw error;
       }
       

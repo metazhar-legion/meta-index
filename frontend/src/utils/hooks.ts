@@ -144,13 +144,46 @@ export function useContractCall<T>(
 
 // Hook for handling blockchain events
 export function useBlockchainEvents(
+  eventConfig: { eventName: string; handler: () => void; delay?: number }
+): void;
+
+// Legacy method signature for backward compatibility
+export function useBlockchainEvents(
   eventName: string,
   handler: () => void,
-  delay: number = 2000
+  delay?: number
+): void;
+
+// Implementation that handles both signatures
+export function useBlockchainEvents(
+  eventNameOrConfig: string | { eventName: string; handler: () => void; delay?: number },
+  handlerOrUndefined?: () => void,
+  delayOrUndefined?: number
 ) {
   useEffect(() => {
     // Import eventBus dynamically to avoid circular dependencies
     const { default: eventBus, EVENTS } = require('./eventBus');
+    
+    // Determine parameters based on signature used
+    let eventName: string;
+    let handler: () => void;
+    let delay: number = 2000; // Default delay
+    
+    if (typeof eventNameOrConfig === 'string') {
+      // Legacy signature
+      eventName = eventNameOrConfig;
+      handler = handlerOrUndefined as () => void;
+      if (delayOrUndefined !== undefined) {
+        delay = delayOrUndefined;
+      }
+    } else {
+      // Object signature
+      eventName = eventNameOrConfig.eventName;
+      handler = eventNameOrConfig.handler;
+      if (eventNameOrConfig.delay !== undefined) {
+        delay = eventNameOrConfig.delay;
+      }
+    }
     
     // Create the event handler with delay
     const eventHandler = () => {
@@ -167,5 +200,5 @@ export function useBlockchainEvents(
     return () => {
       unsubscribe();
     };
-  }, [eventName, handler, delay]);
+  }, [eventNameOrConfig, handlerOrUndefined, delayOrUndefined]);
 }

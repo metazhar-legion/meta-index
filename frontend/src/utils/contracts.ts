@@ -46,17 +46,19 @@ export const initializeContract = async <T extends ethers.Contract>(
 
 // Safely call a contract read method with proper error handling
 export const safeContractCall = async <T>(
-  contractFn: () => Promise<T>,
-  fallbackValue: T,
+  contract: any,
   methodName: string,
-  maxRetries: number = 3
+  args: any[] = [],
+  fallbackValue?: T
 ): Promise<T> => {
   try {
-    // Use the retry mechanism for resilience
-    const result = await withRetry(
-      async () => await contractFn(),
-      maxRetries
-    );
+    if (!contract || typeof contract[methodName] !== 'function') {
+      logger.error(`Invalid contract or method: ${methodName}`);
+      return fallbackValue as T;
+    }
+    
+    // Call the contract method with the provided arguments
+    const result = await contract[methodName](...args);
     
     logger.debug(`Contract call successful: ${methodName}`, result);
     return result;
@@ -69,9 +71,9 @@ export const safeContractCall = async <T>(
 // Safely execute a contract write method (transaction)
 export const safeContractTransaction = async <T>(
   contractFn: () => Promise<ethers.ContractTransactionResponse>,
+  methodName: string,
   onSuccess?: (receipt: ethers.ContractTransactionReceipt) => Promise<T> | T,
-  onError?: (error: any) => void,
-  methodName: string
+  onError?: (error: any) => void
 ): Promise<T | null> => {
   try {
     logger.info(`Sending transaction: ${methodName}`);
@@ -85,7 +87,7 @@ export const safeContractTransaction = async <T>(
     logger.logTransaction(tx.hash, methodName, 'confirmed');
     
     // Call success callback if provided
-    if (onSuccess) {
+    if (onSuccess && receipt) {
       return await onSuccess(receipt);
     }
     
@@ -160,14 +162,13 @@ export const ensureTokenAllowance = async (
     // Request approval
     await safeContractTransaction(
       () => tokenContract.approve(spenderAddress, amount),
+      'approve',
       () => {
         if (onApprovalComplete) {
           onApprovalComplete();
         }
         return true;
-      },
-      undefined,
-      'approve'
+      }
     );
     
     return true;
