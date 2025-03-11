@@ -118,7 +118,7 @@ const VaultStats: React.FC = () => {
     // Ensure we have a connected contract with the current provider
     try {
       // Quick test call to ensure contract is connected
-      await vaultContract.symbol();
+      await vaultContract.totalAssets();
     } catch (error) {
       logger.warn('Contract connection issue detected, attempting to refresh provider');
       if (refreshProvider) {
