@@ -17,7 +17,7 @@ const theme = createTheme({
     primary: {
       main: primaryColor,
       light: alpha(primaryColor, 0.8),
-      dark: alpha(primaryColor, 1.2),
+      dark: alpha(primaryColor, 0.9),
     },
     secondary: {
       main: secondaryColor,

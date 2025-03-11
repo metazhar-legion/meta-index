@@ -61,10 +61,21 @@ const VaultStats: React.FC = () => {
     userAssets: '0',
     sharePrice: '0',
   });
+  // Add a separate state for pending stats to avoid UI flickering
+  const [pendingStats, setPendingStats] = useState<{
+    totalAssets: string;
+    totalShares: string;
+    userShares: string;
+    userAssets: string;
+    sharePrice: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   const MAX_RETRIES = 3;
+  // Minimum time between visual updates (in ms)
+  const MIN_UPDATE_INTERVAL = 3000;
 
   // Helper function to check if an error is a BlockOutOfRangeError
   const isBlockOutOfRangeError = useCallback((error: any): boolean => {
@@ -218,8 +229,8 @@ const VaultStats: React.FC = () => {
         sharePrice: formattedSharePrice.toFixed(2),
       };
       
-      // Update the stats
-      setStats(newStats);
+      // Store the new stats in pendingStats first
+      setPendingStats(newStats);
     } catch (error) {
       console.error('Error loading vault stats:', error);
       
@@ -252,12 +263,38 @@ const VaultStats: React.FC = () => {
     }
   }, [vaultContract, provider, account, loadVaultStats]);
   
+  // Apply pending stats to actual stats with a smooth transition
+  useEffect(() => {
+    if (pendingStats) {
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastRefreshTime;
+      
+      if (timeSinceLastUpdate >= MIN_UPDATE_INTERVAL) {
+        // If enough time has passed, update immediately
+        setStats(pendingStats);
+        setPendingStats(null);
+        setLastRefreshTime(now);
+      } else {
+        // Otherwise, schedule an update after the minimum interval
+        const timeToWait = MIN_UPDATE_INTERVAL - timeSinceLastUpdate;
+        const timer = setTimeout(() => {
+          setStats(pendingStats);
+          setPendingStats(null);
+          setLastRefreshTime(Date.now());
+        }, timeToWait);
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [pendingStats, lastRefreshTime]);
+  
   // Use a separate effect for event subscription
   useEffect(() => {
     // Set up event listener for vault transaction completed events
     const handleTransactionCompleted = () => {
       // Add a small delay to ensure blockchain state is updated
       setTimeout(() => {
+        // Use a non-loading refresh for transaction events
         loadVaultStats();
       }, 2000); // 2 second delay
     };
@@ -296,6 +333,8 @@ const VaultStats: React.FC = () => {
   const change = calculateChange();
   
   const handleRefresh = () => {
+    // Force an immediate update when manually refreshing
+    setLastRefreshTime(0); // Reset the last refresh time to ensure immediate update
     loadVaultStats();
   };
 
