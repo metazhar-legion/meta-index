@@ -1,12 +1,57 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Card, CardContent, Typography, Grid, Skeleton, Divider, Tooltip } from '@mui/material';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  Skeleton,
+  Divider,
+  Tooltip,
+  CircularProgress,
+  IconButton,
+  useTheme,
+  alpha
+} from '@mui/material';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
 import eventBus, { EVENTS } from '../utils/eventBus';
 import { useContracts } from '../hooks/useContracts';
 import { toBigInt } from '../contracts/contractTypes';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import PieChartIcon from '@mui/icons-material/PieChart';
+import CountUp from 'react-countup';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, Tooltip as RechartsTooltip } from 'recharts';
+import { chartColors } from '../theme/theme';
+
+// Sample data for the chart - in a real app, this would come from an API or contract
+const generateSampleData = () => {
+  const data = [];
+  const today = new Date();
+  const baseValue = 100;
+  
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    
+    // Generate a random value that trends upward slightly
+    const randomFactor = 0.95 + Math.random() * 0.1; // Between 0.95 and 1.05
+    const value = i === 6 ? baseValue : data[data.length - 1].value * randomFactor;
+    
+    data.push({
+      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: parseFloat(value.toFixed(2))
+    });
+  }
+  
+  return data;
+};
 
 const VaultStats: React.FC = () => {
+  const theme = useTheme();
   const { vaultContract, isLoading: contractsLoading } = useContracts();
   const { account, provider, refreshProvider } = useWeb3();
   const [stats, setStats] = useState({
@@ -227,78 +272,232 @@ const VaultStats: React.FC = () => {
 
   const isDataLoading = loading || contractsLoading;
 
+  // Generate sample data for the chart
+  const [chartData] = useState(generateSampleData());
+  
+  // Format numbers with commas
+  const formatNumber = (value: string | number) => {
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  };
+  
+  // Calculate percentage change (for demo purposes)
+  const calculateChange = () => {
+    if (chartData.length < 2) return { value: 0, isPositive: true };
+    const firstValue = chartData[0].value;
+    const lastValue = chartData[chartData.length - 1].value;
+    const change = ((lastValue - firstValue) / firstValue) * 100;
+    return { value: Math.abs(change).toFixed(2), isPositive: change >= 0 };
+  };
+  
+  const change = calculateChange();
+  
+  const handleRefresh = () => {
+    loadVaultStats();
+  };
+
   return (
-    <Card variant="outlined" sx={{ mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Vault Statistics
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={6} md={3}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Total Assets
-              </Typography>
-              {isDataLoading ? (
-                <Skeleton width="100%" />
-              ) : (
-                <Typography variant="h6">{parseFloat(stats.totalAssets).toFixed(2)}</Typography>
-              )}
-            </Box>
+    <>
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6">Vault Overview</Typography>
+            <IconButton onClick={handleRefresh} disabled={isDataLoading} size="small">
+              {isDataLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
+            </IconButton>
+          </Box>
+          
+          <Grid container spacing={3}>
+            {/* Total Assets Card */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Box sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Total Assets
+                  </Typography>
+                  <ShowChartIcon color="primary" fontSize="small" />
+                </Box>
+                {isDataLoading ? (
+                  <Skeleton width="100%" height={40} />
+                ) : (
+                  <Typography variant="h5" fontWeight="600">
+                    <CountUp 
+                      end={parseFloat(stats.totalAssets)} 
+                      prefix="$" 
+                      decimals={2} 
+                      duration={1} 
+                      separator=","
+                    />
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+            
+            {/* Share Price Card */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Box sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.info.main, 0.08),
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Share Price
+                  </Typography>
+                  <TrendingUpIcon color="info" fontSize="small" />
+                </Box>
+                {isDataLoading ? (
+                  <Skeleton width="100%" height={40} />
+                ) : (
+                  <Typography variant="h5" fontWeight="600">
+                    <CountUp 
+                      end={parseFloat(stats.sharePrice)} 
+                      prefix="$" 
+                      decimals={2} 
+                      duration={1} 
+                      separator=","
+                    />
+                  </Typography>
+                )}
+                {!isDataLoading && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                    <Typography 
+                      variant="body2" 
+                      color={change.isPositive ? 'success.main' : 'error.main'}
+                      sx={{ display: 'flex', alignItems: 'center' }}
+                    >
+                      {change.isPositive ? '+' : '-'}{change.value}%
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                      7d
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Grid>
+            
+            {/* Your Shares Card */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Box sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.warning.main, 0.08),
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Your Shares
+                  </Typography>
+                  <PieChartIcon color="warning" fontSize="small" />
+                </Box>
+                {isDataLoading ? (
+                  <Skeleton width="100%" height={40} />
+                ) : (
+                  <Typography variant="h5" fontWeight="600">
+                    <CountUp 
+                      end={parseFloat(stats.userShares)} 
+                      decimals={2} 
+                      duration={1} 
+                      separator=","
+                    />
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+            
+            {/* Your Assets Card */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Box sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.success.main, 0.08),
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Your Assets
+                  </Typography>
+                  <AccountBalanceWalletIcon color="success" fontSize="small" />
+                </Box>
+                {isDataLoading ? (
+                  <Skeleton width="100%" height={40} />
+                ) : (
+                  <Typography variant="h5" fontWeight="600">
+                    <CountUp 
+                      end={parseFloat(stats.userAssets)} 
+                      prefix="$" 
+                      decimals={2} 
+                      duration={1} 
+                      separator=","
+                    />
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
           </Grid>
-          <Grid item xs={6} md={3}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Total Shares
-              </Typography>
-              {isDataLoading ? (
-                <Skeleton width="100%" />
-              ) : (
-                <Typography variant="h6">{parseFloat(stats.totalShares).toFixed(2)}</Typography>
-              )}
-            </Box>
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Share Price
-              </Typography>
-              {isDataLoading ? (
-                <Skeleton width="100%" />
-              ) : (
-                <Typography variant="h6">{parseFloat(stats.sharePrice).toFixed(2)} USDC</Typography>
-              )}
-            </Box>
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Your Shares
-              </Typography>
-              {isDataLoading ? (
-                <Skeleton width="100%" />
-              ) : (
-                <Typography variant="h6">{parseFloat(stats.userShares).toFixed(2)}</Typography>
-              )}
-            </Box>
-          </Grid>
-        </Grid>
-
-        <Divider sx={{ my: 2 }} />
-
-        <Box>
-          <Typography variant="body2" color="text.secondary">
-            Your Assets Value
-          </Typography>
-          {isDataLoading ? (
-            <Skeleton width="50%" height={40} />
-          ) : (
-            <Typography variant="h5">{parseFloat(stats.userAssets).toFixed(2)}</Typography>
-          )}
-        </Box>
-      </CardContent>
-    </Card>
-  );
+          
+          {/* Chart Section */}
+          <Box sx={{ mt: 4, height: 250 }}>
+            <Typography variant="subtitle1" gutterBottom>Share Price History</Typography>
+            {isDataLoading ? (
+              <Skeleton variant="rectangular" width="100%" height="100%" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.divider, 0.3)} />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+                    axisLine={{ stroke: theme.palette.divider }}
+                  />
+                  <YAxis 
+                    tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
+                    axisLine={{ stroke: theme.palette.divider }}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <RechartsTooltip 
+                    formatter={(value: number) => [`$${value.toFixed(2)}`, 'Share Price']}
+                    labelFormatter={(label) => `Date: ${label}`}
+                    contentStyle={{ 
+                      backgroundColor: theme.palette.background.paper,
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 8,
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke={theme.palette.primary.main} 
+                    fillOpacity={1} 
+                    fill="url(#colorValue)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </Box>
+        </CardContent>
+      </Card>
+    </>
 };
 
 export default VaultStats;
