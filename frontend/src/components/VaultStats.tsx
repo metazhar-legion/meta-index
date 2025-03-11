@@ -246,7 +246,14 @@ const VaultStats: React.FC = () => {
     handler: () => {
       logger.info('Vault transaction completed, refreshing statistics');
       // Skip loading state for transaction events to avoid UI flicker
-      loadVaultStats(true);
+      setTimeout(() => {
+        if (vaultContract && provider && account) {
+          logger.info('Refreshing vault statistics after transaction');
+          loadVaultStats(true);
+        } else {
+          logger.warn('Cannot refresh stats: missing contract, provider, or account');
+        }
+      }, 1000); // Additional delay to ensure contract state is updated
     },
     delay: 2000 // 2 second delay to ensure blockchain state is updated
   });
