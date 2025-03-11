@@ -39,7 +39,7 @@ const generateSampleData = () => {
     
     // Generate a random value that trends upward slightly
     const randomFactor = 0.95 + Math.random() * 0.1; // Between 0.95 and 1.05
-    const value = i === 6 ? baseValue : data[data.length - 1].value * randomFactor;
+    const value: number = i === 6 ? baseValue : data[data.length - 1].value * randomFactor;
     
     data.push({
       date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),

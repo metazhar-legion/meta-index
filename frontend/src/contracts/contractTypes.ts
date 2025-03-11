@@ -6,6 +6,7 @@ export interface Token {
   symbol: string;
   decimals: number;
   weight?: number;
+  color?: string;
 }
 
 // Helper type for handling different return formats from ethers.js v6
