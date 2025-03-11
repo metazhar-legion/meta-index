@@ -7,7 +7,9 @@ import {
   Grid,
   IconButton,
   useTheme,
-  alpha
+  alpha,
+  Skeleton,
+  CircularProgress
 } from '@mui/material';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
@@ -22,13 +24,12 @@ import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tool
 
 // Import standardized utilities and components
 import { createLogger } from '../utils/logging';
-import { formatCurrency, formatTokenAmount, formatPercentage } from '../utils/formatting';
+import { formatCurrency, formatTokenAmount, formatPercent } from '../utils/formatting';
 import { ContractErrorMessage, withRetry } from '../utils/errors';
 import { safeContractCall } from '../utils/contracts';
 import { useDelayedUpdate, useBlockchainEvents } from '../utils/hooks';
 import StatCard from './common/StatCard';
 import ChartWithLoading from './common/ChartWithLoading';
-import { Skeleton, LoadingButton } from '../utils/loading';
 import eventBus, { EVENTS } from '../utils/eventBus';
 
 // Initialize logger
@@ -257,199 +258,83 @@ const VaultStats: React.FC = () => {
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6">Vault Overview</Typography>
-            <LoadingButton 
+            <IconButton 
               onClick={handleRefresh} 
-              loading={loading && !isInitialLoad} 
+              disabled={loading && !isInitialLoad} 
               size="small"
-              icon={<RefreshIcon />}
-              variant="icon"
-            />
+            >
+              {loading && !isInitialLoad ? <CircularProgress size={20} /> : <RefreshIcon />}
+            </IconButton>
           </Box>
           
           <Grid container spacing={3}>
             {/* Total Assets Card */}
             <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: alpha(theme.palette.primary.main, 0.08),
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Assets
-                  </Typography>
-                  <ShowChartIcon color="primary" fontSize="small" />
-                </Box>
-                {isDataLoading ? (
-                  <Skeleton width="100%" height={40} />
-                ) : (
-                  <Typography variant="h5" fontWeight="600">
-                    <CountUp 
-                      end={parseFloat(stats.totalAssets)} 
-                      prefix="$" 
-                      decimals={2} 
-                      duration={1} 
-                      separator=","
-                    />
-                  </Typography>
-                )}
-              </Box>
+              <StatCard
+                title="Total Assets"
+                isLoading={isDataLoading}
+                value={parseFloat(statsState.value?.totalAssets || '0')}
+                icon={<ShowChartIcon />}
+                color="primary"
+                prefix="$"
+                decimals={2}
+              />
             </Grid>
             
             {/* Share Price Card */}
             <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: alpha(theme.palette.info.main, 0.08),
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Share Price
-                  </Typography>
-                  <TrendingUpIcon color="info" fontSize="small" />
-                </Box>
-                {isDataLoading ? (
-                  <Skeleton width="100%" height={40} />
-                ) : (
-                  <Typography variant="h5" fontWeight="600">
-                    <CountUp 
-                      end={parseFloat(stats.sharePrice)} 
-                      prefix="$" 
-                      decimals={2} 
-                      duration={1} 
-                      separator=","
-                    />
-                  </Typography>
-                )}
-                {!isDataLoading && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                    <Typography 
-                      variant="body2" 
-                      color={change.isPositive ? 'success.main' : 'error.main'}
-                      sx={{ display: 'flex', alignItems: 'center' }}
-                    >
-                      {change.isPositive ? '+' : '-'}{change.value}%
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                      7d
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
+              <StatCard
+                title="Share Price"
+                isLoading={isDataLoading}
+                value={parseFloat(statsState.value?.sharePrice || '0')}
+                icon={<TrendingUpIcon />}
+                color="info"
+                prefix="$"
+                decimals={2}
+                change={{
+                  value: change.value,
+                  isPositive: change.isPositive,
+                  period: '7d'
+                }}
+              />
             </Grid>
             
             {/* Your Shares Card */}
             <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: alpha(theme.palette.warning.main, 0.08),
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Your Shares
-                  </Typography>
-                  <PieChartIcon color="warning" fontSize="small" />
-                </Box>
-                {isDataLoading ? (
-                  <Skeleton width="100%" height={40} />
-                ) : (
-                  <Typography variant="h5" fontWeight="600">
-                    <CountUp 
-                      end={parseFloat(stats.userShares)} 
-                      decimals={2} 
-                      duration={1} 
-                      separator=","
-                    />
-                  </Typography>
-                )}
-              </Box>
+              <StatCard
+                title="Your Shares"
+                isLoading={isDataLoading}
+                value={parseFloat(statsState.value?.userShares || '0')}
+                icon={<PieChartIcon />}
+                color="warning"
+                decimals={2}
+              />
             </Grid>
             
             {/* Your Assets Card */}
             <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{
-                p: 2,
-                borderRadius: 2,
-                bgcolor: alpha(theme.palette.success.main, 0.08),
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Your Assets
-                  </Typography>
-                  <AccountBalanceWalletIcon color="success" fontSize="small" />
-                </Box>
-                {isDataLoading ? (
-                  <Skeleton width="100%" height={40} />
-                ) : (
-                  <Typography variant="h5" fontWeight="600">
-                    <CountUp 
-                      end={parseFloat(stats.userAssets)} 
-                      prefix="$" 
-                      decimals={2} 
-                      duration={1} 
-                      separator=","
-                    />
-                  </Typography>
-                )}
-              </Box>
+              <StatCard
+                title="Your Assets"
+                isLoading={isDataLoading}
+                value={parseFloat(statsState.value?.userAssets || '0')}
+                icon={<AccountBalanceWalletIcon />}
+                color="success"
+                prefix="$"
+                decimals={2}
+              />
             </Grid>
           </Grid>
           
           {/* Chart Section */}
           <ChartWithLoading
             title="Share Price History"
-            loading={isDataLoading}
+            isLoading={isDataLoading}
+            data={chartData}
             height={250}
-            chart={
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.divider, 0.3)} />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
-                    axisLine={{ stroke: theme.palette.divider }}
-                  />
-                  <YAxis 
-                    tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
-                    axisLine={{ stroke: theme.palette.divider }}
-                    tickFormatter={(value) => `$${value}`}
-                  />
-                  <RechartsTooltip 
-                    formatter={(value: number) => [`$${value.toFixed(2)}`, 'Share Price']}
-                    labelFormatter={(label) => `Date: ${label}`}
-                    contentStyle={{ 
-                      backgroundColor: theme.palette.background.paper,
-                      border: `1px solid ${theme.palette.divider}`,
-                      borderRadius: 8,
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke={theme.palette.primary.main} 
-                    fillOpacity={1} 
-                    fill="url(#colorValue)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            }
+            dataKey="value"
+            xAxisKey="date"
+            color={theme.palette.primary.main}
+            tooltipFormatter={(value) => `$${value.toFixed(2)}`}
           />
         </CardContent>
       </Card>
