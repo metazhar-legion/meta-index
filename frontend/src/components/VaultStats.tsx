@@ -127,24 +127,21 @@ const VaultStats: React.FC = () => {
       // Use safe contract calls with standardized error handling
       const totalAssets = await withRetry(
         async () => {
-          const result = await safeContractCall(vaultContract, 'totalAssets', []); 
-          return result;
+          return await safeContractCall(vaultContract, 'totalAssets', [], BigInt(0));
         }, 
         MAX_RETRIES
       );
       
       const totalSupply = await withRetry(
         async () => {
-          const result = await safeContractCall(vaultContract, 'totalSupply', []);
-          return result;
+          return await safeContractCall(vaultContract, 'totalSupply', [], BigInt(0));
         }, 
         MAX_RETRIES
       );
       
       const userShares = await withRetry(
         async () => {
-          const result = await safeContractCall(vaultContract, 'balanceOf', [account]);
-          return result;
+          return await safeContractCall(vaultContract, 'balanceOf', [account], BigInt(0));
         }, 
         MAX_RETRIES
       );
@@ -155,24 +152,22 @@ const VaultStats: React.FC = () => {
       // Calculate derived values
       let userAssets = BigInt(0);
       
-      if (totalSupply && BigInt(totalSupply) > BigInt(0)) {
+      // Ensure we have valid BigInt values
+      const totalSupplyBigInt = totalSupply ? BigInt(totalSupply.toString()) : BigInt(0);
+      const userSharesBigInt = userShares ? BigInt(userShares.toString()) : BigInt(0);
+      const totalAssetsBigInt = totalAssets ? BigInt(totalAssets.toString()) : BigInt(0);
+      
+      if (totalSupplyBigInt > BigInt(0) && userSharesBigInt > BigInt(0)) {
         // Calculate user assets based on their share of the pool
-        if (userShares && BigInt(userShares) > BigInt(0)) {
-          // Ensure all values are BigInt for calculation
-          const userSharesBigInt = BigInt(userShares);
-          const totalAssetsBigInt = BigInt(totalAssets);
-          const totalSupplyBigInt = BigInt(totalSupply);
-          
-          userAssets = (userSharesBigInt * totalAssetsBigInt) / totalSupplyBigInt;
-          logger.debug('Calculated userAssets:', userAssets.toString());
-        }
+        userAssets = (userSharesBigInt * totalAssetsBigInt) / totalSupplyBigInt;
+        logger.debug('Calculated userAssets:', userAssets.toString());
       }
       
       // Format the values using our standardized formatting utilities
       // USDC has 6 decimals, shares have 18 decimals
-      const formattedTotalAssets = formatCurrency(totalAssets || BigInt(0), 2);
-      const formattedTotalShares = formatTokenAmount(totalSupply || BigInt(0), 18, 4);
-      const formattedUserShares = formatTokenAmount(userShares || BigInt(0), 18, 4);
+      const formattedTotalAssets = formatCurrency(totalAssetsBigInt);
+      const formattedTotalShares = formatTokenAmount(totalSupplyBigInt, 18);
+      const formattedUserShares = formatTokenAmount(userSharesBigInt, 18);
       
       // Calculate user assets in USDC - remove the $ prefix from formatted values for calculations
       const totalAssetsNum = parseFloat(formattedTotalAssets.replace('$', '').replace(/,/g, ''));
@@ -271,15 +266,16 @@ const VaultStats: React.FC = () => {
       num = value;
     }
     
+    const formattedNum = isNaN(num) ? 0 : num;
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(isNaN(num) ? 0 : num);
+    }).format(formattedNum);
   };
   
   // Calculate percentage change (for demo purposes)
   const calculateChange = () => {
-    if (chartData.length < 2) return { value: '0', isPositive: true };
+    if (chartData.length < 2) return { value: 0, isPositive: true };
     
     // Ensure values are numbers for calculation
     const firstValue = typeof chartData[0].value === 'string' ? 
@@ -289,11 +285,11 @@ const VaultStats: React.FC = () => {
       parseFloat(chartData[chartData.length - 1].value) : chartData[chartData.length - 1].value;
     
     if (isNaN(firstValue) || isNaN(lastValue) || firstValue === 0) {
-      return { value: '0', isPositive: true };
+      return { value: 0, isPositive: true };
     }
     
     const change = ((lastValue - firstValue) / firstValue) * 100;
-    return { value: Math.abs(change).toFixed(2), isPositive: change >= 0 };
+    return { value: Math.abs(change), isPositive: change >= 0 };
   };
   
   const change = calculateChange();
@@ -345,7 +341,7 @@ const VaultStats: React.FC = () => {
                 prefix="$"
                 decimals={2}
                 change={{
-                  value: change.value.toString(),
+                  value: change.value,
                   isPositive: change.isPositive,
                   period: '7d'
                 }}

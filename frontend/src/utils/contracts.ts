@@ -49,12 +49,12 @@ export const safeContractCall = async <T>(
   contract: any,
   methodName: string,
   args: any[] = [],
-  fallbackValue?: T
+  fallbackValue: T
 ): Promise<T> => {
   try {
     if (!contract || typeof contract[methodName] !== 'function') {
       logger.error(`Invalid contract or method: ${methodName}`);
-      return fallbackValue as T;
+      return fallbackValue;
     }
     
     // Call the contract method with the provided arguments
@@ -116,9 +116,10 @@ export const getTokenBalance = async (
   
   try {
     const balance = await safeContractCall(
-      () => tokenContract.balanceOf(account),
-      BigInt(0),
-      'balanceOf'
+      tokenContract,
+      'balanceOf',
+      [account],
+      BigInt(0)
     );
     
     return ethers.formatUnits(balance, decimals);
@@ -144,13 +145,14 @@ export const ensureTokenAllowance = async (
   try {
     // Check current allowance
     const currentAllowance = await safeContractCall(
-      () => tokenContract.allowance(ownerAddress, spenderAddress),
-      BigInt(0),
-      'allowance'
+      tokenContract,
+      'allowance',
+      [ownerAddress, spenderAddress],
+      BigInt(0)
     );
     
     // If allowance is sufficient, return true
-    if (currentAllowance >= amount) {
+    if (currentAllowance && BigInt(currentAllowance.toString()) >= BigInt(amount.toString())) {
       return true;
     }
     
