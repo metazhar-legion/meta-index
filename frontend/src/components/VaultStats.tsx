@@ -5,27 +5,32 @@ import {
   CardContent,
   Typography,
   Grid,
-  Skeleton,
-  Divider,
-  Tooltip,
-  CircularProgress,
   IconButton,
+  CircularProgress,
   useTheme,
   alpha
 } from '@mui/material';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
-import eventBus, { EVENTS } from '../utils/eventBus';
 import { useContracts } from '../hooks/useContracts';
-import { toBigInt } from '../contracts/contractTypes';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import PieChartIcon from '@mui/icons-material/PieChart';
-import CountUp from 'react-countup';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, Tooltip as RechartsTooltip } from 'recharts';
-import { chartColors } from '../theme/theme';
+
+// Import standardized utilities and components
+import { createLogger } from '../utils/logging';
+import { formatCurrency, formatTokenAmount } from '../utils/formatting';
+import { ContractErrorMessage, withRetry } from '../utils/errors';
+import { safeContractCall } from '../utils/contracts';
+import { useDelayedUpdate, useBlockchainEvents } from '../utils/hooks';
+import StatCard from './common/StatCard';
+import ChartWithLoading from './common/ChartWithLoading';
+import eventBus, { EVENTS } from '../utils/eventBus';
+
+// Initialize logger
+const logger = createLogger('VaultStats');
 
 // Sample data for the chart - in a real app, this would come from an API or contract
 const generateSampleData = () => {
