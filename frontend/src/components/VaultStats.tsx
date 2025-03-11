@@ -301,10 +301,25 @@ const VaultStats: React.FC = () => {
   
   const change = calculateChange();
   
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     // Force an immediate update when manually refreshing
     logger.info('Manual refresh of vault statistics');
     setLoading(true); // Show loading state for manual refresh
+    
+    // Refresh the provider first to ensure we have the latest blockchain state
+    if (refreshProvider) {
+      try {
+        logger.info('Refreshing provider before loading stats');
+        await refreshProvider();
+      } catch (error) {
+        logger.error('Failed to refresh provider', error);
+      }
+    }
+    
+    // Reset retry count to allow for new retries if needed
+    setRetryCount(0);
+    
+    // Load vault stats with fresh provider state
     loadVaultStats(false); // Don't skip loading state for manual refresh
   };
 
