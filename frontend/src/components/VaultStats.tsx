@@ -114,6 +114,21 @@ const VaultStats: React.FC = () => {
       logger.warn('Cannot load vault stats: missing contract, provider, or account');
       return;
     }
+    
+    // Ensure we have a connected contract with the current provider
+    try {
+      // Quick test call to ensure contract is connected
+      await vaultContract.symbol();
+    } catch (error) {
+      logger.warn('Contract connection issue detected, attempting to refresh provider');
+      if (refreshProvider) {
+        try {
+          await refreshProvider();
+        } catch (refreshError) {
+          logger.error('Failed to refresh provider', refreshError);
+        }
+      }
+    }
 
     // Only show loading state if not skipping it
     if (!skipLoadingState) {
