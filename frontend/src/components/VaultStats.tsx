@@ -498,6 +498,7 @@ const VaultStats: React.FC = () => {
         </CardContent>
       </Card>
     </>
+  );
 };
 
 export default VaultStats;
