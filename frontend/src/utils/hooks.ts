@@ -78,7 +78,7 @@ export function useContractCall<T>(
     callFn: () => Promise<T>,
     onSuccess?: (result: T) => void,
     skipLoadingState: boolean = false
-  ) => {
+  ): Promise<T> => {
     if (!skipLoadingState) {
       setLoading(true);
     }

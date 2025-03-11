@@ -45,9 +45,8 @@ export const OverlayLoading: React.FC<{
           position: 'relative', 
           zIndex: 1,
           opacity: isLoading ? 0.6 : 1,
-          transition: 'opacity 0.3s ease-in-out',
           filter: isLoading ? 'blur(1px)' : 'none',
-          transition: 'filter 0.3s ease-in-out'
+          transition: 'opacity 0.3s ease-in-out, filter 0.3s ease-in-out'
         }}
       >
         {children}
