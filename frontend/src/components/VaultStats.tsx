@@ -25,7 +25,7 @@ import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tool
 // Import standardized utilities and components
 import { createLogger } from '../utils/logging';
 import { formatCurrency, formatTokenAmount, formatPercent } from '../utils/formatting';
-import { ContractErrorMessage, withRetry } from '../utils/errors';
+import { ContractErrorMessage, withRetry, parseErrorMessage } from '../utils/errors';
 import { safeContractCall } from '../utils/contracts';
 import { useDelayedUpdate, useBlockchainEvents } from '../utils/hooks';
 import StatCard from './common/StatCard';
@@ -51,7 +51,7 @@ const generateSampleData = () => {
     
     data.push({
       date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      value: parseFloat(value.toFixed(2))
+      value: value.toFixed(2)
     });
   }
   
@@ -203,13 +203,14 @@ const VaultStats: React.FC = () => {
       logger.error('Failed to load vault statistics', error);
       
       // Use our standardized error handling
-      const errorMessage = ContractErrorMessage(error, {
-        defaultMessage: 'Failed to load vault statistics. Please try again later.',
-        context: 'Loading vault statistics'
-      });
+      const errorMessage = <ContractErrorMessage
+        error={error}
+        severity="error"
+      />;
       
       // If we need to refresh the provider
-      if (typeof errorMessage === 'string' && errorMessage.includes('block height') && retryCount < MAX_RETRIES) {
+      const parsedErrorMessage = parseErrorMessage(error);
+      if (parsedErrorMessage.includes('block height') && retryCount < MAX_RETRIES) {
         logger.info(`Refreshing provider (attempt ${retryCount + 1}/${MAX_RETRIES})`);
         setRetryCount(prev => prev + 1);
         
@@ -262,15 +263,17 @@ const VaultStats: React.FC = () => {
       num = Number(value.toString());
     } else if (typeof value === 'string') {
       num = parseFloat(value);
-    } else {
+    } else if (typeof value === 'number') {
       num = value;
+    } else {
+      num = 0; // Default fallback
     }
     
     const formattedNum = isNaN(num) ? 0 : num;
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(formattedNum);
+    }).format(formattedNum).toString();
   };
   
   // Calculate percentage change (for demo purposes)
