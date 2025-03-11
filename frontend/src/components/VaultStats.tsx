@@ -47,7 +47,7 @@ const generateSampleData = () => {
     
     // Generate a random value that trends upward slightly
     const randomFactor = 0.95 + Math.random() * 0.1; // Between 0.95 and 1.05
-    const value: number = i === 6 ? baseValue : data[data.length - 1].value * randomFactor;
+    const value: number = i === 6 ? baseValue : parseFloat(data[data.length - 1].value) * randomFactor;
     
     data.push({
       date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -98,7 +98,7 @@ const VaultStats: React.FC = () => {
     // For now, we'll just update the last data point with the current share price
     if (chartData.length > 0) {
       const newData = [...chartData];
-      newData[newData.length - 1].value = sharePrice;
+      newData[newData.length - 1].value = sharePrice.toFixed(2);
       setChartData(newData);
     }
   }, [chartData]);
@@ -175,7 +175,7 @@ const VaultStats: React.FC = () => {
       const userSharesNum = parseFloat(formattedUserShares.replace(/,/g, ''));
       
       // Calculate user assets in USDC
-      const formattedUserAssets = userSharesNum > 0 && totalSharesNum > 0 
+      const formattedUserAssets: number = userSharesNum > 0 && totalSharesNum > 0 
         ? (userSharesNum / totalSharesNum) * totalAssetsNum
         : 0;
       
@@ -281,11 +281,8 @@ const VaultStats: React.FC = () => {
     if (chartData.length < 2) return { value: 0, isPositive: true };
     
     // Ensure values are numbers for calculation
-    const firstValue = typeof chartData[0].value === 'string' ? 
-      parseFloat(chartData[0].value) : chartData[0].value;
-    
-    const lastValue = typeof chartData[chartData.length - 1].value === 'string' ? 
-      parseFloat(chartData[chartData.length - 1].value) : chartData[chartData.length - 1].value;
+    const firstValue = parseFloat(chartData[0].value);
+    const lastValue = parseFloat(chartData[chartData.length - 1].value);
     
     if (isNaN(firstValue) || isNaN(lastValue) || firstValue === 0) {
       return { value: 0, isPositive: true };
