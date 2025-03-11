@@ -73,6 +73,10 @@ const VaultStats: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+  // Track if this is the initial load
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  // Generate sample data for the chart and persist it between renders
+  const [chartData, setChartData] = useState(() => generateSampleData());
   const MAX_RETRIES = 3;
   // Minimum time between visual updates (in ms)
   const MIN_UPDATE_INTERVAL = 3000;
@@ -114,12 +118,15 @@ const VaultStats: React.FC = () => {
   };
 
   // Memoize the loadVaultStats function to prevent recreation on every render
-  const loadVaultStats = useCallback(async () => {
+  const loadVaultStats = useCallback(async (skipLoadingState = false) => {
     if (!vaultContract || !provider || !account) {
       return;
     }
 
-    setLoading(true);
+    // Only show loading state if not skipping it
+    if (!skipLoadingState) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
@@ -258,10 +265,11 @@ const VaultStats: React.FC = () => {
 
   // Use a separate effect for initial load to prevent update loops
   useEffect(() => {
-    if (vaultContract && provider && account) {
+    if (vaultContract && provider && account && isInitialLoad) {
       loadVaultStats();
+      setIsInitialLoad(false);
     }
-  }, [vaultContract, provider, account, loadVaultStats]);
+  }, [vaultContract, provider, account, loadVaultStats, isInitialLoad]);
   
   // Apply pending stats to actual stats with a smooth transition
   useEffect(() => {
@@ -294,8 +302,8 @@ const VaultStats: React.FC = () => {
     const handleTransactionCompleted = () => {
       // Add a small delay to ensure blockchain state is updated
       setTimeout(() => {
-        // Use a non-loading refresh for transaction events
-        loadVaultStats();
+        // Skip loading state for transaction events to avoid UI flicker
+        loadVaultStats(true);
       }, 2000); // 2 second delay
     };
     
@@ -307,10 +315,8 @@ const VaultStats: React.FC = () => {
     };
   }, [loadVaultStats]);
 
-  const isDataLoading = loading || contractsLoading;
-
-  // Generate sample data for the chart
-  const [chartData] = useState(generateSampleData());
+  // Only show loading state for the initial load or explicit refresh actions
+  const isDataLoading = (loading && isInitialLoad) || contractsLoading;
   
   // Format numbers with commas
   const formatNumber = (value: string | number) => {
@@ -335,7 +341,8 @@ const VaultStats: React.FC = () => {
   const handleRefresh = () => {
     // Force an immediate update when manually refreshing
     setLastRefreshTime(0); // Reset the last refresh time to ensure immediate update
-    loadVaultStats();
+    setLoading(true); // Show loading state for manual refresh
+    loadVaultStats(false); // Don't skip loading state for manual refresh
   };
 
   return (
@@ -491,9 +498,21 @@ const VaultStats: React.FC = () => {
           {/* Chart Section */}
           <Box sx={{ mt: 4, height: 250 }}>
             <Typography variant="subtitle1" gutterBottom>Share Price History</Typography>
-            {isDataLoading ? (
-              <Skeleton variant="rectangular" width="100%" height="100%" />
-            ) : (
+            {/* Always render the chart to avoid jarring reloads, use opacity for loading state */}
+            <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+              {isDataLoading && (
+                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}>
+                  <Skeleton variant="rectangular" width="100%" height="100%" />
+                </Box>
+              )}
+              <Box sx={{ 
+                position: 'relative', 
+                width: '100%', 
+                height: '100%', 
+                zIndex: isDataLoading ? 0 : 1,
+                opacity: isDataLoading ? 0.3 : 1,
+                transition: 'opacity 0.3s ease-in-out'
+              }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <defs>
@@ -532,7 +551,8 @@ const VaultStats: React.FC = () => {
                   />
                 </AreaChart>
               </ResponsiveContainer>
-            )}
+              </Box>
+            </Box>
           </Box>
         </CardContent>
       </Card>
