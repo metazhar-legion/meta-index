@@ -92,45 +92,12 @@ const VaultStats: React.FC = () => {
   // Constants
   const MAX_RETRIES = 3;
 
-  // Helper function to check if an error is a BlockOutOfRangeError
-  const isBlockOutOfRangeError = useCallback((error: any): boolean => {
-    if (!error) return false;
-    
-    // Handle different error formats
-    const errorMessage = typeof error === 'string' 
-      ? error 
-      : error.message || '';
-      
-    // Check for nested error data (common in RPC errors)
-    const errorData = error.data?.message || '';
-    const nestedError = error.error?.message || '';
-    
-    return errorMessage.includes('BlockOutOfRange') || 
-           errorData.includes('BlockOutOfRange') ||
-           nestedError.includes('BlockOutOfRange') ||
-           errorMessage.includes('block height') ||
-           errorData.includes('block height') ||
-           nestedError.includes('block height');
-  }, []);
-
-  // Helper function to convert various formats to BigInt
-  // Define this outside of the component to avoid recreation on every render
-  const convertToBigInt = (value: any): bigint => {
-    if (typeof value === 'bigint') return value;
-    if (typeof value === 'number') return BigInt(value);
-    if (typeof value === 'string') {
-      if (value.startsWith('0x')) return BigInt(value);
-      return BigInt(value);
-    }
-    if (Array.isArray(value) && value.length > 0) {
-      return convertToBigInt(value[0]);
-    }
-    return BigInt(0);
-  };
+  // Use the standardized contract interaction utilities instead of custom helpers
 
   // Memoize the loadVaultStats function to prevent recreation on every render
   const loadVaultStats = useCallback(async (skipLoadingState = false) => {
     if (!vaultContract || !provider || !account) {
+      logger.warn('Cannot load vault stats: missing contract, provider, or account');
       return;
     }
 
@@ -141,119 +108,78 @@ const VaultStats: React.FC = () => {
     setError(null);
     
     try {
-      // Get vault contract address
-      const vaultAddress = await vaultContract.target;
+      logger.info('Loading vault statistics');
       
-      // Create a minimal interface with just the methods we need
-      const vaultInterface = new ethers.Interface([
-        "function totalAssets() view returns (uint256)",
-        "function totalSupply() view returns (uint256)",
-        "function balanceOf(address) view returns (uint256)"
-      ]);
+      // Use safe contract calls with standardized error handling
+      const totalAssets = await withRetry(() => 
+        safeContractCall(vaultContract, 'totalAssets', []), 
+        { maxRetries: MAX_RETRIES, logErrors: true }
+      );
       
-      // Initialize values
-      let totalAssets = BigInt(0);
-      let totalSupply = BigInt(0);
-      let userShares = BigInt(0);
+      const totalSupply = await withRetry(() => 
+        safeContractCall(vaultContract, 'totalSupply', []), 
+        { maxRetries: MAX_RETRIES, logErrors: true }
+      );
       
-      // Define fetchContractData inside loadVaultStats but don't recreate it on every render
-      const fetchContractData = async (methodName: string, args: any[] = []) => {
-        try {
-          // @ts-ignore - Dynamic method call
-          const rawResult = await vaultContract[methodName](...args);
-          
-          // Handle different return types
-          if (typeof rawResult === 'bigint') {
-            return rawResult;
-          } else if (typeof rawResult === 'object' && rawResult !== null) {
-            // Handle array-like or object returns from ethers v6
-            if (Array.isArray(rawResult)) {
-              return convertToBigInt(rawResult[0]);
-            } else if ('value' in rawResult) {
-              return convertToBigInt(rawResult.value);
-            } else if ('_hex' in rawResult) {
-              return convertToBigInt(rawResult._hex);
-            } else {
-              // Try to convert the first property if it exists
-              const firstProp = Object.values(rawResult)[0];
-              return convertToBigInt(firstProp);
-            }
-          } else {
-            return convertToBigInt(rawResult);
-          }
-        } catch (e) {
-          if (isBlockOutOfRangeError(e)) {
-            throw e; // Re-throw to be caught by the outer try-catch for refresh handling
-          }
-          throw e;
-        }
-      };
-      
-      // Fetch all required data
-      totalAssets = await fetchContractData('totalAssets');
-      totalSupply = await fetchContractData('totalSupply');
-      userShares = await fetchContractData('balanceOf', [account]);
+      const userShares = await withRetry(() => 
+        safeContractCall(vaultContract, 'balanceOf', [account]), 
+        { maxRetries: MAX_RETRIES, logErrors: true }
+      );
       
       // Reset retry count on success
       setRetryCount(0);
       
       // Calculate derived values
-      
-      // Calculate derived values
       let userAssets = BigInt(0);
-      let sharePrice = BigInt(0);
       
       if (totalSupply > BigInt(0)) {
         // Calculate user assets based on their share of the pool
         if (userShares > BigInt(0)) {
           userAssets = (userShares * totalAssets) / totalSupply;
-          console.log('VaultStats: Calculated userAssets:', userAssets.toString());
+          logger.debug('Calculated userAssets:', userAssets.toString());
         }
-        
-        // We'll calculate the share price in JavaScript after converting the BigInts
-        // This is more precise than doing BigInt division which truncates
-        sharePrice = BigInt(0); // This will be ignored, we'll calculate it in JS
       }
       
-      // Update state with the fetched and calculated values
-      // IMPORTANT: We need to use formatUnits with the correct decimals
-      // USDC has 6 decimals, ERC20 shares have 18 decimals
+      // Format the values using our standardized formatting utilities
+      // USDC has 6 decimals, shares have 18 decimals
+      const formattedTotalAssets = formatCurrency(totalAssets, 6);
+      const formattedTotalShares = formatTokenAmount(totalSupply, 6);
+      const formattedUserShares = formatTokenAmount(userShares, 6);
       
-      // Calculate the actual values with proper decimal handling
-      // USDC has 6 decimals, but the vault contract uses 18 decimals for shares
-      const formattedTotalAssets = Number(ethers.formatUnits(totalAssets, 6));
-      
-      // For shares, we need to check the contract's implementation
-      // The issue might be that the contract is using a different decimal place for shares
-      // Let's try using 6 decimals for shares as well, since that's what the contract might be using
-      const formattedTotalShares = Number(ethers.formatUnits(totalSupply, 6));
-      const formattedUserShares = Number(ethers.formatUnits(userShares, 6));
-      
-      // Calculate user assets in USDC (with proper decimal handling)
-      const formattedUserAssets = formattedUserShares > 0 && formattedTotalShares > 0 
-        ? (formattedUserShares / formattedTotalShares) * formattedTotalAssets
+      // Calculate user assets in USDC
+      const formattedUserAssets = Number(formattedUserShares) > 0 && Number(formattedTotalShares) > 0 
+        ? (Number(formattedUserShares) / Number(formattedTotalShares)) * Number(formattedTotalAssets)
         : 0;
       
-      // Calculate share price directly (USDC per share)
-      const formattedSharePrice = formattedTotalShares > 0
-        ? formattedTotalAssets / formattedTotalShares
+      // Calculate share price (USDC per share)
+      const formattedSharePrice = Number(formattedTotalShares) > 0
+        ? Number(formattedTotalAssets) / Number(formattedTotalShares)
         : 100; // Default to 100 if no shares exist yet
       
       const newStats = {
-        totalAssets: formattedTotalAssets.toFixed(2),
-        totalShares: formattedTotalShares.toFixed(2),
-        userShares: formattedUserShares.toFixed(2),
+        totalAssets: formattedTotalAssets,
+        totalShares: formattedTotalShares,
+        userShares: formattedUserShares,
         userAssets: formattedUserAssets.toFixed(2),
         sharePrice: formattedSharePrice.toFixed(2),
       };
       
-      // Store the new stats in pendingStats first
-      setPendingStats(newStats);
-    } catch (error) {
-      console.error('Error loading vault stats:', error);
+      logger.info('Vault statistics loaded successfully');
       
-      // If it's a BlockOutOfRangeError, try refreshing the provider
-      if (isBlockOutOfRangeError(error) && retryCount < MAX_RETRIES) {
+      // Update the stats with our delayed update hook
+      statsState.updateValue(newStats, skipLoadingState);
+    } catch (error) {
+      logger.error('Failed to load vault statistics', error);
+      
+      // Use our standardized error handling
+      const errorMessage = ContractErrorMessage(error, {
+        defaultMessage: 'Failed to load vault statistics. Please try again later.',
+        context: 'Loading vault statistics'
+      });
+      
+      // If we need to refresh the provider
+      if (errorMessage.includes('block height') && retryCount < MAX_RETRIES) {
+        logger.info(`Refreshing provider (attempt ${retryCount + 1}/${MAX_RETRIES})`);
         setRetryCount(prev => prev + 1);
         
         try {
@@ -263,68 +189,35 @@ const VaultStats: React.FC = () => {
             return; // Exit and let the useEffect retry with the new provider
           }
         } catch (refreshError) {
-          // Continue to error handling
+          logger.error('Failed to refresh provider', refreshError);
         }
       }
       
-      setError('Failed to load vault statistics. Please try again later.');
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  // Only include dependencies that actually change and trigger a re-render
-  }, [vaultContract, provider, account, retryCount, refreshProvider, isBlockOutOfRangeError]);
+  }, [vaultContract, provider, account, retryCount, refreshProvider, statsState]);
 
   // Use a separate effect for initial load to prevent update loops
   useEffect(() => {
     if (vaultContract && provider && account && isInitialLoad) {
+      logger.info('Initial load of vault statistics');
       loadVaultStats();
       setIsInitialLoad(false);
     }
   }, [vaultContract, provider, account, loadVaultStats, isInitialLoad]);
   
-  // Apply pending stats to actual stats with a smooth transition
-  useEffect(() => {
-    if (pendingStats) {
-      const now = Date.now();
-      const timeSinceLastUpdate = now - lastRefreshTime;
-      
-      if (timeSinceLastUpdate >= MIN_UPDATE_INTERVAL) {
-        // If enough time has passed, update immediately
-        setStats(pendingStats);
-        setPendingStats(null);
-        setLastRefreshTime(now);
-      } else {
-        // Otherwise, schedule an update after the minimum interval
-        const timeToWait = MIN_UPDATE_INTERVAL - timeSinceLastUpdate;
-        const timer = setTimeout(() => {
-          setStats(pendingStats);
-          setPendingStats(null);
-          setLastRefreshTime(Date.now());
-        }, timeToWait);
-        
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [pendingStats, lastRefreshTime]);
-  
-  // Use a separate effect for event subscription
-  useEffect(() => {
-    // Set up event listener for vault transaction completed events
-    const handleTransactionCompleted = () => {
-      // Add a small delay to ensure blockchain state is updated
-      setTimeout(() => {
-        // Skip loading state for transaction events to avoid UI flicker
-        loadVaultStats(true);
-      }, 2000); // 2 second delay
-    };
-    
-    const unsubscribe = eventBus.on(EVENTS.VAULT_TRANSACTION_COMPLETED, handleTransactionCompleted);
-    
-    // Clean up the event listener when the component unmounts
-    return () => {
-      unsubscribe();
-    };
-  }, [loadVaultStats]);
+  // Use the standardized blockchain events hook for event subscription
+  useBlockchainEvents(
+    EVENTS.VAULT_TRANSACTION_COMPLETED,
+    () => {
+      logger.info('Vault transaction completed, refreshing statistics');
+      // Skip loading state for transaction events to avoid UI flicker
+      loadVaultStats(true);
+    },
+    2000 // 2 second delay to ensure blockchain state is updated
+  );
 
   // Only show loading state for the initial load or explicit refresh actions
   const isDataLoading = (loading && isInitialLoad) || contractsLoading;
@@ -351,7 +244,7 @@ const VaultStats: React.FC = () => {
   
   const handleRefresh = () => {
     // Force an immediate update when manually refreshing
-    setLastRefreshTime(0); // Reset the last refresh time to ensure immediate update
+    logger.info('Manual refresh of vault statistics');
     setLoading(true); // Show loading state for manual refresh
     loadVaultStats(false); // Don't skip loading state for manual refresh
   };
