@@ -6,7 +6,6 @@ import {
   Typography,
   Grid,
   IconButton,
-  CircularProgress,
   useTheme,
   alpha
 } from '@mui/material';
@@ -18,15 +17,18 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import PieChartIcon from '@mui/icons-material/PieChart';
+import CountUp from 'react-countup';
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 
 // Import standardized utilities and components
 import { createLogger } from '../utils/logging';
-import { formatCurrency, formatTokenAmount } from '../utils/formatting';
+import { formatCurrency, formatTokenAmount, formatPercentage } from '../utils/formatting';
 import { ContractErrorMessage, withRetry } from '../utils/errors';
 import { safeContractCall } from '../utils/contracts';
 import { useDelayedUpdate, useBlockchainEvents } from '../utils/hooks';
 import StatCard from './common/StatCard';
 import ChartWithLoading from './common/ChartWithLoading';
+import { Skeleton, LoadingButton } from '../utils/loading';
 import eventBus, { EVENTS } from '../utils/eventBus';
 
 // Initialize logger
@@ -111,19 +113,19 @@ const VaultStats: React.FC = () => {
       logger.info('Loading vault statistics');
       
       // Use safe contract calls with standardized error handling
-      const totalAssets = await withRetry(() => 
-        safeContractCall(vaultContract, 'totalAssets', []), 
-        { maxRetries: MAX_RETRIES, logErrors: true }
+      const totalAssets = await withRetry(
+        () => safeContractCall(vaultContract, 'totalAssets', []), 
+        MAX_RETRIES
       );
       
-      const totalSupply = await withRetry(() => 
-        safeContractCall(vaultContract, 'totalSupply', []), 
-        { maxRetries: MAX_RETRIES, logErrors: true }
+      const totalSupply = await withRetry(
+        () => safeContractCall(vaultContract, 'totalSupply', []), 
+        MAX_RETRIES
       );
       
-      const userShares = await withRetry(() => 
-        safeContractCall(vaultContract, 'balanceOf', [account]), 
-        { maxRetries: MAX_RETRIES, logErrors: true }
+      const userShares = await withRetry(
+        () => safeContractCall(vaultContract, 'balanceOf', [account]), 
+        MAX_RETRIES
       );
       
       // Reset retry count on success
@@ -132,9 +134,9 @@ const VaultStats: React.FC = () => {
       // Calculate derived values
       let userAssets = BigInt(0);
       
-      if (totalSupply > BigInt(0)) {
+      if (totalSupply && totalSupply > BigInt(0)) {
         // Calculate user assets based on their share of the pool
-        if (userShares > BigInt(0)) {
+        if (userShares && userShares > BigInt(0)) {
           userAssets = (userShares * totalAssets) / totalSupply;
           logger.debug('Calculated userAssets:', userAssets.toString());
         }
@@ -142,9 +144,9 @@ const VaultStats: React.FC = () => {
       
       // Format the values using our standardized formatting utilities
       // USDC has 6 decimals, shares have 18 decimals
-      const formattedTotalAssets = formatCurrency(totalAssets, 6);
-      const formattedTotalShares = formatTokenAmount(totalSupply, 6);
-      const formattedUserShares = formatTokenAmount(userShares, 6);
+      const formattedTotalAssets = formatCurrency(totalAssets || BigInt(0), 6);
+      const formattedTotalShares = formatTokenAmount(totalSupply || BigInt(0), 6);
+      const formattedUserShares = formatTokenAmount(userShares || BigInt(0), 6);
       
       // Calculate user assets in USDC
       const formattedUserAssets = Number(formattedUserShares) > 0 && Number(formattedTotalShares) > 0 
@@ -178,7 +180,7 @@ const VaultStats: React.FC = () => {
       });
       
       // If we need to refresh the provider
-      if (errorMessage.includes('block height') && retryCount < MAX_RETRIES) {
+      if (typeof errorMessage === 'string' && errorMessage.includes('block height') && retryCount < MAX_RETRIES) {
         logger.info(`Refreshing provider (attempt ${retryCount + 1}/${MAX_RETRIES})`);
         setRetryCount(prev => prev + 1);
         
@@ -193,7 +195,7 @@ const VaultStats: React.FC = () => {
         }
       }
       
-      setError(errorMessage);
+      setError(typeof errorMessage === 'string' ? errorMessage : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -255,9 +257,13 @@ const VaultStats: React.FC = () => {
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6">Vault Overview</Typography>
-            <IconButton onClick={handleRefresh} disabled={isDataLoading} size="small">
-              {isDataLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
-            </IconButton>
+            <LoadingButton 
+              onClick={handleRefresh} 
+              loading={loading && !isInitialLoad} 
+              size="small"
+              icon={<RefreshIcon />}
+              variant="icon"
+            />
           </Box>
           
           <Grid container spacing={3}>
@@ -400,23 +406,11 @@ const VaultStats: React.FC = () => {
           </Grid>
           
           {/* Chart Section */}
-          <Box sx={{ mt: 4, height: 250 }}>
-            <Typography variant="subtitle1" gutterBottom>Share Price History</Typography>
-            {/* Always render the chart to avoid jarring reloads, use opacity for loading state */}
-            <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
-              {isDataLoading && (
-                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}>
-                  <Skeleton variant="rectangular" width="100%" height="100%" />
-                </Box>
-              )}
-              <Box sx={{ 
-                position: 'relative', 
-                width: '100%', 
-                height: '100%', 
-                zIndex: isDataLoading ? 0 : 1,
-                opacity: isDataLoading ? 0.3 : 1,
-                transition: 'opacity 0.3s ease-in-out'
-              }}>
+          <ChartWithLoading
+            title="Share Price History"
+            loading={isDataLoading}
+            height={250}
+            chart={
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <defs>
@@ -455,9 +449,8 @@ const VaultStats: React.FC = () => {
                   />
                 </AreaChart>
               </ResponsiveContainer>
-              </Box>
-            </Box>
-          </Box>
+            }
+          />
         </CardContent>
       </Card>
     </>
