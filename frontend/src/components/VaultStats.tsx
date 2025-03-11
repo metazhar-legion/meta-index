@@ -59,32 +59,38 @@ const VaultStats: React.FC = () => {
   const theme = useTheme();
   const { vaultContract, isLoading: contractsLoading } = useContracts();
   const { account, provider, refreshProvider } = useWeb3();
-  const [stats, setStats] = useState({
-    totalAssets: '0',
-    totalShares: '0',
-    userShares: '0',
-    userAssets: '0',
-    sharePrice: '0',
-  });
-  // Add a separate state for pending stats to avoid UI flickering
-  const [pendingStats, setPendingStats] = useState<{
+  
+  // Define stats interface for better type safety
+  interface VaultStats {
     totalAssets: string;
     totalShares: string;
     userShares: string;
     userAssets: string;
     sharePrice: string;
-  } | null>(null);
+  }
+  
+  // Use the delayed update hook for smoother UI transitions
+  const statsState = useDelayedUpdate<VaultStats>({
+    totalAssets: '0',
+    totalShares: '0',
+    userShares: '0',
+    userAssets: '0',
+    sharePrice: '0',
+  }, 3000);
+  
+  // Track loading and error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+  
   // Track if this is the initial load
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
   // Generate sample data for the chart and persist it between renders
   const [chartData, setChartData] = useState(() => generateSampleData());
+  
+  // Constants
   const MAX_RETRIES = 3;
-  // Minimum time between visual updates (in ms)
-  const MIN_UPDATE_INTERVAL = 3000;
 
   // Helper function to check if an error is a BlockOutOfRangeError
   const isBlockOutOfRangeError = useCallback((error: any): boolean => {
