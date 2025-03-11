@@ -383,7 +383,11 @@ const VaultStats: React.FC = () => {
             dataKey="value"
             xAxisKey="date"
             color={theme.palette.primary.main}
-            tooltipFormatter={(value) => `$${value.toFixed(2)}`}
+            tooltipFormatter={(value) => {
+              // Ensure value is a number before calling toFixed
+              const numValue = typeof value === 'string' ? parseFloat(value) : Number(value);
+              return `$${isNaN(numValue) ? '0.00' : numValue.toFixed(2)}`;
+            }}
           />
         </CardContent>
       </Card>
