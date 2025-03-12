@@ -115,17 +115,31 @@ const VaultStats: React.FC = () => {
       return;
     }
     
+    // Force a provider refresh to ensure we have the latest blockchain state
+    if (refreshProvider) {
+      try {
+        logger.info('Refreshing provider before loading stats');
+        await refreshProvider();
+      } catch (refreshError) {
+        logger.error('Failed to refresh provider', refreshError);
+      }
+    }
+    
     // Ensure we have a connected contract with the current provider
     try {
       // Quick test call to ensure contract is connected
       await vaultContract.totalAssets();
     } catch (error) {
-      logger.warn('Contract connection issue detected, attempting to refresh provider');
-      if (refreshProvider) {
+      logger.warn('Contract connection issue detected, attempting to reconnect');
+      // Try to reconnect the contract if needed
+      if (error && provider) {
         try {
-          await refreshProvider();
-        } catch (refreshError) {
-          logger.error('Failed to refresh provider', refreshError);
+          logger.info('Attempting to reconnect contract with provider');
+          // This will trigger a re-render which will create a new contract instance
+          setRetryCount(prev => prev + 1);
+          return; // Exit and let the re-render handle the refresh
+        } catch (reconnectError) {
+          logger.error('Failed to reconnect contract', reconnectError);
         }
       }
     }
@@ -140,23 +154,32 @@ const VaultStats: React.FC = () => {
       logger.info('Loading vault statistics');
       
       // Use safe contract calls with standardized error handling
+      logger.debug('Calling vaultContract.totalAssets()');
       const totalAssets = await withRetry(
         async () => {
-          return await safeContractCall(vaultContract, 'totalAssets', [], BigInt(0));
+          const result = await safeContractCall(vaultContract, 'totalAssets', [], BigInt(0));
+          logger.debug('totalAssets result:', result.toString());
+          return result;
         }, 
         MAX_RETRIES
       );
       
+      logger.debug('Calling vaultContract.totalSupply()');
       const totalSupply = await withRetry(
         async () => {
-          return await safeContractCall(vaultContract, 'totalSupply', [], BigInt(0));
+          const result = await safeContractCall(vaultContract, 'totalSupply', [], BigInt(0));
+          logger.debug('totalSupply result:', result.toString());
+          return result;
         }, 
         MAX_RETRIES
       );
       
+      logger.debug('Calling vaultContract.balanceOf() for account:', account);
       const userShares = await withRetry(
         async () => {
-          return await safeContractCall(vaultContract, 'balanceOf', [account], BigInt(0));
+          const result = await safeContractCall(vaultContract, 'balanceOf', [account], BigInt(0));
+          logger.debug('userShares result:', result.toString());
+          return result;
         }, 
         MAX_RETRIES
       );
@@ -279,17 +302,53 @@ const VaultStats: React.FC = () => {
     eventName: EVENTS.VAULT_TRANSACTION_COMPLETED,
     handler: () => {
       logger.info('Vault transaction completed, refreshing statistics');
-      // Skip loading state for transaction events to avoid UI flicker
+      
+      // Force clear any cached data by resetting state
+      setError(null);
+      setLoading(true);
+      
+      // Force a provider refresh to ensure we have the latest blockchain state
+      if (refreshProvider) {
+        logger.info('Refreshing provider before loading stats after transaction');
+        refreshProvider()
+          .then(() => {
+            logger.info('Provider refreshed successfully');
+          })
+          .catch(error => {
+            logger.error('Failed to refresh provider after transaction', error);
+          });
+      }
+      
+      // Reset retry count to allow for new retries
+      setRetryCount(0);
+      
+      // Use a multi-stage refresh approach with increasing delays
+      // First refresh immediately
+      if (vaultContract && provider && account) {
+        logger.info('Initial refresh of vault statistics after transaction');
+        loadVaultStats(true);
+      }
+      
+      // Then refresh again after a delay to ensure blockchain state is updated
       setTimeout(() => {
         if (vaultContract && provider && account) {
-          logger.info('Refreshing vault statistics after transaction');
+          logger.info('Second refresh of vault statistics after transaction');
           loadVaultStats(true);
         } else {
           logger.warn('Cannot refresh stats: missing contract, provider, or account');
         }
-      }, 1000); // Additional delay to ensure contract state is updated
+      }, 3000); // 3 second delay
+      
+      // Final refresh after a longer delay
+      setTimeout(() => {
+        if (vaultContract && provider && account) {
+          logger.info('Final refresh of vault statistics after transaction');
+          loadVaultStats(true);
+        }
+      }, 6000); // 6 second delay for final refresh
     },
-    delay: 2000 // 2 second delay to ensure blockchain state is updated
+    // No additional delay needed since we're handling it in the handler
+    delay: 0
   });
 
   // Only show loading state for the initial load or explicit refresh actions

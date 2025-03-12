@@ -1,9 +1,13 @@
+import { createLogger } from './logging';
+
 // Simple event bus for component communication
 type EventCallback = (...args: any[]) => void;
 
 interface EventMap {
   [eventName: string]: EventCallback[];
 }
+
+const logger = createLogger('EventBus');
 
 class EventBus {
   private events: EventMap = {};
@@ -32,10 +36,19 @@ class EventBus {
 
   // Emit an event
   emit(eventName: string, ...args: any[]) {
-    if (this.events[eventName]) {
+    logger.debug(`Emitting event: ${eventName}`, args.length > 0 ? args[0] : 'No data');
+    
+    if (this.events[eventName] && this.events[eventName].length > 0) {
+      logger.debug(`Found ${this.events[eventName].length} listeners for event: ${eventName}`);
       this.events[eventName].forEach((callback) => {
-        callback(...args);
+        try {
+          callback(...args);
+        } catch (error) {
+          logger.error(`Error in event listener for ${eventName}:`, error);
+        }
       });
+    } else {
+      logger.debug(`No listeners found for event: ${eventName}`);
     }
   }
 }

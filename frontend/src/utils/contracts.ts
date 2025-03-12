@@ -60,8 +60,35 @@ export const safeContractCall = async <T>(
     // Call the contract method with the provided arguments
     const result = await contract[methodName](...args);
     
-    logger.debug(`Contract call successful: ${methodName}`, result);
-    return result;
+    // In ethers.js v6, some methods might return objects instead of primitive values
+    // Ensure we're handling both formats correctly
+    let processedResult: any;
+    
+    if (typeof result === 'object' && result !== null) {
+      // For BigNumber or similar objects that have a toString method
+      if (typeof result.toString === 'function') {
+        logger.debug(`Converting object result to string for ${methodName}`);
+        processedResult = result;
+      } else if (Array.isArray(result)) {
+        // Handle array results
+        processedResult = result;
+      } else {
+        // For other objects, try to extract meaningful data
+        logger.debug(`Complex object returned from ${methodName}, using as is`);
+        processedResult = result;
+      }
+    } else {
+      // For primitive values
+      processedResult = result;
+    }
+    
+    logger.debug(`Contract call successful: ${methodName}`, 
+      typeof processedResult === 'object' && processedResult !== null ? 
+        (processedResult.toString ? processedResult.toString() : JSON.stringify(processedResult)) : 
+        String(processedResult)
+    );
+    
+    return processedResult as T;
   } catch (error) {
     logger.error(`Contract call failed: ${methodName}`, error);
     return fallbackValue;
