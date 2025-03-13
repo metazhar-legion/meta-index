@@ -232,8 +232,8 @@ const InvestorPage: React.FC = () => {
         // Emit event to notify other components that a transaction was completed
         console.log('Emitting VAULT_TRANSACTION_COMPLETED event with transaction details');
         eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED, {
-          type: 'deposit',
-          amount: amountInWei.toString(),
+          type: 'withdraw',
+          shares: sharesInWei.toString(),
           txHash: receipt?.hash || '',
           timestamp: Date.now()
         });
