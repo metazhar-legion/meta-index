@@ -165,13 +165,14 @@ const InvestorPage: React.FC = () => {
         setAmount('');
         
         // Emit event to notify other components that a transaction was completed
-        console.log('Emitting VAULT_TRANSACTION_COMPLETED event with transaction details');
+        console.log('Emitting VAULT_TRANSACTION_COMPLETED event with deposit transaction details');
         eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED, {
           type: 'deposit',
           amount: amountInWei.toString(),
           txHash: receipt?.hash || '',
           timestamp: Date.now()
         });
+        console.log('VAULT_TRANSACTION_COMPLETED event emitted for deposit');
       } catch (txError) {
         console.error('Transaction error details:', txError);
         // Check for specific error messages
@@ -230,13 +231,14 @@ const InvestorPage: React.FC = () => {
         setShares('');
         
         // Emit event to notify other components that a transaction was completed
-        console.log('Emitting VAULT_TRANSACTION_COMPLETED event with transaction details');
+        console.log('Emitting VAULT_TRANSACTION_COMPLETED event with withdraw transaction details');
         eventBus.emit(EVENTS.VAULT_TRANSACTION_COMPLETED, {
           type: 'withdraw',
           shares: sharesInWei.toString(),
           txHash: receipt?.hash || '',
           timestamp: Date.now()
         });
+        console.log('VAULT_TRANSACTION_COMPLETED event emitted for withdraw');
       } catch (txError) {
         console.error('Transaction error details:', txError);
         // Check for specific error messages

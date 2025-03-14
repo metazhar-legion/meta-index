@@ -34,8 +34,24 @@ class EventBus {
     }
   }
 
+  // Simple flag to track the last event to prevent duplicate emissions
+  private lastEventData: Record<string, any> = {};
+
   // Emit an event
   emit(eventName: string, ...args: any[]) {
+    // Simple duplicate prevention - only prevent exact duplicate data
+    const eventData = args.length > 0 ? JSON.stringify(args[0]) : '';
+    const lastData = this.lastEventData[eventName];
+    
+    // If this is an exact duplicate of the last event with the same data, skip it
+    if (lastData === eventData) {
+      logger.debug(`Skipping duplicate event emission: ${eventName}`);
+      return;
+    }
+    
+    // Update last event data
+    this.lastEventData[eventName] = eventData;
+    
     logger.debug(`Emitting event: ${eventName}`, args.length > 0 ? args[0] : 'No data');
     
     if (this.events[eventName] && this.events[eventName].length > 0) {

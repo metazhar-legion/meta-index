@@ -5,6 +5,32 @@ import { createLogger } from './logging';
 const logger = createLogger('Hooks');
 
 /**
+ * Utility function to perform a deep equality check between two values
+ * This is used to prevent unnecessary re-renders when data hasn't changed
+ */
+function isDeepEqual(obj1: any, obj2: any): boolean {
+  // Handle primitive types and null/undefined
+  if (obj1 === obj2) return true;
+  if (obj1 == null || obj2 == null) return false;
+  if (typeof obj1 !== 'object' && typeof obj2 !== 'object') return obj1 === obj2;
+
+  // Get keys of both objects
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+
+  // Check if number of keys is the same
+  if (keys1.length !== keys2.length) return false;
+
+  // Check if all keys in obj1 exist in obj2 and have the same values
+  for (const key of keys1) {
+    if (!keys2.includes(key)) return false;
+    if (!isDeepEqual(obj1[key], obj2[key])) return false;
+  }
+
+  return true;
+}
+
+/**
  * Custom hooks for common patterns across components
  */
 
@@ -185,10 +211,16 @@ export function useBlockchainEvents(
       }
     }
     
-    // Create the event handler with delay
-    const eventHandler = () => {
-      // Add a small delay to ensure blockchain state is updated
+    // Create an event handler with a small delay to ensure blockchain state is updated
+    // but without nested timeouts that could cause infinite loops
+    const eventHandler = (...args: any[]) => {
+      // Log the event reception for debugging
+      logger.debug(`Received event ${eventName} with data:`, args[0] || 'No data');
+      
+      // Add a small delay to ensure blockchain state is updated before handling
       setTimeout(() => {
+        // Execute the handler without passing args to avoid TypeScript errors
+        // The original handler doesn't expect arguments
         handler();
       }, delay);
     };

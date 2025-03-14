@@ -115,146 +115,129 @@ const VaultStats: React.FC = () => {
       return;
     }
     
-    // Force a provider refresh to ensure we have the latest blockchain state
-    if (refreshProvider) {
-      try {
-        logger.info('Refreshing provider before loading stats');
-        await refreshProvider();
-      } catch (refreshError) {
-        logger.error('Failed to refresh provider', refreshError);
-      }
-    }
-    
-    // Ensure we have a connected contract with the current provider
-    try {
-      // Quick test call to ensure contract is connected
-      await vaultContract.totalAssets();
-    } catch (error) {
-      logger.warn('Contract connection issue detected, attempting to reconnect');
-      // Try to reconnect the contract if needed
-      if (error && provider) {
-        try {
-          logger.info('Attempting to reconnect contract with provider');
-          // This will trigger a re-render which will create a new contract instance
-          setRetryCount(prev => prev + 1);
-          return; // Exit and let the re-render handle the refresh
-        } catch (reconnectError) {
-          logger.error('Failed to reconnect contract', reconnectError);
-        }
-      }
-    }
-
-    // Only show loading state if not skipping it
+    // Only show loading state if not skipping it (for background refreshes)
     if (!skipLoadingState) {
       setLoading(true);
     }
+
     setError(null);
     
     try {
       logger.info('Loading vault statistics');
       
-      // Use safe contract calls with standardized error handling
-      logger.debug('Calling vaultContract.totalAssets()');
-      const totalAssets = await withRetry(
-        async () => {
-          const result = await safeContractCall(vaultContract, 'totalAssets', [], BigInt(0));
-          logger.debug('totalAssets result:', result.toString());
-          return result;
-        }, 
-        MAX_RETRIES
-      );
+      // Use Promise.allSettled to make all contract calls in parallel for better performance
+      const [totalAssetsResult, totalSupplyResult, userSharesResult] = await Promise.allSettled([
+        // Get total assets
+        vaultContract.totalAssets(),
+        // Get total supply
+        vaultContract.totalSupply(),
+        // Get user shares
+        vaultContract.balanceOf(account)
+      ]);
       
-      logger.debug('Calling vaultContract.totalSupply()');
-      const totalSupply = await withRetry(
-        async () => {
-          const result = await safeContractCall(vaultContract, 'totalSupply', [], BigInt(0));
-          logger.debug('totalSupply result:', result.toString());
-          return result;
-        }, 
-        MAX_RETRIES
-      );
+      // Handle results with proper error fallbacks
+      const totalAssets = totalAssetsResult.status === 'fulfilled' ? totalAssetsResult.value : BigInt(0);
+      const totalSupply = totalSupplyResult.status === 'fulfilled' ? totalSupplyResult.value : BigInt(0);
+      const userShares = userSharesResult.status === 'fulfilled' ? userSharesResult.value : BigInt(0);
       
-      logger.debug('Calling vaultContract.balanceOf() for account:', account);
-      const userShares = await withRetry(
-        async () => {
-          const result = await safeContractCall(vaultContract, 'balanceOf', [account], BigInt(0));
-          logger.debug('userShares result:', result.toString());
-          return result;
-        }, 
-        MAX_RETRIES
-      );
+      // Log successful retrieval
+      logger.debug('Contract data retrieved successfully');
+      logger.debug('- totalAssets:', totalAssets.toString());
+      logger.debug('- totalSupply:', totalSupply.toString());
+      logger.debug('- userShares:', userShares.toString());
       
       // Reset retry count on success
       setRetryCount(0);
       
-      // Calculate derived values
-      let userAssets = BigInt(0);
-      
       // Ensure we have valid BigInt values
-      const totalSupplyBigInt = totalSupply ? BigInt(totalSupply.toString()) : BigInt(0);
-      const userSharesBigInt = userShares ? BigInt(userShares.toString()) : BigInt(0);
-      const totalAssetsBigInt = totalAssets ? BigInt(totalAssets.toString()) : BigInt(0);
+      const totalAssetsBigInt = BigInt(totalAssets.toString());
+      const totalSupplyBigInt = BigInt(totalSupply.toString());
+      const userSharesBigInt = BigInt(userShares.toString());
       
-      logger.debug('BigInt values for calculation:');
+      // Log the raw BigInt values for debugging
+      logger.debug('Raw BigInt values:');
+      logger.debug('- totalAssetsBigInt:', totalAssetsBigInt.toString());
       logger.debug('- totalSupplyBigInt:', totalSupplyBigInt.toString());
       logger.debug('- userSharesBigInt:', userSharesBigInt.toString());
-      logger.debug('- totalAssetsBigInt:', totalAssetsBigInt.toString());
-      
-      if (totalSupplyBigInt > BigInt(0) && userSharesBigInt > BigInt(0)) {
-        // Calculate user assets based on their share of the pool
-        userAssets = (userSharesBigInt * totalAssetsBigInt) / totalSupplyBigInt;
-        logger.debug('Calculated userAssets:', userAssets.toString());
-      } else {
-        logger.debug('Cannot calculate userAssets: totalSupply or userShares is zero');
-      }
       
       // Format the values using our standardized formatting utilities
       // USDC has 6 decimals, shares have 18 decimals
-      const formattedTotalAssets = formatCurrency(totalAssetsBigInt);
-      const formattedTotalShares = formatTokenAmount(totalSupplyBigInt, 18);
-      const formattedUserShares = formatTokenAmount(userSharesBigInt, 18);
+      const formattedTotalAssets = formatCurrency(ethers.formatUnits(totalAssetsBigInt, 6));
+      
+      // Log raw share values before formatting
+      logger.debug('Raw share values before formatting:');
+      logger.debug('- totalSupplyBigInt raw:', totalSupplyBigInt.toString());
+      logger.debug('- userSharesBigInt raw:', userSharesBigInt.toString());
+      logger.debug('- totalSupplyBigInt formatted:', ethers.formatUnits(totalSupplyBigInt, 18));
+      logger.debug('- userSharesBigInt formatted:', ethers.formatUnits(userSharesBigInt, 18));
+      
+      // Format share values with proper decimals
+      const formattedTotalShares = formatTokenAmount(ethers.formatUnits(totalSupplyBigInt, 18));
+      const formattedUserShares = formatTokenAmount(ethers.formatUnits(userSharesBigInt, 18));
       
       logger.debug('Formatted values:');
       logger.debug('- formattedTotalAssets:', formattedTotalAssets);
       logger.debug('- formattedTotalShares:', formattedTotalShares);
       logger.debug('- formattedUserShares:', formattedUserShares);
       
-      // Calculate user assets in USDC - remove the $ prefix from formatted values for calculations
-      const totalAssetsNum = parseFloat(formattedTotalAssets.replace('$', '').replace(/,/g, ''));
-      const totalSharesNum = parseFloat(formattedTotalShares.replace(/,/g, ''));
-      const userSharesNum = parseFloat(formattedUserShares.replace(/,/g, ''));
+      // Calculate numeric values for further calculations - ensure we're handling strings properly
+      const totalAssetsNum = parseFloat(formattedTotalAssets.replace('$', '').replace(/,/g, '') || '0');
+      const totalSharesNum = parseFloat(formattedTotalShares.replace(/,/g, '') || '0');
+      const userSharesNum = parseFloat(formattedUserShares.replace(/,/g, '') || '0');
       
-      logger.debug('Parsed numeric values:');
+      logger.debug('Numeric values for calculations:');
       logger.debug('- totalAssetsNum:', totalAssetsNum);
       logger.debug('- totalSharesNum:', totalSharesNum);
       logger.debug('- userSharesNum:', userSharesNum);
       
-      // Calculate user assets in USDC
-      const formattedUserAssets: number = userSharesNum > 0 && totalSharesNum > 0 
-        ? (userSharesNum / totalSharesNum) * totalAssetsNum
-        : 0;
+      // Calculate user assets in USDC - properly handle USDC's 6 decimals
+      let userAssetsBigInt = BigInt(0);
+      if (userSharesBigInt > BigInt(0) && totalSupplyBigInt > BigInt(0)) {
+        // Calculate user's proportional share of total assets using BigInt for precision
+        userAssetsBigInt = (userSharesBigInt * totalAssetsBigInt) / totalSupplyBigInt;
+        logger.debug('Calculated userAssetsBigInt:', userAssetsBigInt.toString());
+      }
       
-      logger.debug('Calculated formattedUserAssets:', formattedUserAssets);
+      // Format the user assets with proper decimals
+      const formattedUserAssets = parseFloat(ethers.formatUnits(userAssetsBigInt, 6));
       
-      // Calculate share price (USDC per share)
-      const formattedSharePrice = totalSharesNum > 0
-        ? totalAssetsNum / totalSharesNum
-        : 100; // Default to 100 if no shares exist yet
+      // Calculate share price (USDC per share) - properly handle different decimals
+      let sharePrice = 100; // Default to 100 if no shares exist yet
       
+      if (totalSupplyBigInt > BigInt(0)) {
+        // Calculate price using BigInt math for precision
+        // We need to adjust for the decimal difference between USDC (6) and shares (18)
+        // Multiply by 10^12 to account for the decimal difference
+        const decimalAdjustment = BigInt(10) ** BigInt(12);
+        const sharePriceBigInt = (totalAssetsBigInt * decimalAdjustment) / totalSupplyBigInt;
+        
+        // Format to a regular number
+        sharePrice = parseFloat(ethers.formatUnits(sharePriceBigInt, 12));
+        logger.debug('Calculated sharePriceBigInt:', sharePriceBigInt.toString());
+        logger.debug('Calculated sharePrice:', sharePrice);
+      }
+      
+      logger.debug('Calculated values:');
+      logger.debug('- formattedUserAssets:', formattedUserAssets);
+      logger.debug('- sharePrice:', sharePrice);
+      
+      // Create the new stats object with string values
       const newStats = {
         totalAssets: formattedTotalAssets,
         totalShares: formattedTotalShares,
         userShares: formattedUserShares,
         userAssets: formattedUserAssets.toFixed(2),
-        sharePrice: formattedSharePrice.toFixed(2),
+        sharePrice: sharePrice.toFixed(2),
       };
       
+      logger.debug('Final stats object:', newStats);
+      
       // Update chart data with the latest share price
-      updateChartData(formattedSharePrice);
+      updateChartData(sharePrice);
       
       logger.info('Vault statistics loaded successfully');
       
-      // Update the stats with our delayed update hook
+      // Update the stats immediately
       statsState.updateValue(newStats, skipLoadingState);
     } catch (error) {
       logger.error('Failed to load vault statistics', error);
@@ -265,25 +248,10 @@ const VaultStats: React.FC = () => {
         severity="error"
       />;
       
-      // If we need to refresh the provider
-      const parsedErrorMessage = parseErrorMessage(error);
-      if (parsedErrorMessage.includes('block height') && retryCount < MAX_RETRIES) {
-        logger.info(`Refreshing provider (attempt ${retryCount + 1}/${MAX_RETRIES})`);
-        setRetryCount(prev => prev + 1);
-        
-        try {
-          if (refreshProvider) {
-            await refreshProvider();
-            setLoading(false);
-            return; // Exit and let the useEffect retry with the new provider
-          }
-        } catch (refreshError) {
-          logger.error('Failed to refresh provider', refreshError);
-        }
-      }
-      
+      // Set the error message
       setError(typeof errorMessage === 'string' ? errorMessage : 'Unknown error');
     } finally {
+      // Always reset loading state
       setLoading(false);
     }
   }, [vaultContract, provider, account, retryCount, refreshProvider, statsState]);
@@ -297,62 +265,55 @@ const VaultStats: React.FC = () => {
     }
   }, [vaultContract, provider, account, loadVaultStats, isInitialLoad]);
   
-  // Use the standardized blockchain events hook for event subscription
+  // Use the standardized blockchain events hook for event subscription with immediate updates
   useBlockchainEvents({
     eventName: EVENTS.VAULT_TRANSACTION_COMPLETED,
     handler: () => {
-      logger.info('Vault transaction completed, refreshing statistics');
+      logger.info('Vault transaction completed, refreshing statistics immediately');
       
-      // Force clear any cached data by resetting state
+      // Reset state for a clean refresh
       setError(null);
       setLoading(true);
-      
-      // Force a provider refresh to ensure we have the latest blockchain state
-      if (refreshProvider) {
-        logger.info('Refreshing provider before loading stats after transaction');
-        refreshProvider()
-          .then(() => {
-            logger.info('Provider refreshed successfully');
-          })
-          .catch(error => {
-            logger.error('Failed to refresh provider after transaction', error);
-          });
-      }
-      
-      // Reset retry count to allow for new retries
       setRetryCount(0);
       
-      // Use a multi-stage refresh approach with increasing delays
-      // First refresh immediately
+      // Immediately load vault stats if we have all necessary components
       if (vaultContract && provider && account) {
-        logger.info('Initial refresh of vault statistics after transaction');
+        // Immediate refresh with no delays
         loadVaultStats(true);
+      } else {
+        logger.warn('Cannot refresh stats: missing contract, provider, or account');
+        setLoading(false);
       }
-      
-      // Then refresh again after a delay to ensure blockchain state is updated
-      setTimeout(() => {
-        if (vaultContract && provider && account) {
-          logger.info('Second refresh of vault statistics after transaction');
-          loadVaultStats(true);
-        } else {
-          logger.warn('Cannot refresh stats: missing contract, provider, or account');
-        }
-      }, 3000); // 3 second delay
-      
-      // Final refresh after a longer delay
-      setTimeout(() => {
-        if (vaultContract && provider && account) {
-          logger.info('Final refresh of vault statistics after transaction');
-          loadVaultStats(true);
-        }
-      }, 6000); // 6 second delay for final refresh
     },
-    // No additional delay needed since we're handling it in the handler
+    // No delay for immediate response
     delay: 0
   });
+  
+  // Set up polling for automatic updates every 5 seconds
+  useEffect(() => {
+    // Only set up polling if we have the necessary components
+    if (!vaultContract || !provider || !account) return;
+    
+    logger.info('Setting up automatic polling for vault statistics');
+    
+    // Create polling interval
+    const pollInterval = setInterval(() => {
+      // Only refresh if not already loading and if we have all necessary components
+      if (!loading && vaultContract && provider && account) {
+        logger.debug('Polling: refreshing vault statistics');
+        loadVaultStats(false); // Use false to indicate this is a background refresh
+      }
+    }, 5000); // Poll every 5 seconds
+    
+    // Clean up interval on unmount
+    return () => {
+      logger.info('Cleaning up vault statistics polling');
+      clearInterval(pollInterval);
+    };
+  }, [vaultContract, provider, account, loading, loadVaultStats]);
 
   // Only show loading state for the initial load or explicit refresh actions
-  const isDataLoading = (loading && isInitialLoad) || contractsLoading;
+  const isDataLoading = loading || contractsLoading;
   
   // Format numbers with commas - using our standardized formatting utility
   const formatNumber = (value: string | number | bigint | null | undefined): string => {
@@ -437,7 +398,7 @@ const VaultStats: React.FC = () => {
               <StatCard
                 title="Total Assets"
                 isLoading={isDataLoading}
-                value={parseFloat(statsState.value?.totalAssets || '0')}
+                value={statsState.value?.totalAssets?.replace('$', '').replace(/,/g, '') || '0'}
                 icon={<ShowChartIcon />}
                 color="primary"
                 prefix="$"
@@ -450,7 +411,7 @@ const VaultStats: React.FC = () => {
               <StatCard
                 title="Share Price"
                 isLoading={isDataLoading}
-                value={parseFloat(statsState.value?.sharePrice || '0')}
+                value={statsState.value?.sharePrice || '0'}
                 icon={<TrendingUpIcon />}
                 color="info"
                 prefix="$"
@@ -468,7 +429,7 @@ const VaultStats: React.FC = () => {
               <StatCard
                 title="Your Shares"
                 isLoading={isDataLoading}
-                value={parseFloat(statsState.value?.userShares || '0')}
+                value={statsState.value?.userShares?.replace(/,/g, '') || '0'}
                 icon={<PieChartIcon />}
                 color="warning"
                 decimals={2}
@@ -480,7 +441,7 @@ const VaultStats: React.FC = () => {
               <StatCard
                 title="Your Assets"
                 isLoading={isDataLoading}
-                value={parseFloat(statsState.value?.userAssets || '0')}
+                value={statsState.value?.userAssets || '0'}
                 icon={<AccountBalanceWalletIcon />}
                 color="success"
                 prefix="$"

@@ -60,7 +60,7 @@ const StatCard: React.FC<StatCardProps> = ({
       ) : (
         <Typography variant="h5" fontWeight="600">
           <CountUp 
-            end={typeof value === 'string' ? parseFloat(value) : value} 
+            end={typeof value === 'string' ? parseFloat(value) || 0 : value} 
             prefix={prefix} 
             suffix={suffix}
             decimals={decimals} 
