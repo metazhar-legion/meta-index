@@ -194,38 +194,58 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
     }
   };
 
-  // Auto-connect if previously connected
+  // Auto-connect if previously connected with improved reliability
   useEffect(() => {
     // Cleanup flag to prevent state updates after unmount
     let isMounted = true;
     
     const connectWalletOnPageLoad = async () => {
-      if (localStorage.getItem('isWalletConnected') === 'true') {
+      // Always try to auto-connect if MetaMask is available, even if localStorage isn't set
+      // This helps with cases where the user has already connected MetaMask but localStorage was cleared
+      const shouldAutoConnect = localStorage.getItem('isWalletConnected') === 'true' || 
+                               (typeof window !== 'undefined' && window.ethereum?.isMetaMask);
+      
+      if (shouldAutoConnect) {
         try {
           if (isMounted) setIsLoading(true);
           
           // Use a timeout to ensure MetaMask has time to initialize
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
           
-          // Only activate if component is still mounted
-          if (isMounted) {
+          // Check if MetaMask is unlocked before trying to connect
+          let isUnlocked = false;
+          try {
+            if (window.ethereum?.request) {
+              // This will only succeed if the wallet is unlocked
+              const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+              isUnlocked = Array.isArray(accounts) && accounts.length > 0;
+            }
+          } catch (error) {
+            console.log('Could not determine if MetaMask is unlocked');
+          }
+          
+          // Only proceed with activation if MetaMask is unlocked
+          if (isUnlocked && isMounted) {
+            console.log('Attempting to auto-connect wallet...');
             await metaMask.activate();
             
             // After successful activation, create a new provider
             if (isMounted) {
-              // Give a little time for the connection to establish
-              await new Promise(resolve => setTimeout(resolve, 300));
-              
               // Create provider using window.ethereum directly
               if (typeof window !== 'undefined' && window.ethereum) {
                 try {
                   const provider = new ethers.BrowserProvider(window.ethereum as any);
                   setLibrary(provider);
+                  // Save connection state on successful auto-connect
+                  localStorage.setItem('isWalletConnected', 'true');
+                  console.log('Auto-connect successful');
                 } catch (providerError) {
-                  console.error('Error creating provider during auto-connect');
+                  console.error('Error creating provider during auto-connect:', providerError);
                 }
               }
             }
+          } else {
+            console.log('MetaMask not unlocked or component unmounted, skipping auto-connect');
           }
         } catch (error) {
           console.error('Error auto-connecting to wallet:', error);
