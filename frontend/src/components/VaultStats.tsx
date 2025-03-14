@@ -301,9 +301,10 @@ const VaultStats: React.FC = () => {
       // Only refresh if not already loading and if we have all necessary components
       if (!loading && vaultContract && provider && account) {
         logger.debug('Polling: refreshing vault statistics');
-        loadVaultStats(false); // Use false to indicate this is a background refresh
+        // Always use skipLoadingState=true for polling to prevent UI flicker
+        loadVaultStats(true); // Use true to skip loading state for background refresh
       }
-    }, 5000); // Poll every 5 seconds
+    }, 10000); // Poll every 10 seconds instead of 5 to reduce unnecessary updates
     
     // Clean up interval on unmount
     return () => {

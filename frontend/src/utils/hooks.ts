@@ -67,13 +67,19 @@ export function useDelayedUpdate<T>(initialValue: T, delayMs: number = 3000) {
   
   // Function to update the value with delay
   const updateValue = useCallback((newValue: T, skipDelay: boolean = false) => {
-    if (skipDelay) {
-      setCurrentValue(newValue);
-      setLastUpdateTime(Date.now());
+    // Only update if the value has actually changed (using deep comparison)
+    if (!isDeepEqual(newValue, currentValue)) {
+      logger.debug('Value changed, updating state');
+      if (skipDelay) {
+        setCurrentValue(newValue);
+        setLastUpdateTime(Date.now());
+      } else {
+        setPendingValue(newValue);
+      }
     } else {
-      setPendingValue(newValue);
+      logger.debug('Value unchanged, skipping update');
     }
-  }, []);
+  }, [currentValue]);
   
   // Force an immediate update
   const forceUpdate = useCallback((newValue: T) => {
