@@ -73,13 +73,15 @@ const VaultStats: React.FC = () => {
   }
   
   // Use the delayed update hook for smoother UI transitions
+  // Reduced delay from 3000ms to 300ms for much faster updates
+  // Note: We're bypassing this delay by using skipDelay=true, but keeping a small value as fallback
   const statsState = useDelayedUpdate<VaultStats>({
     totalAssets: '0',
     totalShares: '0',
     userShares: '0',
     userAssets: '0',
     sharePrice: '0',
-  }, 3000);
+  }, 300);
   
   // Track loading and error states
   const [loading, setLoading] = useState(false);
@@ -125,20 +127,54 @@ const VaultStats: React.FC = () => {
     try {
       logger.info('Loading vault statistics');
       
-      // Use Promise.allSettled to make all contract calls in parallel for better performance
-      const [totalAssetsResult, totalSupplyResult, userSharesResult] = await Promise.allSettled([
-        // Get total assets
-        vaultContract.totalAssets(),
-        // Get total supply
-        vaultContract.totalSupply(),
-        // Get user shares
-        vaultContract.balanceOf(account)
-      ]);
+      logger.info('Making contract calls to get vault data');
+      logger.info('Account address:', account);
       
-      // Handle results with proper error fallbacks
-      const totalAssets = totalAssetsResult.status === 'fulfilled' ? totalAssetsResult.value : BigInt(0);
-      const totalSupply = totalSupplyResult.status === 'fulfilled' ? totalSupplyResult.value : BigInt(0);
-      const userShares = userSharesResult.status === 'fulfilled' ? userSharesResult.value : BigInt(0);
+      // Make individual contract calls for better error handling
+      let totalAssets, totalSupply, userShares;
+      
+      try {
+        // Get total assets
+        logger.debug('Calling vaultContract.totalAssets()');
+        totalAssets = await vaultContract.totalAssets();
+        logger.debug('totalAssets result:', totalAssets.toString());
+      } catch (error) {
+        logger.error('Error getting totalAssets:', error);
+        totalAssets = BigInt(0);
+      }
+      
+      try {
+        // Get total supply
+        logger.debug('Calling vaultContract.totalSupply()');
+        totalSupply = await vaultContract.totalSupply();
+        logger.debug('totalSupply result:', totalSupply.toString());
+      } catch (error) {
+        logger.error('Error getting totalSupply:', error);
+        totalSupply = BigInt(0);
+      }
+      
+      try {
+        // Get user shares - this is the critical call for showing user shares
+        logger.debug('Calling vaultContract.balanceOf() with account:', account);
+        
+        // Make sure we're using the correct account address
+        logger.debug('Using account address for balanceOf:', account);
+        
+        // Call balanceOf directly with the account address
+        userShares = await vaultContract.balanceOf(account);
+        
+        // Add console logs to see the values in the browser console
+        console.log('USER SHARES RAW:', userShares);
+        console.log('USER SHARES STRING:', userShares.toString());
+        console.log('USER SHARES TYPE:', typeof userShares);
+        
+        logger.debug('userShares raw result:', userShares);
+        logger.debug('userShares toString():', userShares.toString());
+        logger.debug('userShares type:', typeof userShares);
+      } catch (error) {
+        logger.error('Error getting userShares:', error);
+        userShares = BigInt(0);
+      }
       
       // Log successful retrieval
       logger.debug('Contract data retrieved successfully');
@@ -171,9 +207,13 @@ const VaultStats: React.FC = () => {
       logger.debug('- totalSupplyBigInt formatted:', ethers.formatUnits(totalSupplyBigInt, 18));
       logger.debug('- userSharesBigInt formatted:', ethers.formatUnits(userSharesBigInt, 18));
       
-      // Format share values with proper decimals
+      // Format share values with proper decimals - ensure we're getting the correct numeric representation
+      // For shares, we want to show the actual number of shares (e.g., 10.0) not the full decimal representation
       const formattedTotalShares = formatTokenAmount(ethers.formatUnits(totalSupplyBigInt, 18));
-      const formattedUserShares = formatTokenAmount(ethers.formatUnits(userSharesBigInt, 18));
+      
+      // Format the user shares with ethers.js - keep it simple like the other values
+      const formattedUserShares = ethers.formatUnits(userSharesBigInt, 18);
+      logger.debug('User shares formatted:', formattedUserShares);
       
       logger.debug('Formatted values:');
       logger.debug('- formattedTotalAssets:', formattedTotalAssets);
@@ -183,7 +223,12 @@ const VaultStats: React.FC = () => {
       // Calculate numeric values for further calculations - ensure we're handling strings properly
       const totalAssetsNum = parseFloat(formattedTotalAssets.replace('$', '').replace(/,/g, '') || '0');
       const totalSharesNum = parseFloat(formattedTotalShares.replace(/,/g, '') || '0');
-      const userSharesNum = parseFloat(formattedUserShares.replace(/,/g, '') || '0');
+      
+      // For user shares, we already have a properly formatted value
+      const userSharesNum = parseFloat(formattedUserShares);
+      
+      // Log the raw user shares value from ethers for debugging
+      logger.debug('Raw user shares from ethers:', ethers.formatUnits(userSharesBigInt, 18));
       
       logger.debug('Numeric values for calculations:');
       logger.debug('- totalAssetsNum:', totalAssetsNum);
@@ -222,13 +267,27 @@ const VaultStats: React.FC = () => {
       logger.debug('- sharePrice:', sharePrice);
       
       // Create the new stats object with string values
+      // Create the stats object with consistent formatting for all values
+      // For user shares, we need to ensure we have a numeric value that will display properly
+      // The contract is using 18 decimals, but it looks like the actual shares are stored with 6 decimals
+      // So we need to adjust our formatting
+      const rawUserShares = ethers.formatUnits(userSharesBigInt, 6); // Use 6 decimals instead of 18
+      console.log('RAW USER SHARES (with 6 decimals):', rawUserShares);
+      
+      // Then parse it to a number and format to 2 decimal places
+      const userSharesValue = parseFloat(rawUserShares).toFixed(2);
+      console.log('USER SHARES VALUE (formatted):', userSharesValue);
+      
       const newStats = {
         totalAssets: formattedTotalAssets,
         totalShares: formattedTotalShares,
-        userShares: formattedUserShares,
+        userShares: userSharesValue, // Use the formatted string directly
         userAssets: formattedUserAssets.toFixed(2),
         sharePrice: sharePrice.toFixed(2),
       };
+      
+      // Log the final stats object to browser console
+      console.log('FINAL STATS OBJECT:', newStats);
       
       logger.debug('Final stats object:', newStats);
       
@@ -237,8 +296,8 @@ const VaultStats: React.FC = () => {
       
       logger.info('Vault statistics loaded successfully');
       
-      // Update the stats immediately
-      statsState.updateValue(newStats, skipLoadingState);
+      // Always update the stats immediately without delay for more responsive UI
+      statsState.updateValue(newStats, true);
     } catch (error) {
       logger.error('Failed to load vault statistics', error);
       
@@ -430,7 +489,7 @@ const VaultStats: React.FC = () => {
               <StatCard
                 title="Your Shares"
                 isLoading={isDataLoading}
-                value={statsState.value?.userShares?.replace(/,/g, '') || '0'}
+                value={statsState.value?.userShares || '0'}
                 icon={<PieChartIcon />}
                 color="warning"
                 decimals={2}

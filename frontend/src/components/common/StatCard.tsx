@@ -59,13 +59,15 @@ const StatCard: React.FC<StatCardProps> = ({
         <Skeleton width="100%" height={40} animation="wave" />
       ) : (
         <Typography variant="h5" fontWeight="600">
+          {/* Log the value being passed to the StatCard */}
           <CountUp 
-            end={typeof value === 'string' ? parseFloat(value) || 0 : value} 
+            end={typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) || 0 : value} 
             prefix={prefix} 
             suffix={suffix}
             decimals={decimals} 
             duration={duration} 
             separator=","
+            preserveValue={true}
           />
         </Typography>
       )}
