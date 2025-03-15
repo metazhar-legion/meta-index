@@ -194,7 +194,7 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
         <Divider sx={{ mb: 1 }} />
         
         {view === 'chart' ? (
-          <Box sx={{ height: 200, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ height: 220, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">

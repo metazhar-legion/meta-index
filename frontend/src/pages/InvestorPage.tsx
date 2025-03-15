@@ -10,6 +10,7 @@ import {
   Alert,
   Tabs,
   Tab,
+  Divider,
   CircularProgress
 } from '@mui/material';
 import { ethers } from 'ethers';
@@ -286,28 +287,32 @@ const InvestorPage: React.FC = () => {
         </Grid>
         <Grid item xs={12} md={4}>
           <Card variant="outlined" sx={{ height: '100%' }}>
-        <CardContent sx={{ pb: 1 }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="investment actions">
-            <Tab label="Deposit" />
-            <Tab label="Withdraw" />
-          </Tabs>
+        <CardContent sx={{ py: 1, px: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="h6">Investment Actions</Typography>
+            <Tabs value={tabValue} onChange={handleTabChange} aria-label="investment actions" sx={{ minHeight: 'auto' }}>
+              <Tab label="Deposit" sx={{ minHeight: 'auto', py: 0.5, px: 2 }} />
+              <Tab label="Withdraw" sx={{ minHeight: 'auto', py: 0.5, px: 2 }} />
+            </Tabs>
+          </Box>
+          <Divider sx={{ mb: 1 }} />
           
           {error && (
-            <Alert severity="error" sx={{ mt: 2 }}>
+            <Alert severity="error" sx={{ mt: 1, mb: 1 }}>
               {error}
             </Alert>
           )}
           
           {success && (
-            <Alert severity="success" sx={{ mt: 2 }}>
+            <Alert severity="success" sx={{ mt: 1, mb: 1 }}>
               {success}
             </Alert>
           )}
           
           <TabPanel value={tabValue} index={0}>
-            <Grid container spacing={2}>
+            <Grid container spacing={1}>
               <Grid item xs={12}>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
                   <Typography variant="body2">
                     Balance: {isLoading ? <CircularProgress size={12} /> : `${formattedTokenBalance} ${tokenSymbol}`}
                   </Typography>
@@ -322,7 +327,8 @@ const InvestorPage: React.FC = () => {
                   type="number"
                   value={amount}
                   onChange={handleAmountChange}
-                  margin="normal"
+                  margin="dense"
+                  size="small"
                   disabled={isLoading || isSubmitting}
                   InputProps={{
                     inputProps: { min: 0, step: 0.000001 }
@@ -336,17 +342,18 @@ const InvestorPage: React.FC = () => {
                   color="primary"
                   onClick={handleDeposit}
                   disabled={isLoading || isSubmitting || !amount || parseFloat(amount) <= 0}
+                  size="medium"
                 >
-                  {isSubmitting ? <CircularProgress size={24} /> : 'Deposit'}
+                  {isSubmitting ? <CircularProgress size={20} /> : 'Deposit'}
                 </Button>
               </Grid>
             </Grid>
           </TabPanel>
           
           <TabPanel value={tabValue} index={1}>
-            <Grid container spacing={2}>
+            <Grid container spacing={1}>
               <Grid item xs={12}>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
                   <Typography variant="body2">
                     Shares: {isLoading ? <CircularProgress size={12} /> : formatNumber(shares || '0', 2)}
                   </Typography>
@@ -361,7 +368,8 @@ const InvestorPage: React.FC = () => {
                   type="number"
                   value={shares}
                   onChange={handleSharesChange}
-                  margin="normal"
+                  margin="dense"
+                  size="small"
                   disabled={isLoading || isSubmitting}
                   InputProps={{
                     inputProps: { min: 0, step: 0.000001 }
@@ -375,8 +383,9 @@ const InvestorPage: React.FC = () => {
                   color="primary"
                   onClick={handleWithdraw}
                   disabled={isLoading || isSubmitting || !shares || parseFloat(shares) <= 0}
+                  size="medium"
                 >
-                  {isSubmitting ? <CircularProgress size={24} /> : 'Withdraw'}
+                  {isSubmitting ? <CircularProgress size={20} /> : 'Withdraw'}
                 </Button>
               </Grid>
             </Grid>
