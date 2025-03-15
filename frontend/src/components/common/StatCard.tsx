@@ -60,15 +60,27 @@ const StatCard: React.FC<StatCardProps> = ({
       ) : (
         <Typography variant="h5" fontWeight="600">
           {/* Log the value being passed to the StatCard */}
-          <CountUp 
-            end={typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) || 0 : value} 
-            prefix={prefix} 
-            suffix={suffix}
-            decimals={decimals} 
-            duration={duration} 
-            separator=","
-            preserveValue={true}
-          />
+          <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+            <CountUp 
+              end={typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) || 0 : value} 
+              prefix={prefix} 
+              suffix={suffix}
+              decimals={decimals} 
+              duration={duration} 
+              separator=","
+              preserveValue={true}
+              formattingFn={(num) => {
+                // Format large numbers to be more readable
+                if (num >= 1000000) {
+                  return prefix + (num / 1000000).toFixed(2) + 'M' + suffix;
+                } else if (num >= 1000) {
+                  return prefix + (num / 1000).toFixed(1) + 'K' + suffix;
+                } else {
+                  return prefix + num.toFixed(decimals) + suffix;
+                }
+              }}
+            />
+          </Box>
         </Typography>
       )}
       

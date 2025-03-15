@@ -276,12 +276,12 @@ const InvestorPage: React.FC = () => {
   const isLoading = contractsLoading || tokenLoading;
 
   return (
-    <Box sx={{ mt: 1 }}>
+    <Box sx={{ mt: 1, maxWidth: '1400px', mx: 'auto' }}>
       <Typography variant="h5" sx={{ mb: 1 }}>
         Investor Dashboard
       </Typography>
       
-      <Grid container spacing={1}>
+      <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
           <VaultStats />
         </Grid>
