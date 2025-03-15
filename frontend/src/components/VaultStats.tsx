@@ -260,7 +260,7 @@ const VaultStats: React.FC = () => {
       };
       
       // Log the final stats object to browser console
-      console.log('FINAL STATS OBJECT:', newStats);
+
       
       logger.debug('Final stats object:', newStats);
       
