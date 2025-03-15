@@ -36,7 +36,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other })
       aria-labelledby={`simple-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+      {value === index && <Box sx={{ pt: 1 }}>{children}</Box>}
     </div>
   );
 };
@@ -280,13 +280,13 @@ const InvestorPage: React.FC = () => {
         Investor Dashboard
       </Typography>
       
-      <Grid container spacing={2}>
+      <Grid container spacing={1}>
         <Grid item xs={12} md={8}>
           <VaultStats />
         </Grid>
         <Grid item xs={12} md={4}>
           <Card variant="outlined" sx={{ height: '100%' }}>
-        <CardContent>
+        <CardContent sx={{ pb: 1 }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="investment actions">
             <Tab label="Deposit" />
             <Tab label="Withdraw" />

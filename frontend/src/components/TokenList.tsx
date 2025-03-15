@@ -95,7 +95,7 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
   if (isLoading) {
     return (
       <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ py: 2 }}>
+        <CardContent sx={{ py: 1, px: 2 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>
             Index Composition
           </Typography>
@@ -110,7 +110,7 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
   if (error) {
     return (
       <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ py: 2 }}>
+        <CardContent sx={{ py: 1, px: 2 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>
             Index Composition
           </Typography>
@@ -125,7 +125,7 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
   if (tokens.length === 0) {
     return (
       <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ py: 2 }}>
+        <CardContent sx={{ py: 1, px: 2 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>
             Index Composition
           </Typography>
@@ -154,7 +154,7 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
 
   return (
     <Card sx={{ mb: 2 }}>
-      <CardContent sx={{ pb: 1 }}>
+      <CardContent sx={{ py: 1, px: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="h6">
             Index Composition
@@ -191,10 +191,10 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
           </Tabs>
         </Box>
         
-        <Divider sx={{ mb: 2 }} />
+        <Divider sx={{ mb: 1 }} />
         
         {view === 'chart' ? (
-          <Box sx={{ height: 250, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ height: 200, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">

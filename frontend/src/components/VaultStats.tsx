@@ -411,8 +411,8 @@ const VaultStats: React.FC = () => {
   return (
     <>
       <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ pb: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <CardContent sx={{ py: 1, px: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Typography variant="h6">Vault Overview</Typography>
             <IconButton 
               onClick={handleRefresh} 
@@ -486,7 +486,7 @@ const VaultStats: React.FC = () => {
             title="Share Price History"
             isLoading={isDataLoading}
             data={chartData}
-            height={180}
+            height={150}
             dataKey="value"
             xAxisKey="date"
             color={theme.palette.primary.main}
