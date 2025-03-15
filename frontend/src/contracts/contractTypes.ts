@@ -15,12 +15,8 @@ export type BigIntish = bigint | string | number;
 // Helper function to convert various return types to BigInt with enhanced error handling
 export function toBigInt(value: any): bigint {
   try {
-    // Log the input value and its type for debugging
-    console.log('toBigInt input:', value, 'type:', typeof value);
-    
     // Handle null/undefined
     if (value === undefined || value === null) {
-      console.log('toBigInt: value is null or undefined, returning 0');
       return BigInt(0);
     }
     
@@ -51,7 +47,6 @@ export function toBigInt(value: any): bigint {
     if (typeof value === 'number') {
       // Handle NaN and Infinity
       if (isNaN(value) || !isFinite(value)) {
-        console.warn('toBigInt: value is NaN or Infinity, returning 0');
         return BigInt(0);
       }
       // Convert to string to avoid precision issues with large numbers
@@ -61,7 +56,6 @@ export function toBigInt(value: any): bigint {
     // Handle arrays
     if (Array.isArray(value)) {
       if (value.length === 0) {
-        console.warn('toBigInt: empty array, returning 0');
         return BigInt(0);
       }
       
@@ -71,12 +65,10 @@ export function toBigInt(value: any): bigint {
           return toBigInt(item);
         } catch (e) {
           // Continue to the next item
-          console.debug('toBigInt: skipping array item that cannot be converted:', item);
         }
       }
       
       // If we get here, no items could be converted
-      console.warn('toBigInt: no convertible items in array, returning 0');
       return BigInt(0);
     }
     
@@ -92,11 +84,10 @@ export function toBigInt(value: any): bigint {
         const stringValue = value.toString();
         // Only use toString if it looks like a number
         if (/^-?\d+(\.\d+)?$/.test(stringValue) || stringValue.startsWith('0x')) {
-          console.log('toBigInt: using object toString() value:', stringValue);
           try {
             return BigInt(stringValue);
           } catch (e) {
-            console.debug('toBigInt: toString conversion failed:', e);
+            // Silent fail and continue with other conversion methods
           }
         }
       }

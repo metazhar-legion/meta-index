@@ -245,11 +245,9 @@ const VaultStats: React.FC = () => {
       // The contract is using 18 decimals, but it looks like the actual shares are stored with 6 decimals
       // So we need to adjust our formatting
       const rawUserShares = ethers.formatUnits(userSharesBigInt, 6); // Use 6 decimals instead of 18
-      console.log('RAW USER SHARES (with 6 decimals):', rawUserShares);
       
       // Then parse it to a number and format to 2 decimal places
       const userSharesValue = parseFloat(rawUserShares).toFixed(2);
-      console.log('USER SHARES VALUE (formatted):', userSharesValue);
       
       const newStats = {
         totalAssets: formattedTotalAssets,
