@@ -289,7 +289,7 @@ const InvestorPage: React.FC = () => {
           <Card sx={{ mb: 2 }}>
             <CardContent sx={{ py: 1, px: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="h6">Investment Actions</Typography>
+                <Typography variant="h6" noWrap sx={{ maxWidth: '45%' }}>Actions</Typography>
                 <Tabs value={tabValue} onChange={handleTabChange} aria-label="investment actions" sx={{ minHeight: 'auto' }}>
                   <Tab label="Deposit" sx={{ minHeight: 'auto', py: 0.5, px: 2 }} />
                   <Tab label="Withdraw" sx={{ minHeight: 'auto', py: 0.5, px: 2 }} />
@@ -310,87 +310,91 @@ const InvestorPage: React.FC = () => {
               )}
               
               <TabPanel value={tabValue} index={0}>
-                <Grid container spacing={1}>
+                <Grid container spacing={1} sx={{ mt: 0.5 }}>
                   <Grid item xs={12}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                  <Typography variant="body2">
-                    Balance: {isLoading ? <CircularProgress size={12} /> : `${formattedTokenBalance} ${tokenSymbol}`}
-                  </Typography>
-                  <Button size="small" onClick={handleMaxAmount} disabled={isLoading}>
-                    Max
-                  </Button>
-                </Box>
-                <TextField
-                  fullWidth
-                  label={`Amount (${tokenSymbol})`}
-                  variant="outlined"
-                  type="number"
-                  value={amount}
-                  onChange={handleAmountChange}
-                  margin="dense"
-                  size="small"
-                  disabled={isLoading || isSubmitting}
-                  InputProps={{
-                    inputProps: { min: 0, step: 0.000001 }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="primary"
-                  onClick={handleDeposit}
-                  disabled={isLoading || isSubmitting || !amount || parseFloat(amount) <= 0}
-                  size="medium"
-                >
-                  {isSubmitting ? <CircularProgress size={20} /> : 'Deposit'}
-                </Button>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                      <Typography variant="body2">
+                        Balance: {isLoading ? <CircularProgress size={12} /> : `${formattedTokenBalance} ${tokenSymbol}`}
+                      </Typography>
+                      <Button size="small" onClick={handleMaxAmount} disabled={isLoading}>
+                        Max
+                      </Button>
+                    </Box>
+                    <TextField
+                      fullWidth
+                      label={`Amount (${tokenSymbol})`}
+                      variant="outlined"
+                      type="number"
+                      value={amount}
+                      onChange={handleAmountChange}
+                      margin="dense"
+                      size="small"
+                      disabled={isLoading || isSubmitting}
+                      sx={{ mt: 0.5 }}
+                      InputProps={{
+                        inputProps: { min: 0, step: 0.000001 }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
+                      onClick={handleDeposit}
+                      disabled={isLoading || isSubmitting || !amount || parseFloat(amount) <= 0}
+                      size="medium"
+                      sx={{ mt: 1 }}
+                    >
+                      {isSubmitting ? <CircularProgress size={20} /> : 'Deposit'}
+                    </Button>
                   </Grid>
                 </Grid>
               </TabPanel>
               
               <TabPanel value={tabValue} index={1}>
-                <Grid container spacing={1}>
+                <Grid container spacing={1} sx={{ mt: 0.5 }}>
                   <Grid item xs={12}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                  <Typography variant="body2">
-                    Shares: {isLoading ? <CircularProgress size={12} /> : formatNumber(shares || '0', 2)}
-                  </Typography>
-                  <Button size="small" onClick={handleMaxShares} disabled={isLoading}>
-                    Max
-                  </Button>
-                </Box>
-                <TextField
-                  fullWidth
-                  label="Shares to Redeem"
-                  variant="outlined"
-                  type="number"
-                  value={shares}
-                  onChange={handleSharesChange}
-                  margin="dense"
-                  size="small"
-                  disabled={isLoading || isSubmitting}
-                  InputProps={{
-                    inputProps: { min: 0, step: 0.000001 }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="primary"
-                  onClick={handleWithdraw}
-                  disabled={isLoading || isSubmitting || !shares || parseFloat(shares) <= 0}
-                  size="medium"
-                >
-                  {isSubmitting ? <CircularProgress size={20} /> : 'Withdraw'}
-                </Button>
-              </Grid>
-            </Grid>
-          </TabPanel>
-        </CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                      <Typography variant="body2">
+                        Shares: {isLoading ? <CircularProgress size={12} /> : formatNumber(shares || '0', 2)}
+                      </Typography>
+                      <Button size="small" onClick={handleMaxShares} disabled={isLoading}>
+                        Max
+                      </Button>
+                    </Box>
+                    <TextField
+                      fullWidth
+                      label="Shares to Redeem"
+                      variant="outlined"
+                      type="number"
+                      value={shares}
+                      onChange={handleSharesChange}
+                      margin="dense"
+                      size="small"
+                      disabled={isLoading || isSubmitting}
+                      sx={{ mt: 0.5 }}
+                      InputProps={{
+                        inputProps: { min: 0, step: 0.000001 }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
+                      onClick={handleWithdraw}
+                      disabled={isLoading || isSubmitting || !shares || parseFloat(shares) <= 0}
+                      size="medium"
+                      sx={{ mt: 1 }}
+                    >
+                      {isSubmitting ? <CircularProgress size={20} /> : 'Withdraw'}
+                    </Button>
+                  </Grid>
+                </Grid>
+              </TabPanel>
+            </CardContent>
           </Card>
         </Grid>
       </Grid>
