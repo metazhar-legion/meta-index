@@ -154,33 +154,12 @@ const VaultStats: React.FC = () => {
       }
       
       try {
-        // Get user shares - this is the critical call for showing user shares
-        logger.debug('Calling vaultContract.balanceOf() with account:', account);
-        
-        // Make sure we're using the correct account address
-        logger.debug('Using account address for balanceOf:', account);
-        
-        // Call balanceOf directly with the account address
+        // Get user shares from the vault contract
         userShares = await vaultContract.balanceOf(account);
-        
-        // Add console logs to see the values in the browser console
-        console.log('USER SHARES RAW:', userShares);
-        console.log('USER SHARES STRING:', userShares.toString());
-        console.log('USER SHARES TYPE:', typeof userShares);
-        
-        logger.debug('userShares raw result:', userShares);
-        logger.debug('userShares toString():', userShares.toString());
-        logger.debug('userShares type:', typeof userShares);
       } catch (error) {
         logger.error('Error getting userShares:', error);
         userShares = BigInt(0);
       }
-      
-      // Log successful retrieval
-      logger.debug('Contract data retrieved successfully');
-      logger.debug('- totalAssets:', totalAssets.toString());
-      logger.debug('- totalSupply:', totalSupply.toString());
-      logger.debug('- userShares:', userShares.toString());
       
       // Reset retry count on success
       setRetryCount(0);
@@ -189,12 +168,6 @@ const VaultStats: React.FC = () => {
       const totalAssetsBigInt = BigInt(totalAssets.toString());
       const totalSupplyBigInt = BigInt(totalSupply.toString());
       const userSharesBigInt = BigInt(userShares.toString());
-      
-      // Log the raw BigInt values for debugging
-      logger.debug('Raw BigInt values:');
-      logger.debug('- totalAssetsBigInt:', totalAssetsBigInt.toString());
-      logger.debug('- totalSupplyBigInt:', totalSupplyBigInt.toString());
-      logger.debug('- userSharesBigInt:', userSharesBigInt.toString());
       
       // Format the values using our standardized formatting utilities
       // USDC has 6 decimals, shares have 18 decimals

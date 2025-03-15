@@ -221,12 +221,11 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
               isUnlocked = Array.isArray(accounts) && accounts.length > 0;
             }
           } catch (error) {
-            console.log('Could not determine if MetaMask is unlocked');
+            // Silent fail - no need to log this common check
           }
           
           // Only proceed with activation if MetaMask is unlocked
           if (isUnlocked && isMounted) {
-            console.log('Attempting to auto-connect wallet...');
             await metaMask.activate();
             
             // After successful activation, create a new provider
@@ -238,15 +237,13 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
                   setLibrary(provider);
                   // Save connection state on successful auto-connect
                   localStorage.setItem('isWalletConnected', 'true');
-                  console.log('Auto-connect successful');
                 } catch (providerError) {
-                  console.error('Error creating provider during auto-connect:', providerError);
+                  console.error('Error creating provider during auto-connect');
                 }
               }
             }
-          } else {
-            console.log('MetaMask not unlocked or component unmounted, skipping auto-connect');
           }
+          // No else needed - silently skip auto-connect if conditions aren't met
         } catch (error) {
           console.error('Error auto-connecting to wallet:', error);
           // Clear the localStorage if there was an error
