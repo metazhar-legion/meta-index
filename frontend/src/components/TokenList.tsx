@@ -194,17 +194,17 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
         <Divider sx={{ mb: 1 }} />
         
         {view === 'chart' ? (
-          <Box sx={{ height: 220, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ height: 250, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+                  <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                     <Pie
                       data={pieData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={120}
+                      innerRadius={50}
+                      outerRadius={90}
                       fill="#8884d8"
                       paddingAngle={2}
                       dataKey="value"
