@@ -410,9 +410,9 @@ const VaultStats: React.FC = () => {
 
   return (
     <>
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Vault Overview</Typography>
             <IconButton 
               onClick={handleRefresh} 
@@ -423,7 +423,7 @@ const VaultStats: React.FC = () => {
             </IconButton>
           </Box>
           
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             {/* Total Assets Card */}
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
@@ -486,7 +486,7 @@ const VaultStats: React.FC = () => {
             title="Share Price History"
             isLoading={isDataLoading}
             data={chartData}
-            height={250}
+            height={180}
             dataKey="value"
             xAxisKey="date"
             color={theme.palette.primary.main}

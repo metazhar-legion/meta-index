@@ -275,20 +275,17 @@ const InvestorPage: React.FC = () => {
   const isLoading = contractsLoading || tokenLoading;
 
   return (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="h5" gutterBottom>
+    <Box sx={{ mt: 1 }}>
+      <Typography variant="h5" sx={{ mb: 1 }}>
         Investor Dashboard
       </Typography>
       
-      <VaultStats />
-      
-      <TokenList 
-        tokens={indexTokens} 
-        isLoading={contractsLoading} 
-        error={null} 
-      />
-      
-      <Card variant="outlined">
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={8}>
+          <VaultStats />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
         <CardContent>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="investment actions">
             <Tab label="Deposit" />
@@ -385,7 +382,15 @@ const InvestorPage: React.FC = () => {
             </Grid>
           </TabPanel>
         </CardContent>
-      </Card>
+          </Card>
+        </Grid>
+      </Grid>
+      
+      <TokenList 
+        tokens={indexTokens} 
+        isLoading={contractsLoading} 
+        error={null} 
+      />
       
       {/* Testing Tools Section */}
       {process.env.NODE_ENV === 'development' && (
