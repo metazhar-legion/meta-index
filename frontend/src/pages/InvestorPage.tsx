@@ -37,7 +37,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other })
       aria-labelledby={`simple-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ pt: 1 }}>{children}</Box>}
+      {value === index && <Box sx={{ pt: 1, height: '100%' }}>{children}</Box>}
     </div>
   );
 };
@@ -310,9 +310,9 @@ const InvestorPage: React.FC = () => {
               )}
               
               <TabPanel value={tabValue} index={0}>
-                <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                <Grid container spacing={2}>
                   <Grid item xs={12}>
-                    <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
                       <Typography variant="body2">
                         Balance: {isLoading ? <CircularProgress size={12} /> : `${formattedTokenBalance} ${tokenSymbol}`}
                       </Typography>
@@ -327,10 +327,10 @@ const InvestorPage: React.FC = () => {
                       type="number"
                       value={amount}
                       onChange={handleAmountChange}
-                      margin="dense"
+                      margin="normal"
                       size="small"
                       disabled={isLoading || isSubmitting}
-                      sx={{ mt: 0.5 }}
+
                       InputProps={{
                         inputProps: { min: 0, step: 0.000001 }
                       }}
@@ -353,9 +353,9 @@ const InvestorPage: React.FC = () => {
               </TabPanel>
               
               <TabPanel value={tabValue} index={1}>
-                <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                <Grid container spacing={2}>
                   <Grid item xs={12}>
-                    <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
                       <Typography variant="body2">
                         Shares: {isLoading ? <CircularProgress size={12} /> : formatNumber(shares || '0', 2)}
                       </Typography>
@@ -370,10 +370,10 @@ const InvestorPage: React.FC = () => {
                       type="number"
                       value={shares}
                       onChange={handleSharesChange}
-                      margin="dense"
+                      margin="normal"
                       size="small"
                       disabled={isLoading || isSubmitting}
-                      sx={{ mt: 0.5 }}
+
                       InputProps={{
                         inputProps: { min: 0, step: 0.000001 }
                       }}
