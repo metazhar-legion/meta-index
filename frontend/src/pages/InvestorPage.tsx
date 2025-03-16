@@ -20,6 +20,7 @@ import { CONTRACT_ADDRESSES } from '../contracts/addresses';
 import VaultStats from '../components/VaultStats';
 import TokenList from '../components/TokenList';
 import TestingTools from '../components/TestingTools';
+import CapitalAllocation from '../components/CapitalAllocation';
 import eventBus, { EVENTS } from '../utils/eventBus';
 
 interface TabPanelProps {
@@ -44,7 +45,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other })
 
 const InvestorPage: React.FC = () => {
   const { account, isActive } = useWeb3();
-  const { vaultContract, indexTokens, isLoading: contractsLoading } = useContracts();
+  const { vaultContract, capitalManagerContract, indexTokens, isLoading: contractsLoading } = useContracts();
   
   // Get the underlying asset (assuming the first token in the index is the asset)
   const assetAddress = indexTokens.length > 0 ? indexTokens[0].address : ethers.ZeroAddress;
@@ -403,6 +404,18 @@ const InvestorPage: React.FC = () => {
               </TabPanel>
             </CardContent>
           </Card>
+        </Grid>
+      </Grid>
+      
+      <Grid container spacing={2} sx={{ mt: 2 }}>
+        <Grid item xs={12}>
+          <CapitalAllocation
+            vaultContract={vaultContract}
+            capitalManagerContract={capitalManagerContract}
+            totalAssets={parseFloat(userAssets) / (userSharePercent > 0 ? userSharePercent / 100 : 1)}
+            userSharePercent={userSharePercent}
+            userTotalAssets={parseFloat(userAssets)}
+          />
         </Grid>
       </Grid>
       

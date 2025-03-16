@@ -187,6 +187,41 @@ export interface IndexRegistryInterface {
   };
 }
 
+// CapitalAllocationManager interface
+export interface CapitalAllocationManagerInterface {
+  // Contract properties
+  target: string;  // The contract address
+  runner?: ethers.Provider | ethers.Signer;  // The provider or signer
+  
+  // View methods
+  getAllocation: () => Promise<{rwaPercentage: bigint, yieldPercentage: bigint, liquidityBufferPercentage: bigint, lastRebalanced: bigint}>;
+  getRWATokens: () => Promise<{rwaToken: string, percentage: bigint, active: boolean}[]>;
+  getYieldStrategies: () => Promise<{strategy: string, percentage: bigint, active: boolean}[]>;
+  getLiquidityBuffer: () => Promise<bigint>;
+  
+  // Mutative methods
+  setAllocation: (rwaPercentage: BigIntish, yieldPercentage: BigIntish, liquidityBufferPercentage: BigIntish) => Promise<ethers.ContractTransactionResponse>;
+  addRWAToken: (rwaToken: string, percentage: BigIntish) => Promise<ethers.ContractTransactionResponse>;
+  removeRWAToken: (rwaToken: string) => Promise<ethers.ContractTransactionResponse>;
+  updateRWATokenPercentage: (rwaToken: string, percentage: BigIntish) => Promise<ethers.ContractTransactionResponse>;
+  addYieldStrategy: (strategy: string, percentage: BigIntish) => Promise<ethers.ContractTransactionResponse>;
+  removeYieldStrategy: (strategy: string) => Promise<ethers.ContractTransactionResponse>;
+  updateYieldStrategyPercentage: (strategy: string, percentage: BigIntish) => Promise<ethers.ContractTransactionResponse>;
+  rebalance: () => Promise<ethers.ContractTransactionResponse>;
+  
+  // Events
+  filters: {
+    AllocationUpdated: (rwaPercentage?: bigint, yieldPercentage?: bigint, liquidityBufferPercentage?: bigint) => ethers.EventFilter;
+    RWATokenAdded: (rwaToken?: string, percentage?: bigint) => ethers.EventFilter;
+    RWATokenRemoved: (rwaToken?: string) => ethers.EventFilter;
+    RWATokenPercentageUpdated: (rwaToken?: string, percentage?: bigint) => ethers.EventFilter;
+    YieldStrategyAdded: (strategy?: string, percentage?: bigint) => ethers.EventFilter;
+    YieldStrategyRemoved: (strategy?: string) => ethers.EventFilter;
+    YieldStrategyPercentageUpdated: (strategy?: string, percentage?: bigint) => ethers.EventFilter;
+    Rebalanced: () => ethers.EventFilter;
+  };
+}
+
 // Contract ABIs
 export const IndexFundVaultABI = [
   // ERC20 functions
@@ -262,4 +297,33 @@ export const ERC20ABI = [
   "function transferFrom(address from, address to, uint256 amount) returns (bool)",
   "event Transfer(address indexed from, address indexed to, uint256 value)",
   "event Approval(address indexed owner, address indexed spender, uint256 value)"
+];
+
+// CapitalAllocationManager ABI
+export const CapitalAllocationManagerABI = [
+  // View functions
+  "function getAllocation() view returns (tuple(uint256 rwaPercentage, uint256 yieldPercentage, uint256 liquidityBufferPercentage, uint256 lastRebalanced))",
+  "function getRWATokens() view returns (tuple(address rwaToken, uint256 percentage, bool active)[] memory)",
+  "function getYieldStrategies() view returns (tuple(address strategy, uint256 percentage, bool active)[] memory)",
+  "function getLiquidityBuffer() view returns (uint256)",
+  
+  // Mutative functions
+  "function setAllocation(uint256 rwaPercentage, uint256 yieldPercentage, uint256 liquidityBufferPercentage) returns (bool)",
+  "function addRWAToken(address rwaToken, uint256 percentage) returns (bool)",
+  "function removeRWAToken(address rwaToken) returns (bool)",
+  "function updateRWATokenPercentage(address rwaToken, uint256 percentage) returns (bool)",
+  "function addYieldStrategy(address strategy, uint256 percentage) returns (bool)",
+  "function removeYieldStrategy(address strategy) returns (bool)",
+  "function updateYieldStrategyPercentage(address strategy, uint256 percentage) returns (bool)",
+  "function rebalance() returns (bool)",
+  
+  // Events
+  "event AllocationUpdated(uint256 rwaPercentage, uint256 yieldPercentage, uint256 liquidityBufferPercentage)",
+  "event RWATokenAdded(address indexed rwaToken, uint256 percentage)",
+  "event RWATokenRemoved(address indexed rwaToken)",
+  "event RWATokenPercentageUpdated(address indexed rwaToken, uint256 percentage)",
+  "event YieldStrategyAdded(address indexed strategy, uint256 percentage)",
+  "event YieldStrategyRemoved(address indexed strategy)",
+  "event YieldStrategyPercentageUpdated(address indexed strategy, uint256 percentage)",
+  "event Rebalanced()"
 ];

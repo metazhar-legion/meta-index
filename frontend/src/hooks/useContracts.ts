@@ -4,8 +4,10 @@ import { useWeb3 } from '../contexts/Web3Context';
 import {
   IndexFundVaultInterface,
   IndexRegistryInterface,
+  CapitalAllocationManagerInterface,
   IndexFundVaultABI,
   IndexRegistryABI,
+  CapitalAllocationManagerABI,
   ERC20ABI,
   Token
 } from '../contracts/contractTypes';
@@ -37,6 +39,7 @@ const getSafeSignerFromProvider = async (provider: ethers.Provider): Promise<eth
 interface UseContractsReturn {
   vaultContract: IndexFundVaultInterface | null;
   registryContract: IndexRegistryInterface | null;
+  capitalManagerContract: CapitalAllocationManagerInterface | null;
   indexTokens: Token[];
   isLoading: boolean;
   error: string | null;
@@ -46,6 +49,7 @@ export const useContracts = (): UseContractsReturn => {
   const { provider, isActive, refreshProvider } = useWeb3();
   const [vaultContract, setVaultContract] = useState<IndexFundVaultInterface | null>(null);
   const [registryContract, setRegistryContract] = useState<IndexRegistryInterface | null>(null);
+  const [capitalManagerContract, setCapitalManagerContract] = useState<CapitalAllocationManagerInterface | null>(null);
   const [indexTokens, setIndexTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +85,7 @@ export const useContracts = (): UseContractsReturn => {
     if (!provider || !isActive) {
       setVaultContract(null);
       setRegistryContract(null);
+      setCapitalManagerContract(null);
       return;
     }
 
@@ -131,9 +136,12 @@ export const useContracts = (): UseContractsReturn => {
         if (!ethers.isAddress(CONTRACT_ADDRESSES.REGISTRY)) {
           throw new Error(`Invalid registry address: ${CONTRACT_ADDRESSES.REGISTRY}`);
         }
+        if (!ethers.isAddress(CONTRACT_ADDRESSES.CAPITAL_MANAGER)) {
+          throw new Error(`Invalid capital manager address: ${CONTRACT_ADDRESSES.CAPITAL_MANAGER}`);
+        }
         
         // Create contracts with error handling
-        let vault, registry;
+        let vault, registry, capitalManager;
         try {
           vault = new ethers.Contract(
             CONTRACT_ADDRESSES.VAULT,
@@ -198,8 +206,41 @@ export const useContracts = (): UseContractsReturn => {
           throw new Error(`Failed to create registry contract: ${registryError.message || 'Unknown error'}`);
         }
         
+        // Create capital manager contract
+        try {
+          capitalManager = new ethers.Contract(
+            CONTRACT_ADDRESSES.CAPITAL_MANAGER,
+            CapitalAllocationManagerABI,
+            provider
+          );
+        } catch (error) {
+          const capitalManagerError = error as Error;
+          console.error('Error creating capital manager contract:', capitalManagerError);
+          
+          // If it's a BlockOutOfRangeError, try refreshing the provider
+          if (isBlockOutOfRangeError(capitalManagerError) && retryCount < 3) {
+            console.log(`BlockOutOfRangeError detected, refreshing provider (attempt ${retryCount + 1}/3)`);
+            setRetryCount(prev => prev + 1);
+            
+            try {
+              if (refreshProvider) {
+                const freshProvider = await refreshProvider();
+                if (freshProvider) {
+                  console.log('Provider refreshed successfully, retrying contract initialization');
+                  setIsLoading(false);
+                  return; // Exit and let the useEffect retry with the new provider
+                }
+              }
+            } catch (refreshError) {
+              console.error('Error refreshing provider:', refreshError);
+            }
+          }
+          
+          throw new Error(`Failed to create capital manager contract: ${capitalManagerError.message || 'Unknown error'}`);
+        }
+        
         // Connect signer if available
-        let vaultWithSigner, registryWithSigner;
+        let vaultWithSigner, registryWithSigner, capitalManagerWithSigner;
         if (signer) {
           try {
             vaultWithSigner = vault.connect(signer);
@@ -214,9 +255,17 @@ export const useContracts = (): UseContractsReturn => {
             console.error('Error connecting signer to registry contract:', connectError);
             registryWithSigner = registry; // Fallback to provider-only
           }
+          
+          try {
+            capitalManagerWithSigner = capitalManager.connect(signer);
+          } catch (connectError) {
+            console.error('Error connecting signer to capital manager contract:', connectError);
+            capitalManagerWithSigner = capitalManager; // Fallback to provider-only
+          }
         } else {
           vaultWithSigner = vault;
           registryWithSigner = registry;
+          capitalManagerWithSigner = capitalManager;
         }
         
         // Test contract connectivity with more detailed logging
@@ -256,13 +305,16 @@ export const useContracts = (): UseContractsReturn => {
         console.log('Casting contracts to appropriate interfaces');
         const typedVault = vaultWithSigner as unknown as IndexFundVaultInterface;
         const typedRegistry = registryWithSigner as unknown as IndexRegistryInterface;
+        const typedCapitalManager = capitalManagerWithSigner as unknown as CapitalAllocationManagerInterface;
         
         // Log contract addresses for verification
         console.log('Setting vault contract with address:', await vault.target);
         console.log('Setting registry contract with address:', await registry.target);
+        console.log('Setting capital manager contract with address:', await capitalManager.target);
         
         setVaultContract(typedVault);
         setRegistryContract(typedRegistry);
+        setCapitalManagerContract(typedCapitalManager);
         setError(null);
       } catch (error) {
         const err = error as Error;
@@ -290,6 +342,7 @@ export const useContracts = (): UseContractsReturn => {
         setError(`Failed to initialize contracts: ${err.message || 'Unknown error'}`);
         setVaultContract(null);
         setRegistryContract(null);
+        setCapitalManagerContract(null);
       } finally {
         setIsLoading(false);
       }
@@ -956,6 +1009,7 @@ export const useContracts = (): UseContractsReturn => {
   return {
     vaultContract,
     registryContract,
+    capitalManagerContract,
     indexTokens,
     isLoading,
     error,
