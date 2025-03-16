@@ -24,7 +24,7 @@ import {IYieldStrategy} from "./interfaces/IYieldStrategy.sol";
  * The vault allocates 20% of capital to RWAs backed by perpetuals and 
  * 80% to stable yield strategies.
  */
-contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
+abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
     using SafeERC20 for IERC20;
     using Math for uint256;
     
@@ -116,20 +116,20 @@ contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault
      * @dev Updates the price oracle address
      * @param newOracle The new oracle contract address
      */
-    function setPriceOracle(IPriceOracle newOracle) external onlyOwner {
-        require(address(newOracle) != address(0), "Invalid oracle address");
-        priceOracle = newOracle;
-        emit PriceOracleUpdated(address(newOracle));
+    function setPriceOracle(address newOracle) external onlyOwner {
+        require(newOracle != address(0), "Zero address");
+        priceOracle = IPriceOracle(newOracle);
+        emit PriceOracleUpdated(newOracle);
     }
     
     /**
      * @dev Updates the DEX address
      * @param newDex The new DEX contract address
      */
-    function setDEX(IDEX newDex) external onlyOwner {
-        require(address(newDex) != address(0), "Invalid DEX address");
-        dex = newDex;
-        emit DEXUpdated(address(newDex));
+    function setDEX(address newDex) external onlyOwner {
+        require(newDex != address(0), "Zero address");
+        dex = IDEX(newDex);
+        emit DEXUpdated(newDex);
     }
     
     /**
@@ -298,13 +298,13 @@ contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault
         require(tokens.length == weights.length, "Mismatched arrays");
         
         // Calculate the total assets to allocate to the index (excluding RWA and yield allocations)
-        uint256 totalAssets = totalAssets();
+        // uint256 totalAssetsValue = totalAssets();
         
         // Get capital allocation
         ICapitalAllocationManager.Allocation memory allocation = capitalAllocationManager.getAllocation();
         
         // Calculate the amount to allocate to the index (remaining after RWA and yield allocations)
-        uint256 indexAllocation = (totalAssets * (BASIS_POINTS - allocation.rwaPercentage - allocation.yieldPercentage - allocation.liquidityBufferPercentage)) / BASIS_POINTS;
+        uint256 indexAllocation = (totalAssets() * (BASIS_POINTS - allocation.rwaPercentage - allocation.yieldPercentage - allocation.liquidityBufferPercentage)) / BASIS_POINTS;
         
         // Rebalance the index portion
         _rebalanceIndex(tokens, weights, indexAllocation);
@@ -467,11 +467,11 @@ contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault
      */
     function _collectFees() internal {
         // Calculate management fee
-        uint256 totalValue = totalAssets();
+        uint256 totalAssetsValue = totalAssets();
         uint256 timeSinceLastRebalance = block.timestamp - lastRebalanceTimestamp;
         
         // Management fee is prorated based on time since last rebalance
-        uint256 managementFee = (totalValue * managementFeePercentage * timeSinceLastRebalance) / (BASIS_POINTS * 365 days);
+        uint256 managementFee = (totalAssetsValue * managementFeePercentage * timeSinceLastRebalance) / (BASIS_POINTS * 365 days);
         
         if (managementFee > 0) {
             // Mint shares to the owner as management fee
@@ -513,10 +513,10 @@ contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault
             uint256 currentBalance = IERC20(tokens[i]).balanceOf(address(this));
             uint256 currentValue = _getTokenValue(tokens[i], currentBalance);
             
-            uint256 totalValue = totalAssets();
-            if (totalValue == 0) return false;
+            uint256 totalAssetsValue = totalAssets();
+            if (totalAssetsValue == 0) return false;
             
-            uint256 currentWeight = (currentValue * BASIS_POINTS) / totalValue;
+            uint256 currentWeight = (currentValue * BASIS_POINTS) / totalAssetsValue;
             uint256 targetWeight = weights[i];
             
             // Calculate the absolute deviation
@@ -536,16 +536,16 @@ contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault
         // Check if the capital allocation needs rebalancing
         ICapitalAllocationManager.Allocation memory allocation = capitalAllocationManager.getAllocation();
         
-        uint256 totalValue = totalAssets();
-        if (totalValue == 0) return false;
+        uint256 totalAssetsValue = totalAssets();
+        if (totalAssetsValue == 0) return false;
         
         uint256 rwaValue = capitalAllocationManager.getRWAValue();
         uint256 yieldValue = capitalAllocationManager.getYieldValue();
         uint256 bufferValue = capitalAllocationManager.getLiquidityBufferValue();
         
-        uint256 currentRwaPercentage = (rwaValue * BASIS_POINTS) / totalValue;
-        uint256 currentYieldPercentage = (yieldValue * BASIS_POINTS) / totalValue;
-        uint256 currentBufferPercentage = (bufferValue * BASIS_POINTS) / totalValue;
+        uint256 currentRwaPercentage = (rwaValue * BASIS_POINTS) / totalAssetsValue;
+        uint256 currentYieldPercentage = (yieldValue * BASIS_POINTS) / totalAssetsValue;
+        uint256 currentBufferPercentage = (bufferValue * BASIS_POINTS) / totalAssetsValue;
         
         // Check RWA deviation
         uint256 rwaDeviation;
@@ -631,6 +631,72 @@ contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault
      */
     function getIndexComposition() external view returns (address[] memory tokens, uint256[] memory weights) {
         return indexRegistry.getCurrentIndex();
+    }
+    
+    /**
+     * @dev Returns the current index composition (implementation of IIndexFundVault)
+     * @return tokens Array of token addresses
+     * @return weights Array of token weights in basis points
+     */
+    function getCurrentIndex() external view returns (address[] memory tokens, uint256[] memory weights) {
+        return indexRegistry.getCurrentIndex();
+    }
+    
+    /**
+     * @dev Checks if rebalancing is needed based on the deviation threshold
+     * @return bool True if rebalancing is needed
+     */
+    function isRebalancingNeeded() external view returns (bool) {
+        // Get current token weights
+        (address[] memory tokens, uint256[] memory targetWeights) = indexRegistry.getCurrentIndex();
+        
+        // Calculate current weights based on token balances
+        uint256[] memory currentWeights = new uint256[](tokens.length);
+        uint256 totalValue = totalAssets();
+        
+        for (uint256 i = 0; i < tokens.length; i++) {
+            uint256 balance = IERC20(tokens[i]).balanceOf(address(this));
+            uint256 tokenValue = _getTokenValue(tokens[i], balance);
+            totalValue += tokenValue;
+        }
+        
+        if (totalValue == 0) return false;
+        
+        for (uint256 i = 0; i < tokens.length; i++) {
+            uint256 balance = IERC20(tokens[i]).balanceOf(address(this));
+            uint256 tokenValue = _getTokenValue(tokens[i], balance);
+            currentWeights[i] = (tokenValue * 10000) / totalValue;
+            
+            // Check if deviation exceeds threshold
+            if (currentWeights[i] > targetWeights[i] && currentWeights[i] - targetWeights[i] > 0) {
+                return true;
+            }
+            if (targetWeights[i] > currentWeights[i] && targetWeights[i] - currentWeights[i] > 0) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * @dev Sets the management fee percentage
+     * @param newFee The new fee in basis points
+     */
+    function setManagementFee(uint256 newFee) external onlyOwner {
+        require(newFee <= 1000, "Fee too high"); // Max 10%
+        managementFeePercentage = newFee;
+        emit ManagementFeeUpdated(newFee);
+    }
+    
+    /**
+     * @dev Sets the performance fee percentage
+     * @param newFee The new fee in basis points
+     */
+    function setPerformanceFee(uint256 newFee) external onlyOwner {
+        require(newFee <= 3000, "Fee too high"); // Max 30%
+        performanceFeePercentage = newFee;
+        emit PerformanceFeeUpdated(newFee);
     }
     
     /**
