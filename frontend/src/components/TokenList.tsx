@@ -27,12 +27,15 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { Token } from '../contracts/contractTypes';
 import { chartColors } from '../theme/theme';
+import { formatCurrency } from '../utils/formatting';
 
 interface TokenListProps {
   tokens: Token[];
   isLoading: boolean;
   error: string | null;
   networkName?: string;
+  userSharePercent?: number;
+  userTotalAssets?: string;
 }
 
 // Custom tooltip for the pie chart
@@ -53,29 +56,42 @@ const CustomTooltip = ({ active, payload }: any) => {
         <Typography variant="h6" fontWeight="600">
           {payload[0].value.toFixed(2)}%
         </Typography>
+        {payload[0].payload.userValue && (
+          <Typography variant="body2" color="text.secondary">
+            Your share: {formatCurrency(payload[0].payload.userValue)}
+          </Typography>
+        )}
       </Card>
     );
   }
   return null;
 };
 
-const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, networkName = 'Ethereum' }) => {
+const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, networkName = 'Ethereum', userSharePercent = 0, userTotalAssets = '0' }) => {
   const theme = useTheme();
-  const [view, setView] = useState<'table' | 'chart'>('chart');
+  const [view, setView] = useState<'table' | 'chart'>('table');
   
   const handleViewChange = (event: React.SyntheticEvent, newValue: 'table' | 'chart') => {
     setView(newValue);
   };
+
+  // Parse user total assets for calculations
+  const userTotalAssetsValue = parseFloat(userTotalAssets.replace(/[^0-9.]/g, '')) || 0;
+  
   // Prepare data for the pie chart
   const pieData = tokens.map((token, index) => {
     const totalWeight = tokens.reduce((sum, t) => sum + Number(t.weight || 0), 0);
     const percentage = totalWeight > 0 ? (Number(token.weight) / totalWeight) * 100 : 0;
     
+    // Calculate user's share of this token in USD value
+    const userValue = userTotalAssetsValue > 0 ? (percentage / 100) * userTotalAssetsValue : 0;
+    
     return {
       name: token.symbol,
       value: percentage,
       color: chartColors[index % chartColors.length],
-      address: token.address
+      address: token.address,
+      userValue: userValue
     };
   });
 
@@ -171,8 +187,8 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
             }}
           >
             <Tab 
-              value="chart" 
-              label="Chart" 
+              value="table" 
+              label="Table" 
               sx={{ 
                 minHeight: 'auto',
                 py: 0.5,
@@ -180,8 +196,8 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
               }}
             />
             <Tab 
-              value="table" 
-              label="Table" 
+              value="chart" 
+              label="Chart" 
               sx={{ 
                 minHeight: 'auto',
                 py: 0.5,
@@ -277,6 +293,9 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
                   <TableCell>Address</TableCell>
                   <TableCell align="right">Weight</TableCell>
                   <TableCell align="right">Allocation</TableCell>
+                  {userTotalAssetsValue > 0 && (
+                    <TableCell align="right">Your Share</TableCell>
+                  )}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -284,6 +303,9 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
                   const percentage = totalWeight > 0
                     ? (Number(token.weight) / totalWeight) * 100
                     : 0;
+                  
+                  // Calculate user's share of this token in USD value
+                  const userValue = userTotalAssetsValue > 0 ? (percentage / 100) * userTotalAssetsValue : 0;
                     
                   return (
                     <TableRow key={token.address} hover>
@@ -353,6 +375,13 @@ const TokenList: React.FC<TokenListProps> = ({ tokens, isLoading, error, network
                           </Typography>
                         </Box>
                       </TableCell>
+                      {userTotalAssetsValue > 0 && (
+                        <TableCell align="right">
+                          <Typography variant="body2" fontWeight="500">
+                            {formatCurrency(userValue)}
+                          </Typography>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}

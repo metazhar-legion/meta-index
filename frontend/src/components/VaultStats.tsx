@@ -58,7 +58,11 @@ const generateSampleData = () => {
   return data;
 };
 
-const VaultStats: React.FC = () => {
+interface VaultStatsProps {
+  onUserAssetsUpdate?: (userAssets: string, userSharePercent: number) => void;
+}
+
+const VaultStats: React.FC<VaultStatsProps> = ({ onUserAssetsUpdate }) => {
   const theme = useTheme();
   const { vaultContract, isLoading: contractsLoading } = useContracts();
   const { account, provider, refreshProvider } = useWeb3();
@@ -269,6 +273,13 @@ const VaultStats: React.FC = () => {
       
       // Always update the stats immediately without delay for more responsive UI
       statsState.updateValue(newStats, true);
+      
+      // Notify parent component about user assets if callback is provided
+      if (onUserAssetsUpdate && formattedUserAssets > 0) {
+        // Calculate user's percentage of total assets
+        const userSharePercent = totalAssetsNum > 0 ? (formattedUserAssets / totalAssetsNum) * 100 : 0;
+        onUserAssetsUpdate(formattedUserAssets.toFixed(2), userSharePercent);
+      }
     } catch (error) {
       logger.error('Failed to load vault statistics', error);
       

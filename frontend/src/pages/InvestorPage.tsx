@@ -53,6 +53,8 @@ const InvestorPage: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [amount, setAmount] = useState('');
   const [shares, setShares] = useState('');
+  const [userAssets, setUserAssets] = useState<string>('0');
+  const [userSharePercent, setUserSharePercent] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -283,7 +285,12 @@ const InvestorPage: React.FC = () => {
       
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
-          <VaultStats />
+          <VaultStats 
+            onUserAssetsUpdate={(assets, sharePercent) => {
+              setUserAssets(assets);
+              setUserSharePercent(sharePercent);
+            }}
+          />
         </Grid>
         <Grid item xs={12} md={4}>
           <Card sx={{ mb: 2 }}>
@@ -402,7 +409,9 @@ const InvestorPage: React.FC = () => {
       <TokenList 
         tokens={indexTokens} 
         isLoading={contractsLoading} 
-        error={null} 
+        error={null}
+        userTotalAssets={userAssets}
+        userSharePercent={userSharePercent}
       />
       
       {/* Testing Tools Section */}
