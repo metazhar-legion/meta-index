@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
 import { formatCurrency, formatPercentage, formatDate } from '../utils/formatters';
 import eventBus, { EVENTS } from '../utils/eventBus';
-import { VaultInterface, CapitalAllocationManagerInterface } from '../contracts/contractTypes';
+import { IndexFundVaultInterface, CapitalAllocationManagerInterface } from '../contracts/contractTypes';
 
 // Define interfaces for the data structures
 interface AllocationData {
@@ -33,7 +33,7 @@ interface YieldStrategy {
 }
 
 interface CapitalAllocationProps {
-  vaultContract: VaultInterface | null;
+  vaultContract: IndexFundVaultInterface | null;
   capitalManagerContract: CapitalAllocationManagerInterface | null;
   totalAssets: number;
   userSharePercent: number;

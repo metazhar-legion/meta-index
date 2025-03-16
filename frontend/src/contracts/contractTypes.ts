@@ -153,6 +153,8 @@ export interface IndexFundVaultInterface {
   setPerformanceFee: (newFee: BigIntish) => Promise<ethers.ContractTransactionResponse>;
   setPriceOracle: (newOracle: string) => Promise<ethers.ContractTransactionResponse>;
   setDEX: (newDEX: string) => Promise<ethers.ContractTransactionResponse>;
+  getCapitalAllocation: () => Promise<CapitalAllocationData>;
+  getRWATokens: () => Promise<RWATokenData[]>;
   
   // Events
   filters: {
@@ -220,6 +222,21 @@ export interface CapitalAllocationManagerInterface {
     YieldStrategyPercentageUpdated: (strategy?: string, percentage?: bigint) => ethers.EventFilter;
     Rebalanced: () => ethers.EventFilter;
   };
+}
+
+// Capital Allocation Data
+export interface CapitalAllocationData {
+  rwaPercentage: bigint;
+  yieldPercentage: bigint;
+  liquidityBufferPercentage: bigint;
+  lastRebalanced: bigint;
+}
+
+// RWAToken Data
+export interface RWATokenData {
+  rwaToken: string;
+  percentage: bigint;
+  active: boolean;
 }
 
 // Contract ABIs
