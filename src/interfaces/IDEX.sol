@@ -20,6 +20,21 @@ interface IDEX {
         uint256 fromAmount,
         uint256 minToAmount
     ) external returns (uint256 toAmount);
+    
+    /**
+     * @dev Swaps an exact amount of input tokens for as many output tokens as possible
+     * @param fromToken The token to swap from
+     * @param toToken The token to swap to
+     * @param fromAmount The exact amount of fromToken to swap
+     * @param minToAmount The minimum amount of toToken to receive
+     * @return toAmount The amount of toToken received
+     */
+    function swapExactInput(
+        address fromToken,
+        address toToken,
+        uint256 fromAmount,
+        uint256 minToAmount
+    ) external returns (uint256 toAmount);
 
     /**
      * @dev Gets the expected amount of toToken for a given amount of fromToken

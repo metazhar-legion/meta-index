@@ -5,10 +5,36 @@ import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
 import { formatCurrency, formatPercentage, formatDate } from '../utils/formatters';
 import eventBus, { EVENTS } from '../utils/eventBus';
+import { VaultInterface, CapitalAllocationManagerInterface } from '../contracts/contractTypes';
+
+// Define interfaces for the data structures
+interface AllocationData {
+  rwaPercentage: number;
+  yieldPercentage: number;
+  liquidityBufferPercentage: number;
+  lastRebalanced: number;
+}
+
+interface RWAToken {
+  rwaToken: string;
+  percentage: number;
+  name?: string;
+  symbol?: string;
+  assetType?: number;
+  lastPrice?: number;
+}
+
+interface YieldStrategy {
+  strategyAddress: string;
+  percentage: number;
+  name?: string;
+  apy?: number;
+  risk?: number;
+}
 
 interface CapitalAllocationProps {
-  vaultContract: any | null;
-  capitalManagerContract: any | null;
+  vaultContract: VaultInterface | null;
+  capitalManagerContract: CapitalAllocationManagerInterface | null;
   totalAssets: number;
   userSharePercent: number;
   userTotalAssets: number;
@@ -47,7 +73,7 @@ const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
   userSharePercent,
   userTotalAssets
 }) => {
-  const { provider } = useWeb3React();
+  const { provider } = useWeb3();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -168,13 +194,16 @@ const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
 
     // Subscribe to vault transaction events
     const handleVaultTransaction = () => {
+      console.log('Capital allocation: refreshing after vault transaction');
       loadCapitalAllocation();
     };
 
-    eventBus.on('VAULT_TRANSACTION_COMPLETED', handleVaultTransaction);
+    // Use the event bus pattern with proper unsubscribe handling
+    const unsubscribe = eventBus.on(EVENTS.VAULT_TRANSACTION_COMPLETED, handleVaultTransaction);
 
     return () => {
-      eventBus.off('VAULT_TRANSACTION_COMPLETED', handleVaultTransaction);
+      // Clean up subscription to prevent memory leaks
+      unsubscribe();
     };
   }, [vaultContract, capitalManagerContract, provider]);
 
@@ -216,14 +245,14 @@ const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
   ] : [];
 
   // Prepare data for the RWA allocation pie chart
-  const rwaAllocationData = rwaTokens.map((token, index) => ({
+  const rwaAllocationData = rwaTokens.map((token: any, index: number) => ({
     title: token.name || `RWA ${index + 1}`,
     value: token.percentage,
     color: colors[index % colors.length]
   }));
 
   // Prepare data for the yield strategies pie chart
-  const yieldAllocationData = yieldStrategies.map((strategy, index) => ({
+  const yieldAllocationData = yieldStrategies.map((strategy: any, index: number) => ({
     title: strategy.name || `Strategy ${index + 1}`,
     value: strategy.percentage,
     color: colors[index % colors.length]
