@@ -155,12 +155,20 @@ export interface IndexFundVaultInterface {
   setDEX: (newDEX: string) => Promise<ethers.ContractTransactionResponse>;
   getCapitalAllocation: () => Promise<CapitalAllocationData>;
   getRWATokens: () => Promise<RWATokenData[]>;
+  getYieldStrategies: () => Promise<YieldStrategyData[]>;
   
   // Events
   filters: {
     Deposit: (sender?: string, owner?: string, assets?: bigint, shares?: bigint) => ethers.EventFilter;
     Withdraw: (sender?: string, receiver?: string, owner?: string, assets?: bigint, shares?: bigint) => ethers.EventFilter;
   };
+}
+
+// Yield Strategy Data
+export interface YieldStrategyData {
+  strategyAddress: string;
+  allocationPercentage: bigint;
+  active: boolean;
 }
 
 // IndexRegistry interface
