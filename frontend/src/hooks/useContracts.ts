@@ -4,10 +4,8 @@ import { useWeb3 } from '../contexts/Web3Context';
 import {
   IndexFundVaultInterface,
   IndexRegistryInterface,
-  CapitalAllocationManagerInterface,
   IndexFundVaultABI,
   IndexRegistryABI,
-  CapitalAllocationManagerABI,
   ERC20ABI,
   Token
 } from '../contracts/contractTypes';
@@ -39,7 +37,6 @@ const getSafeSignerFromProvider = async (provider: ethers.Provider): Promise<eth
 interface UseContractsReturn {
   vaultContract: IndexFundVaultInterface | null;
   registryContract: IndexRegistryInterface | null;
-  capitalManagerContract: CapitalAllocationManagerInterface | null;
   indexTokens: Token[];
   isLoading: boolean;
   error: string | null;
@@ -49,7 +46,6 @@ export const useContracts = (): UseContractsReturn => {
   const { provider, isActive, refreshProvider } = useWeb3();
   const [vaultContract, setVaultContract] = useState<IndexFundVaultInterface | null>(null);
   const [registryContract, setRegistryContract] = useState<IndexRegistryInterface | null>(null);
-  const [capitalManagerContract, setCapitalManagerContract] = useState<CapitalAllocationManagerInterface | null>(null);
   const [indexTokens, setIndexTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +81,6 @@ export const useContracts = (): UseContractsReturn => {
     if (!provider || !isActive) {
       setVaultContract(null);
       setRegistryContract(null);
-      setCapitalManagerContract(null);
       return;
     }
 
@@ -305,7 +300,6 @@ export const useContracts = (): UseContractsReturn => {
         setError(`Failed to initialize contracts: ${err.message || 'Unknown error'}`);
         setVaultContract(null);
         setRegistryContract(null);
-        setCapitalManagerContract(null);
       } finally {
         setIsLoading(false);
       }
