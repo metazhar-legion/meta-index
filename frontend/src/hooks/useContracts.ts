@@ -136,9 +136,6 @@ export const useContracts = (): UseContractsReturn => {
         if (!ethers.isAddress(CONTRACT_ADDRESSES.REGISTRY)) {
           throw new Error(`Invalid registry address: ${CONTRACT_ADDRESSES.REGISTRY}`);
         }
-        if (!ethers.isAddress(CONTRACT_ADDRESSES.CAPITAL_MANAGER)) {
-          throw new Error(`Invalid capital manager address: ${CONTRACT_ADDRESSES.CAPITAL_MANAGER}`);
-        }
         
         // Create contracts with error handling
         let vault, registry, capitalManager;
@@ -206,38 +203,8 @@ export const useContracts = (): UseContractsReturn => {
           throw new Error(`Failed to create registry contract: ${registryError.message || 'Unknown error'}`);
         }
         
-        // Create capital manager contract
-        try {
-          capitalManager = new ethers.Contract(
-            CONTRACT_ADDRESSES.CAPITAL_MANAGER,
-            CapitalAllocationManagerABI,
-            provider
-          );
-        } catch (error) {
-          const capitalManagerError = error as Error;
-          console.error('Error creating capital manager contract:', capitalManagerError);
-          
-          // If it's a BlockOutOfRangeError, try refreshing the provider
-          if (isBlockOutOfRangeError(capitalManagerError) && retryCount < 3) {
-            console.log(`BlockOutOfRangeError detected, refreshing provider (attempt ${retryCount + 1}/3)`);
-            setRetryCount(prev => prev + 1);
-            
-            try {
-              if (refreshProvider) {
-                const freshProvider = await refreshProvider();
-                if (freshProvider) {
-                  console.log('Provider refreshed successfully, retrying contract initialization');
-                  setIsLoading(false);
-                  return; // Exit and let the useEffect retry with the new provider
-                }
-              }
-            } catch (refreshError) {
-              console.error('Error refreshing provider:', refreshError);
-            }
-          }
-          
-          throw new Error(`Failed to create capital manager contract: ${capitalManagerError.message || 'Unknown error'}`);
-        }
+        // Capital Manager is no longer used
+        capitalManager = null;
         
         // Connect signer if available
         let vaultWithSigner, registryWithSigner, capitalManagerWithSigner;
