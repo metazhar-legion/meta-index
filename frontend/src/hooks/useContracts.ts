@@ -263,16 +263,12 @@ export const useContracts = (): UseContractsReturn => {
         console.log('Casting contracts to appropriate interfaces');
         const typedVault = vaultWithSigner as unknown as IndexFundVaultInterface;
         const typedRegistry = registryWithSigner as unknown as IndexRegistryInterface;
-        const typedCapitalManager = capitalManagerWithSigner as unknown as CapitalAllocationManagerInterface;
-        
         // Log contract addresses for verification
         console.log('Setting vault contract with address:', await vault.target);
         console.log('Setting registry contract with address:', await registry.target);
-        // Capital manager is no longer used
         
         setVaultContract(typedVault);
         setRegistryContract(typedRegistry);
-        setCapitalManagerContract(typedCapitalManager);
         setError(null);
       } catch (error) {
         const err = error as Error;
@@ -966,7 +962,6 @@ export const useContracts = (): UseContractsReturn => {
   return {
     vaultContract,
     registryContract,
-    capitalManagerContract,
     indexTokens,
     isLoading,
     error,
