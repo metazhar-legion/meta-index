@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
 import { formatCurrency, formatPercentage, formatDate } from '../utils/formatters';
 import eventBus, { EVENTS } from '../utils/eventBus';
-import { IndexFundVaultInterface, CapitalAllocationManagerInterface } from '../contracts/contractTypes';
+import { IndexFundVaultInterface } from '../contracts/contractTypes';
 
 // Define interfaces for the data structures
 interface AllocationData {
@@ -34,7 +34,6 @@ interface YieldStrategy {
 
 interface CapitalAllocationProps {
   vaultContract: IndexFundVaultInterface | null;
-  capitalManagerContract: CapitalAllocationManagerInterface | null;
   totalAssets: number;
   userSharePercent: number;
   userTotalAssets: number;
@@ -68,7 +67,6 @@ interface YieldStrategy {
 
 const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
   vaultContract,
-  capitalManagerContract,
   totalAssets,
   userSharePercent,
   userTotalAssets
@@ -90,7 +88,7 @@ const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
 
   useEffect(() => {
     const loadCapitalAllocation = async () => {
-      if (!vaultContract || !capitalManagerContract || !provider) {
+      if (!vaultContract || !provider) {
         setLoading(false);
         return;
       }
@@ -205,7 +203,7 @@ const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
       // Clean up subscription to prevent memory leaks
       unsubscribe();
     };
-  }, [vaultContract, capitalManagerContract, provider]);
+  }, [vaultContract, provider]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);

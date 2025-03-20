@@ -223,12 +223,8 @@ export const useContracts = (): UseContractsReturn => {
             registryWithSigner = registry; // Fallback to provider-only
           }
           
-          try {
-            capitalManagerWithSigner = capitalManager.connect(signer);
-          } catch (connectError) {
-            console.error('Error connecting signer to capital manager contract:', connectError);
-            capitalManagerWithSigner = capitalManager; // Fallback to provider-only
-          }
+          // Capital manager is no longer used
+          capitalManagerWithSigner = null;
         } else {
           vaultWithSigner = vault;
           registryWithSigner = registry;
@@ -277,7 +273,7 @@ export const useContracts = (): UseContractsReturn => {
         // Log contract addresses for verification
         console.log('Setting vault contract with address:', await vault.target);
         console.log('Setting registry contract with address:', await registry.target);
-        console.log('Setting capital manager contract with address:', await capitalManager.target);
+        // Capital manager is no longer used
         
         setVaultContract(typedVault);
         setRegistryContract(typedRegistry);
