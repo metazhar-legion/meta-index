@@ -45,7 +45,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other })
 
 const InvestorPage: React.FC = () => {
   const { account, isActive } = useWeb3();
-  const { vaultContract, capitalManagerContract, indexTokens, isLoading: contractsLoading } = useContracts();
+  const { vaultContract, indexTokens, isLoading: contractsLoading } = useContracts();
   
   // Get the underlying asset (assuming the first token in the index is the asset)
   const assetAddress = indexTokens.length > 0 ? indexTokens[0].address : ethers.ZeroAddress;
@@ -411,7 +411,6 @@ const InvestorPage: React.FC = () => {
         <Grid item xs={12}>
           <CapitalAllocation
             vaultContract={vaultContract}
-            capitalManagerContract={capitalManagerContract}
             totalAssets={parseFloat(userAssets) / (userSharePercent > 0 ? userSharePercent / 100 : 1)}
             userSharePercent={userSharePercent}
             userTotalAssets={parseFloat(userAssets)}
