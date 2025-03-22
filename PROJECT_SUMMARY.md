@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-The Web3 Index Fund is a decentralized investment platform built on blockchain technology that allows users to invest in a diversified portfolio of crypto assets through a single token. The project implements the ERC4626 vault standard and features a comprehensive smart contract architecture paired with a modern React TypeScript frontend.
+The Web3 Index Fund is a decentralized investment platform built on blockchain technology that allows users to invest in a diversified portfolio of crypto assets and real-world assets (RWAs) through a single token. The project implements the ERC4626 vault standard and features a comprehensive smart contract architecture paired with a modern React TypeScript frontend.
 
 ## Architecture
 
@@ -20,12 +20,20 @@ The smart contract architecture follows a modular design with clear separation o
          │
          │
          ▼
-┌─────────────────┐      ┌─────────────────┐
-│                 │      │                 │
-│  Price Oracle   │◄────►│       DEX       │
-│                 │      │                 │
-│                 │      │                 │
-└─────────────────┘      └─────────────────┘
+┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+│                 │      │                 │      │                 │
+│  Price Oracle   │◄────►│       DEX       │◄────►│ Capital Allocation │
+│                 │      │                 │      │     Manager     │
+│                 │      │                 │      │                 │
+└─────────────────┘      └─────────────────┘      └─────────────────┘
+                                                          │
+                                                          ▼
+                                                  ┌─────────────────┐
+                                                  │                 │
+                                                  │  RWA Synthetic  │
+                                                  │     Tokens      │
+                                                  │                 │
+                                                  └─────────────────┘
 ```
 
 #### Key Components:
@@ -46,6 +54,14 @@ The smart contract architecture follows a modular design with clear separation o
 4. **Price Oracle**: Provides price data for accurate asset valuation.
 
 5. **DEX Integration**: Facilitates trading between assets for rebalancing.
+
+6. **Capital Allocation Manager**: Manages the allocation of capital across different asset classes.
+   - Determines allocation between crypto assets, RWAs, and yield strategies
+   - Manages liquidity buffer for redemptions
+
+7. **RWA Synthetic Tokens**: Tokenized representations of real-world assets.
+   - Provides exposure to traditional assets within the DeFi ecosystem
+   - Connects to real-world asset data feeds
 
 ### Frontend Architecture
 
@@ -160,13 +176,15 @@ The frontend follows a component-based architecture with React and TypeScript:
 
 ### Smart Contracts
 - Cross-chain asset support
-- Real-world asset (RWA) synthetic tokens
+- Enhanced RWA integration with improved price feeds and oracle systems
+- Advanced yield strategies for capital optimization
 - Enhanced DAO governance mechanisms
 - Integration with more DEXes
 - Advanced fee structures
 
 ### Frontend
 - Advanced analytics dashboard
+- RWA performance tracking and visualization
 - Mobile application
 - Notification system
 - Social features for DAO members

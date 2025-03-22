@@ -30,7 +30,7 @@ This document provides a detailed overview of the Web3 Index Fund architecture, 
 ┌───▼───────────────────────┐                   ┌───────▼─────────────────┐
 │                           │                   │                         │
 │  External Integrations    │◄──────────────────┤    User Interactions    │
-│  (Oracle, DEX)            │                   │                         │
+│  (Oracle, DEX, RWAs)      │                   │                         │
 └───────────────────────────┘                   └─────────────────────────┘
 ```
 
@@ -51,6 +51,7 @@ The main vault contract that implements the ERC4626 standard, handling deposits,
 │ - indexRegistry: IIndexRegistry                             │
 │ - priceOracle: IPriceOracle                                 │
 │ - dex: IDEX                                                 │
+│ - capitalAllocationManager: ICapitalAllocationManager       │
 │ - managementFee: uint256                                    │
 │ - performanceFee: uint256                                   │
 │ - highWaterMark: uint256                                    │
@@ -70,6 +71,9 @@ The main vault contract that implements the ERC4626 standard, handling deposits,
 │ - setPerformanceFee(uint256 newFee)                         │
 │ - setPriceOracle(address newOracle)                         │
 │ - setDEX(address newDEX)                                    │
+│ - getCapitalAllocation()                                    │
+│ - getRWATokens()                                            │
+│ - getYieldStrategies()                                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -119,6 +123,59 @@ Allows token holders to vote on proposals to change the index composition.
 │ - executeProposal(uint256 proposalId)                       │
 │ - setVotingPeriod(uint256 newPeriod)                        │
 │ - setQuorum(uint256 newQuorum)                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### CapitalAllocationManager
+
+Manages the allocation of capital across different asset classes including crypto tokens, RWAs, and yield strategies.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 CapitalAllocationManager                    │
+├─────────────────────────────────────────────────────────────┤
+│ State Variables:                                            │
+│ - rwaPercentage: uint256                                    │
+│ - yieldPercentage: uint256                                  │
+│ - liquidityBufferPercentage: uint256                        │
+│ - rwaTokens: RWAToken[]                                     │
+│ - yieldStrategies: YieldStrategy[]                          │
+│ - lastRebalanced: uint256                                   │
+│ - owner: address                                            │
+├─────────────────────────────────────────────────────────────┤
+│ Core Functions:                                             │
+│ - setAllocation(uint256 rwa, uint256 yield, uint256 buffer) │
+│ - addRWAToken(address token, uint256 percentage)            │
+│ - removeRWAToken(address token)                             │
+│ - addYieldStrategy(address strategy, uint256 percentage)    │
+│ - removeYieldStrategy(address strategy)                     │
+│ - rebalance()                                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### RWASyntheticToken
+
+Interface for synthetic tokens that represent real-world assets.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    RWASyntheticToken                        │
+├─────────────────────────────────────────────────────────────┤
+│ State Variables:                                            │
+│ - name: string                                              │
+│ - symbol: string                                            │
+│ - assetType: uint8                                          │
+│ - oracle: address                                           │
+│ - lastPrice: uint256                                        │
+│ - lastUpdated: uint256                                      │
+│ - marketId: bytes32                                         │
+│ - isActive: bool                                            │
+├─────────────────────────────────────────────────────────────┤
+│ Core Functions:                                             │
+│ - getAssetInfo()                                            │
+│ - updatePrice()                                             │
+│ - setOracle(address newOracle)                              │
+│ - setActive(bool active)                                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
