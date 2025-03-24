@@ -44,13 +44,10 @@ contract ConcreteRWAIndexFundVaultTest is Test {
 
         // Deploy mock contracts
         mockUSDC = new MockUSDC();
-        mockPriceOracle = new MockPriceOracle();
-        mockPerpetualTrading = new MockPerpetualTrading();
+        mockPriceOracle = new MockPriceOracle(address(mockUSDC));
+        mockPerpetualTrading = new MockPerpetualTrading(address(mockUSDC));
         mockIndexRegistry = new MockIndexRegistry();
-        mockDEX = new MockDEX();
-
-        // Set initial price in the oracle
-        mockPriceOracle.setAssetPrice("SP500", INITIAL_PRICE);
+        mockDEX = new MockDEX(mockPriceOracle);
 
         // Deploy RWASyntheticSP500
         rwaSyntheticSP500 = new RWASyntheticSP500(
@@ -61,6 +58,9 @@ contract ConcreteRWAIndexFundVaultTest is Test {
             address(mockPerpetualTrading),
             COLLATERAL_RATIO
         );
+        
+        // Set initial price in the oracle
+        mockPriceOracle.setPrice(address(rwaSyntheticSP500), INITIAL_PRICE);
 
         // Deploy CapitalAllocationManager
         mockCapitalAllocationManager = new MockCapitalAllocationManager(mockUSDC);
