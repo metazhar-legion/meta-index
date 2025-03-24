@@ -466,7 +466,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
     /**
      * @dev Collects management and performance fees
      */
-    function _collectFees() internal {
+    function _collectFees() internal virtual {
         // Calculate management fee
         uint256 totalAssetsValue = totalAssets();
         uint256 timeSinceLastRebalance = block.timestamp - lastRebalanceTimestamp;
@@ -514,10 +514,10 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
             uint256 currentBalance = IERC20(tokens[i]).balanceOf(address(this));
             uint256 currentValue = _getTokenValue(tokens[i], currentBalance);
             
-            uint256 totalAssetsValue = totalAssets();
-            if (totalAssetsValue == 0) return false;
+            uint256 totalAssetsValue_ = totalAssets();
+            if (totalAssetsValue_ == 0) return false;
             
-            uint256 currentWeight = (currentValue * BASIS_POINTS) / totalAssetsValue;
+            uint256 currentWeight = (currentValue * BASIS_POINTS) / totalAssetsValue_;
             uint256 targetWeight = weights[i];
             
             // Calculate the absolute deviation
@@ -593,7 +593,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param amount The token amount
      * @return value The value in asset terms
      */
-    function _getTokenValue(address token, uint256 amount) internal view returns (uint256 value) {
+    function _getTokenValue(address token, uint256 amount) internal view virtual returns (uint256 value) {
         if (amount == 0) return 0;
         
         uint256 tokenPrice = priceOracle.getPrice(token);

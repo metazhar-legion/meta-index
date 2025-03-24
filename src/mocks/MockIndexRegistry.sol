@@ -21,7 +21,7 @@ contract MockIndexRegistry is IIndexRegistry {
      * @param weights Array of token weights (in basis points)
      * @return success True if the update was successful
      */
-    function updateIndex(address[] memory tokens, uint256[] memory weights) external override returns (bool success) {
+    function updateIndex(address[] memory tokens, uint256[] memory weights) external returns (bool success) {
         require(tokens.length == weights.length, "Tokens and weights length mismatch");
         
         // Validate weights sum to 10000 (100%)
@@ -51,7 +51,7 @@ contract MockIndexRegistry is IIndexRegistry {
      * @return tokens Array of token addresses
      * @return weights Array of token weights (in basis points)
      */
-    function getIndex() external view override returns (address[] memory tokens, uint256[] memory weights) {
+    function getIndex() external view returns (address[] memory tokens, uint256[] memory weights) {
         return (_tokens, _weights);
     }
     
@@ -60,7 +60,7 @@ contract MockIndexRegistry is IIndexRegistry {
      * @param token Token address
      * @return weight Token weight in basis points (0-10000)
      */
-    function getTokenWeight(address token) external view override returns (uint256 weight) {
+    function getTokenWeight(address token) external view returns (uint256 weight) {
         for (uint256 i = 0; i < _tokens.length; i++) {
             if (_tokens[i] == token) {
                 return _weights[i];
@@ -74,12 +74,21 @@ contract MockIndexRegistry is IIndexRegistry {
      * @param token Token address
      * @return isIncluded True if the token is included in the index
      */
-    function isTokenIncluded(address token) external view override returns (bool isIncluded) {
+    function isTokenIncluded(address token) external view returns (bool isIncluded) {
         for (uint256 i = 0; i < _tokens.length; i++) {
             if (_tokens[i] == token) {
                 return true;
             }
         }
         return false;
+    }
+    
+    /**
+     * @dev Gets the current index composition (alias for getIndex)
+     * @return tokens Array of token addresses
+     * @return weights Array of token weights (in basis points)
+     */
+    function getCurrentIndex() external view returns (address[] memory tokens, uint256[] memory weights) {
+        return (_tokens, _weights);
     }
 }
