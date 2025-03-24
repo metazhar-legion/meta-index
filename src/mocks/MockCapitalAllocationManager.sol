@@ -18,45 +18,12 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
     event YieldStrategyAdded(address indexed strategy, uint256 percentage);
     event YieldStrategyRemoved(address indexed strategy);
     event YieldStrategyPercentageUpdated(address indexed strategy, uint256 percentage);
+    
+    // Internal structures for tracking tokens and strategies
     struct RWAToken {
         address rwaToken;
         uint256 percentage;
         bool active;
-    }
-    
-    // Additional functions required by the interface
-    function getAllocation() external view returns (Allocation memory allocation) {
-        return Allocation({
-            rwaPercentage: rwaPercentage,
-            yieldPercentage: yieldPercentage,
-            liquidityBufferPercentage: liquidityBufferPercentage,
-            lastRebalanced: block.timestamp
-        });
-    }
-    
-    function rebalance() external returns (bool success) {
-        // Mock implementation
-        return true;
-    }
-    
-    function getTotalValue() external view returns (uint256 totalValue) {
-        // Mock implementation
-        return 0;
-    }
-    
-    function getRWAValue() external view returns (uint256 rwaValue) {
-        // Mock implementation
-        return 0;
-    }
-    
-    function getYieldValue() external view returns (uint256 yieldValue) {
-        // Mock implementation
-        return 0;
-    }
-    
-    function getLiquidityBufferValue() external view returns (uint256 bufferValue) {
-        // Mock implementation
-        return 0;
     }
     
     struct YieldStrategy {
@@ -149,6 +116,33 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
     }
     
     /**
+     * @dev Updates an RWA token's allocation percentage
+     * @param rwaToken The RWA token address
+     * @param percentage The new allocation percentage (in basis points)
+     * @return success True if the update was successful
+     */
+    function updateRWAToken(address rwaToken, uint256 percentage) external onlyOwner returns (bool success) {
+        require(rwaToken != address(0), "Invalid RWA token address");
+        require(percentage <= 10000, "Percentage cannot exceed 10000");
+        
+        bool found = false;
+        for (uint256 i = 0; i < _rwaTokens.length; i++) {
+            if (_rwaTokens[i].rwaToken == rwaToken && _rwaTokens[i].active) {
+                _rwaTokens[i].percentage = percentage;
+                found = true;
+                break;
+            }
+        }
+        
+        require(found, "RWA token not found or inactive");
+        
+        _rebalanceRWAPercentages();
+        
+        emit RWATokenPercentageUpdated(rwaToken, percentage);
+        return true;
+    }
+    
+    /**
      * @dev Removes an RWA synthetic token from the allocation
      * @param rwaToken The RWA synthetic token address to remove
      * @return success True if the token was removed successfully
@@ -172,64 +166,6 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
         
         emit RWATokenRemoved(rwaToken);
         return true;
-    }
-    
-    /**
-     * @dev Updates the allocation percentage for an RWA synthetic token
-     * @param rwaToken The RWA synthetic token address
-     * @param percentage The new allocation percentage (in basis points)
-     * @return success True if the allocation was updated successfully
-     */
-    function updateRWATokenPercentage(address rwaToken, uint256 percentage) external onlyOwner returns (bool success) {
-        require(rwaToken != address(0), "Invalid RWA token address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
-        
-        bool found = false;
-        for (uint256 i = 0; i < _rwaTokens.length; i++) {
-            if (_rwaTokens[i].rwaToken == rwaToken && _rwaTokens[i].active) {
-                _rwaTokens[i].percentage = percentage;
-                found = true;
-                break;
-            }
-        }
-        
-        require(found, "RWA token not found or inactive");
-        
-        _rebalanceRWAPercentages();
-        
-        emit RWATokenPercentageUpdated(rwaToken, percentage);
-        return true;
-    }
-    
-    /**
-     * @dev Updates the allocation percentage for an RWA synthetic token
-     * @param rwaToken The RWA synthetic token address
-     * @param percentage The new allocation percentage (in basis points)
-     * @return success True if the allocation was updated successfully
-     */
-    function updateRWATokenPercentage(address rwaToken, uint256 percentage) external onlyOwner returns (bool success) {
-        require(rwaToken != address(0), "Invalid RWA token address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
-        
-        bool found = false;
-        for (uint256 i = 0; i < _rwaTokens.length; i++) {
-            if (_rwaTokens[i].rwaToken == rwaToken && _rwaTokens[i].active) {
-                _rwaTokens[i].percentage = percentage;
-                found = true;
-                break;
-            }
-        }
-        
-        require(found, "RWA token not found or inactive");
-        
-        _rebalanceRWAPercentages();
-        
-        emit RWATokenPercentageUpdated(rwaToken, percentage);
-        return true;
-    }
-
-    function updateRWAToken(address rwaToken, uint256 percentage) external returns (bool success) {
-        return updateRWATokenPercentage(rwaToken, percentage);
     }
     
     /**
@@ -274,6 +210,33 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
     }
     
     /**
+     * @dev Updates a yield strategy's allocation percentage
+     * @param strategy The yield strategy address
+     * @param percentage The new allocation percentage (in basis points)
+     * @return success True if the update was successful
+     */
+    function updateYieldStrategy(address strategy, uint256 percentage) external onlyOwner returns (bool success) {
+        require(strategy != address(0), "Invalid strategy address");
+        require(percentage <= 10000, "Percentage cannot exceed 10000");
+        
+        bool found = false;
+        for (uint256 i = 0; i < _yieldStrategies.length; i++) {
+            if (_yieldStrategies[i].strategy == strategy && _yieldStrategies[i].active) {
+                _yieldStrategies[i].percentage = percentage;
+                found = true;
+                break;
+            }
+        }
+        
+        require(found, "Yield strategy not found or inactive");
+        
+        _rebalanceYieldPercentages();
+        
+        emit YieldStrategyPercentageUpdated(strategy, percentage);
+        return true;
+    }
+    
+    /**
      * @dev Removes a yield strategy from the allocation
      * @param strategy The yield strategy address to remove
      * @return success True if the strategy was removed successfully
@@ -300,95 +263,59 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
     }
     
     /**
-     * @dev Updates the allocation percentage for a yield strategy
-     * @param strategy The yield strategy address
-     * @param percentage The new allocation percentage (in basis points)
-     * @return success True if the allocation was updated successfully
-     */
-    function updateYieldStrategyPercentage(address strategy, uint256 percentage) external onlyOwner returns (bool success) {
-        require(strategy != address(0), "Invalid strategy address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
-        
-        bool found = false;
-        for (uint256 i = 0; i < _yieldStrategies.length; i++) {
-            if (_yieldStrategies[i].strategy == strategy && _yieldStrategies[i].active) {
-                _yieldStrategies[i].percentage = percentage;
-                found = true;
-                break;
-            }
-        }
-        
-        require(found, "Yield strategy not found or inactive");
-        
-        _rebalanceYieldPercentages();
-        
-        emit YieldStrategyPercentageUpdated(strategy, percentage);
-        return true;
-    }
-    
-    /**
-     * @dev Updates the allocation percentage for a yield strategy
-     * @param strategy The yield strategy address
-     * @param percentage The new allocation percentage (in basis points)
-     * @return success True if the allocation was updated successfully
-     */
-    function updateYieldStrategyPercentage(address strategy, uint256 percentage) external onlyOwner returns (bool success) {
-        require(strategy != address(0), "Invalid strategy address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
-        
-        bool found = false;
-        for (uint256 i = 0; i < _yieldStrategies.length; i++) {
-            if (_yieldStrategies[i].strategy == strategy && _yieldStrategies[i].active) {
-                _yieldStrategies[i].percentage = percentage;
-                found = true;
-                break;
-            }
-        }
-        
-        require(found, "Yield strategy not found or inactive");
-        
-        _rebalanceYieldPercentages();
-        
-        emit YieldStrategyPercentageUpdated(strategy, percentage);
-        return true;
-    }
-
-    function updateYieldStrategy(address strategy, uint256 percentage) external returns (bool success) {
-        return updateYieldStrategyPercentage(strategy, percentage);
-    }
-    
-    /**
      * @dev Gets all RWA synthetic tokens and their allocation percentages
-     * @return tokens Array of RWA token structs
+     * @return tokens Array of RWA token allocations
      */
     function getRWATokens() external view returns (RWAAllocation[] memory tokens) {
-        RWAAllocation[] memory result = new RWAAllocation[](_rwaTokens.length);
+        uint256 activeCount = 0;
         for (uint256 i = 0; i < _rwaTokens.length; i++) {
-            result[i] = RWAAllocation({
-                rwaToken: _rwaTokens[i].rwaToken,
-                percentage: _rwaTokens[i].percentage,
-                active: _rwaTokens[i].active
-            });
+            if (_rwaTokens[i].active) {
+                activeCount++;
+            }
         }
-        return result;
-
+        
+        RWAAllocation[] memory activeTokens = new RWAAllocation[](activeCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < _rwaTokens.length; i++) {
+            if (_rwaTokens[i].active) {
+                activeTokens[index] = RWAAllocation({
+                    rwaToken: _rwaTokens[i].rwaToken,
+                    percentage: _rwaTokens[i].percentage,
+                    active: true
+                });
+                index++;
+            }
+        }
+        
+        return activeTokens;
     }
     
     /**
      * @dev Gets all yield strategies and their allocation percentages
-     * @return strategies Array of yield strategy structs
+     * @return strategies Array of yield strategy allocations
      */
     function getYieldStrategies() external view returns (StrategyAllocation[] memory strategies) {
-        StrategyAllocation[] memory result = new StrategyAllocation[](_yieldStrategies.length);
+        uint256 activeCount = 0;
         for (uint256 i = 0; i < _yieldStrategies.length; i++) {
-            result[i] = StrategyAllocation({
-                strategy: _yieldStrategies[i].strategy,
-                percentage: _yieldStrategies[i].percentage,
-                active: _yieldStrategies[i].active
-            });
+            if (_yieldStrategies[i].active) {
+                activeCount++;
+            }
         }
-        return result;
-
+        
+        StrategyAllocation[] memory activeStrategies = new StrategyAllocation[](activeCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < _yieldStrategies.length; i++) {
+            if (_yieldStrategies[i].active) {
+                activeStrategies[index] = StrategyAllocation({
+                    strategy: _yieldStrategies[i].strategy,
+                    percentage: _yieldStrategies[i].percentage,
+                    active: true
+                });
+                index++;
+            }
+        }
+        
+        return activeStrategies;
     }
     
     /**
@@ -396,8 +323,6 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param rwaToken The RWA token address
      * @return percentage The allocation percentage (in basis points)
      */
-
-
     function getRWATokenPercentage(address rwaToken) external view returns (uint256 percentage) {
         for (uint256 i = 0; i < _rwaTokens.length; i++) {
             if (_rwaTokens[i].rwaToken == rwaToken && _rwaTokens[i].active) {
@@ -412,14 +337,70 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param strategy The yield strategy address
      * @return percentage The allocation percentage (in basis points)
      */
-
-
     function getYieldStrategyPercentage(address strategy) external view returns (uint256 percentage) {
         for (uint256 i = 0; i < _yieldStrategies.length; i++) {
             if (_yieldStrategies[i].strategy == strategy && _yieldStrategies[i].active) {
                 return _yieldStrategies[i].percentage;
             }
         }
+        return 0;
+    }
+    
+    /**
+     * @dev Gets the current overall allocation
+     * @return allocation The current allocation
+     */
+    function getAllocation() external view returns (Allocation memory allocation) {
+        return Allocation({
+            rwaPercentage: rwaPercentage,
+            yieldPercentage: yieldPercentage,
+            liquidityBufferPercentage: liquidityBufferPercentage,
+            lastRebalanced: block.timestamp
+        });
+    }
+    
+    /**
+     * @dev Rebalances the capital allocation according to the set percentages
+     * @return success Whether the rebalance was successful
+     */
+    function rebalance() external returns (bool success) {
+        // Mock implementation - just return true
+        return true;
+    }
+    
+    /**
+     * @dev Gets the total value of all assets under management
+     * @return totalValue The total value in the base asset (e.g., USDC)
+     */
+    function getTotalValue() external view returns (uint256 totalValue) {
+        // Mock implementation - return 0
+        return 0;
+    }
+    
+    /**
+     * @dev Gets the value of assets allocated to RWA synthetics
+     * @return rwaValue The value in the base asset
+     */
+    function getRWAValue() external view returns (uint256 rwaValue) {
+        // Mock implementation - return 0
+        return 0;
+    }
+    
+    /**
+     * @dev Gets the value of assets allocated to yield strategies
+     * @return yieldValue The value in the base asset
+     */
+    function getYieldValue() external view returns (uint256 yieldValue) {
+        // Mock implementation - return 0
+        return 0;
+    }
+    
+    /**
+     * @dev Gets the value of assets kept as liquidity buffer
+     * @return bufferValue The value in the base asset
+     */
+    function getLiquidityBufferValue() external view returns (uint256 bufferValue) {
+        // Mock implementation - return 0
         return 0;
     }
     
