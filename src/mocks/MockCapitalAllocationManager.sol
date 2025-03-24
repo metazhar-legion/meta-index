@@ -9,7 +9,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * @title CapitalAllocationManager
  * @dev Mock implementation of the ICapitalAllocationManager interface for testing
  */
-contract CapitalAllocationManager is ICapitalAllocationManager, Ownable {
+contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
     // Events
     event AllocationUpdated(uint256 rwaPercentage, uint256 yieldPercentage, uint256 liquidityBufferPercentage);
     event RWATokenAdded(address indexed rwaToken, uint256 percentage);
