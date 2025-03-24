@@ -7,7 +7,7 @@ import {IIndexRegistry} from "../interfaces/IIndexRegistry.sol";
  * @title MockIndexRegistry
  * @dev Mock implementation of the IIndexRegistry interface for testing
  */
-contract IndexRegistry is IIndexRegistry {
+contract MockIndexRegistry is IIndexRegistry {
     address[] private _tokens;
     uint256[] private _weights;
     uint256 public lastUpdated;
