@@ -96,7 +96,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
         uint256 rwaPercentage_,
         uint256 yieldPercentage_,
         uint256 liquidityBufferPercentage_
-    ) external override onlyOwner returns (bool success) {
+    ) external onlyOwner returns (bool success) {
         require(rwaPercentage_ + yieldPercentage_ + liquidityBufferPercentage_ == 10000, "Percentages must sum to 10000");
         
         rwaPercentage = rwaPercentage_;
@@ -204,25 +204,6 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
     function updateRWAToken(address rwaToken, uint256 percentage) external returns (bool success) {
         return updateRWATokenPercentage(rwaToken, percentage);
     }
-        require(rwaToken != address(0), "Invalid RWA token address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
-        
-        bool found = false;
-        for (uint256 i = 0; i < _rwaTokens.length; i++) {
-            if (_rwaTokens[i].rwaToken == rwaToken && _rwaTokens[i].active) {
-                _rwaTokens[i].percentage = percentage;
-                found = true;
-                break;
-            }
-        }
-        
-        require(found, "RWA token not found or inactive");
-        
-        _rebalanceRWAPercentages();
-        
-        emit RWATokenPercentageUpdated(rwaToken, percentage);
-        return true;
-    }
     
     /**
      * @dev Adds a new yield strategy to the allocation
@@ -320,25 +301,6 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
     
     function updateYieldStrategy(address strategy, uint256 percentage) external returns (bool success) {
         return updateYieldStrategyPercentage(strategy, percentage);
-    }
-        require(strategy != address(0), "Invalid strategy address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
-        
-        bool found = false;
-        for (uint256 i = 0; i < _yieldStrategies.length; i++) {
-            if (_yieldStrategies[i].strategy == strategy && _yieldStrategies[i].active) {
-                _yieldStrategies[i].percentage = percentage;
-                found = true;
-                break;
-            }
-        }
-        
-        require(found, "Yield strategy not found or inactive");
-        
-        _rebalanceYieldPercentages();
-        
-        emit YieldStrategyPercentageUpdated(strategy, percentage);
-        return true;
     }
     
     /**
