@@ -140,12 +140,9 @@ contract ConcreteRWAIndexFundVaultTest is Test {
     function test_AddRWAToken() public {
         // Create a new RWA token
         RWASyntheticSP500 newRWAToken = new RWASyntheticSP500(
-            "NASDAQ Synthetic Token",
-            "sNASDAQ",
             address(mockUSDC),
-            address(mockPriceOracle),
             address(mockPerpetualTrading),
-            COLLATERAL_RATIO
+            address(mockPriceOracle)
         );
         
         uint256 allocation = 5000; // 50% in basis points
@@ -277,12 +274,9 @@ contract ConcreteRWAIndexFundVaultTest is Test {
     function test_OnlyOwnerFunctions() public {
         // Create a new RWA token
         RWASyntheticSP500 newRWAToken = new RWASyntheticSP500(
-            "NASDAQ Synthetic Token",
-            "sNASDAQ",
             address(mockUSDC),
-            address(mockPriceOracle),
             address(mockPerpetualTrading),
-            COLLATERAL_RATIO
+            address(mockPriceOracle)
         );
         
         // Try to add RWA token as non-owner

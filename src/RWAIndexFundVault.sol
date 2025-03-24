@@ -388,7 +388,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
             token,
             amountToBuy,
             0 // Min amount out (should use a real value in production)
-        ) returns (uint256 amountOut) {
+        ) returns (uint256 /* amountOut */) {
             // Success
         } catch {
             // Handle failure
