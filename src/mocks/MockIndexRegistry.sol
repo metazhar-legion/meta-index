@@ -8,6 +8,9 @@ import {IIndexRegistry} from "../interfaces/IIndexRegistry.sol";
  * @dev Mock implementation of the IIndexRegistry interface for testing
  */
 contract MockIndexRegistry is IIndexRegistry {
+    // Events
+    event IndexUpdated(address[] tokens, uint256[] weights);
+    
     address[] private _tokens;
     uint256[] private _weights;
     uint256 public lastUpdated;
