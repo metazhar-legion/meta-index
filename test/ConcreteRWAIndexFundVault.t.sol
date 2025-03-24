@@ -10,6 +10,11 @@ import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
 import {MockIndexRegistry} from "../src/mocks/MockIndexRegistry.sol";
 import {MockCapitalAllocationManager} from "../src/mocks/MockCapitalAllocationManager.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IIndexRegistry} from "../src/interfaces/IIndexRegistry.sol";
+import {IPriceOracle} from "../src/interfaces/IPriceOracle.sol";
+import {IDEX} from "../src/interfaces/IDEX.sol";
+import {ICapitalAllocationManager} from "../src/interfaces/ICapitalAllocationManager.sol";
 
 contract ConcreteRWAIndexFundVaultTest is Test {
     ConcreteRWAIndexFundVault public vault;
@@ -51,12 +56,9 @@ contract ConcreteRWAIndexFundVaultTest is Test {
 
         // Deploy RWASyntheticSP500
         rwaSyntheticSP500 = new RWASyntheticSP500(
-            "SP500 Synthetic Token",
-            "sSP500",
             address(mockUSDC),
-            address(mockPriceOracle),
             address(mockPerpetualTrading),
-            COLLATERAL_RATIO
+            address(mockPriceOracle)
         );
         
         // Set initial price in the oracle
@@ -73,12 +75,11 @@ contract ConcreteRWAIndexFundVaultTest is Test {
 
         // Deploy ConcreteRWAIndexFundVault
         vault = new ConcreteRWAIndexFundVault(
-            "RWA Index Fund Vault",
-            "RWAV",
-            address(mockUSDC),
-            address(mockIndexRegistry),
-            address(mockCapitalAllocationManager),
-            address(mockDEX)
+            IERC20(address(mockUSDC)),
+            IIndexRegistry(address(mockIndexRegistry)),
+            IPriceOracle(address(mockPriceOracle)),
+            IDEX(address(mockDEX)),
+            ICapitalAllocationManager(address(mockCapitalAllocationManager))
         );
 
         // Mint some USDC to users for testing
@@ -89,7 +90,7 @@ contract ConcreteRWAIndexFundVaultTest is Test {
     function test_Initialization() public {
         assertEq(vault.name(), "RWA Index Fund Vault");
         assertEq(vault.symbol(), "RWAV");
-        assertEq(address(vault.baseAsset()), address(mockUSDC));
+        assertEq(address(vault.asset()), address(mockUSDC));
         assertEq(address(vault.indexRegistry()), address(mockIndexRegistry));
         assertEq(address(vault.capitalAllocationManager()), address(mockCapitalAllocationManager));
         assertEq(address(vault.dex()), address(mockDEX));
