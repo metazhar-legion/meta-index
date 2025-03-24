@@ -19,7 +19,7 @@ contract RWASyntheticSP500Test is Test {
 
     uint256 public constant INITIAL_PRICE = 5000 * 1e6; // $5000 in USDC decimals
     uint256 public constant MINT_AMOUNT = 1000 * 1e6;   // 1000 USDC
-    uint256 public constant COLLATERAL_RATIO = 12000;   // 120% in basis points
+    uint256 public constant COLLATERAL_RATIO_TEST = 12000;   // 120% in basis points
 
     event AssetPriceUpdated(uint256 oldPrice, uint256 newPrice);
     event TokensMinted(address indexed to, uint256 amount, uint256 collateralAmount);
@@ -35,21 +35,20 @@ contract RWASyntheticSP500Test is Test {
 
         // Deploy mock contracts
         mockUSDC = new MockUSDC();
-        mockPriceOracle = new MockPriceOracle();
-        mockPerpetualTrading = new MockPerpetualTrading();
+        mockPriceOracle = new MockPriceOracle(address(mockUSDC));
+        mockPerpetualTrading = new MockPerpetualTrading(address(mockUSDC));
+
+        // Deploy RWASyntheticSP500 first so we can set its price
+        rwaSyntheticSP500 = new RWASyntheticSP500(
+            address(mockUSDC),
+            address(mockPerpetualTrading),
+            address(mockPriceOracle)
+        );
 
         // Set initial price in the oracle
-        mockPriceOracle.setAssetPrice("SP500", INITIAL_PRICE);
+        mockPriceOracle.setPrice(address(rwaSyntheticSP500), INITIAL_PRICE);
 
-        // Deploy RWASyntheticSP500
-        rwaSyntheticSP500 = new RWASyntheticSP500(
-            "SP500 Synthetic Token",
-            "sSP500",
-            address(mockUSDC),
-            address(mockPriceOracle),
-            address(mockPerpetualTrading),
-            COLLATERAL_RATIO
-        );
+        // RWASyntheticSP500 already deployed above
 
         // Mint some USDC to users for testing
         mockUSDC.mint(user1, 10000 * 1e6);
@@ -62,13 +61,14 @@ contract RWASyntheticSP500Test is Test {
         assertEq(address(rwaSyntheticSP500.baseAsset()), address(mockUSDC));
         assertEq(address(rwaSyntheticSP500.priceOracle()), address(mockPriceOracle));
         assertEq(address(rwaSyntheticSP500.perpetualTrading()), address(mockPerpetualTrading));
-        assertEq(rwaSyntheticSP500.collateralRatio(), COLLATERAL_RATIO);
+        // The contract has a constant COLLATERAL_RATIO of 5000 (50%)
+        assertEq(rwaSyntheticSP500.COLLATERAL_RATIO(), 5000);
         assertEq(rwaSyntheticSP500.getAssetPrice(), INITIAL_PRICE);
     }
 
     function test_UpdateAssetPrice() public {
         uint256 newPrice = 5500 * 1e6; // $5500
-        mockPriceOracle.setAssetPrice("SP500", newPrice);
+        mockPriceOracle.setPrice(address(rwaSyntheticSP500), newPrice);
 
         vm.expectEmit(true, true, true, true);
         emit AssetPriceUpdated(INITIAL_PRICE, newPrice);
@@ -80,7 +80,7 @@ contract RWASyntheticSP500Test is Test {
 
     function test_MintTokens() public {
         uint256 mintAmount = MINT_AMOUNT;
-        uint256 expectedCollateral = (mintAmount * COLLATERAL_RATIO) / 10000;
+        uint256 expectedCollateral = (mintAmount * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         
         // Approve USDC spending
         vm.startPrank(user1);
@@ -100,7 +100,7 @@ contract RWASyntheticSP500Test is Test {
     function test_BurnTokens() public {
         // First mint some tokens
         uint256 mintAmount = MINT_AMOUNT;
-        uint256 expectedCollateral = (mintAmount * COLLATERAL_RATIO) / 10000;
+        uint256 expectedCollateral = (mintAmount * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         
         vm.startPrank(user1);
         mockUSDC.approve(address(rwaSyntheticSP500), expectedCollateral);
@@ -124,7 +124,7 @@ contract RWASyntheticSP500Test is Test {
     function test_AddCollateral() public {
         // First mint some tokens
         uint256 mintAmount = MINT_AMOUNT;
-        uint256 initialCollateral = (mintAmount * COLLATERAL_RATIO) / 10000;
+        uint256 initialCollateral = (mintAmount * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         
         vm.startPrank(user1);
         mockUSDC.approve(address(rwaSyntheticSP500), initialCollateral);
@@ -147,7 +147,7 @@ contract RWASyntheticSP500Test is Test {
     function test_RemoveCollateral() public {
         // First mint some tokens with excess collateral
         uint256 mintAmount = MINT_AMOUNT;
-        uint256 initialCollateral = (mintAmount * COLLATERAL_RATIO) / 10000;
+        uint256 initialCollateral = (mintAmount * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         uint256 excessCollateral = 500 * 1e6;
         
         vm.startPrank(user1);
@@ -171,7 +171,7 @@ contract RWASyntheticSP500Test is Test {
     function test_UpdatePosition() public {
         // First mint some tokens
         uint256 mintAmount = MINT_AMOUNT;
-        uint256 initialCollateral = (mintAmount * COLLATERAL_RATIO) / 10000;
+        uint256 initialCollateral = (mintAmount * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         
         vm.startPrank(user1);
         mockUSDC.approve(address(rwaSyntheticSP500), initialCollateral);
@@ -193,7 +193,7 @@ contract RWASyntheticSP500Test is Test {
 
     function test_RevertWhenInsufficientCollateral() public {
         uint256 mintAmount = MINT_AMOUNT;
-        uint256 requiredCollateral = (mintAmount * COLLATERAL_RATIO) / 10000;
+        uint256 requiredCollateral = (mintAmount * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         uint256 insufficientCollateral = requiredCollateral - 1;
         
         vm.startPrank(user1);
@@ -207,7 +207,7 @@ contract RWASyntheticSP500Test is Test {
     function test_RevertWhenRemovingTooMuchCollateral() public {
         // First mint some tokens
         uint256 mintAmount = MINT_AMOUNT;
-        uint256 initialCollateral = (mintAmount * COLLATERAL_RATIO) / 10000;
+        uint256 initialCollateral = (mintAmount * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         
         vm.startPrank(user1);
         mockUSDC.approve(address(rwaSyntheticSP500), initialCollateral);
@@ -224,7 +224,7 @@ contract RWASyntheticSP500Test is Test {
     function test_RevertWhenBurningTooManyTokens() public {
         // First mint some tokens
         uint256 mintAmount = MINT_AMOUNT;
-        uint256 initialCollateral = (mintAmount * COLLATERAL_RATIO) / 10000;
+        uint256 initialCollateral = (mintAmount * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         
         vm.startPrank(user1);
         mockUSDC.approve(address(rwaSyntheticSP500), initialCollateral);
@@ -241,7 +241,7 @@ contract RWASyntheticSP500Test is Test {
     function test_MultipleUsers() public {
         // User 1 mints tokens
         uint256 mintAmount1 = 1000 * 1e6;
-        uint256 collateral1 = (mintAmount1 * COLLATERAL_RATIO) / 10000;
+        uint256 collateral1 = (mintAmount1 * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         
         vm.startPrank(user1);
         mockUSDC.approve(address(rwaSyntheticSP500), collateral1);
@@ -250,7 +250,7 @@ contract RWASyntheticSP500Test is Test {
         
         // User 2 mints tokens
         uint256 mintAmount2 = 2000 * 1e6;
-        uint256 collateral2 = (mintAmount2 * COLLATERAL_RATIO) / 10000;
+        uint256 collateral2 = (mintAmount2 * rwaSyntheticSP500.COLLATERAL_RATIO()) / 10000;
         
         vm.startPrank(user2);
         mockUSDC.approve(address(rwaSyntheticSP500), collateral2);
