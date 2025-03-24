@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title CapitalAllocationManager
+ * @title MockCapitalAllocationManager
  * @dev Mock implementation of the ICapitalAllocationManager interface for testing
  */
 contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
@@ -22,6 +22,41 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
         address rwaToken;
         uint256 percentage;
         bool active;
+    }
+    
+    // Additional functions required by the interface
+    function getAllocation() external view returns (Allocation memory allocation) {
+        return Allocation({
+            rwaPercentage: rwaPercentage,
+            yieldPercentage: yieldPercentage,
+            liquidityBufferPercentage: liquidityBufferPercentage,
+            lastRebalanced: block.timestamp
+        });
+    }
+    
+    function rebalance() external returns (bool success) {
+        // Mock implementation
+        return true;
+    }
+    
+    function getTotalValue() external view returns (uint256 totalValue) {
+        // Mock implementation
+        return 0;
+    }
+    
+    function getRWAValue() external view returns (uint256 rwaValue) {
+        // Mock implementation
+        return 0;
+    }
+    
+    function getYieldValue() external view returns (uint256 yieldValue) {
+        // Mock implementation
+        return 0;
+    }
+    
+    function getLiquidityBufferValue() external view returns (uint256 bufferValue) {
+        // Mock implementation
+        return 0;
     }
     
     struct YieldStrategy {
@@ -78,7 +113,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param percentage The allocation percentage within the RWA category (in basis points)
      * @return success True if the token was added successfully
      */
-    function addRWAToken(address rwaToken, uint256 percentage) external override onlyOwner returns (bool success) {
+    function addRWAToken(address rwaToken, uint256 percentage) external onlyOwner returns (bool success) {
         require(rwaToken != address(0), "Invalid RWA token address");
         require(percentage <= 10000, "Percentage cannot exceed 10000");
         
@@ -118,7 +153,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param rwaToken The RWA synthetic token address to remove
      * @return success True if the token was removed successfully
      */
-    function removeRWAToken(address rwaToken) external override onlyOwner returns (bool success) {
+    function removeRWAToken(address rwaToken) external onlyOwner returns (bool success) {
         require(rwaToken != address(0), "Invalid RWA token address");
         
         bool found = false;
@@ -145,7 +180,30 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param percentage The new allocation percentage (in basis points)
      * @return success True if the allocation was updated successfully
      */
-    function updateRWATokenPercentage(address rwaToken, uint256 percentage) external override onlyOwner returns (bool success) {
+    function updateRWATokenPercentage(address rwaToken, uint256 percentage) external onlyOwner returns (bool success) {
+        require(rwaToken != address(0), "Invalid RWA token address");
+        require(percentage <= 10000, "Percentage cannot exceed 10000");
+        
+        bool found = false;
+        for (uint256 i = 0; i < _rwaTokens.length; i++) {
+            if (_rwaTokens[i].rwaToken == rwaToken && _rwaTokens[i].active) {
+                _rwaTokens[i].percentage = percentage;
+                found = true;
+                break;
+            }
+        }
+        
+        require(found, "RWA token not found or inactive");
+        
+        _rebalanceRWAPercentages();
+        
+        emit RWATokenPercentageUpdated(rwaToken, percentage);
+        return true;
+    }
+    
+    function updateRWAToken(address rwaToken, uint256 percentage) external returns (bool success) {
+        return updateRWATokenPercentage(rwaToken, percentage);
+    }
         require(rwaToken != address(0), "Invalid RWA token address");
         require(percentage <= 10000, "Percentage cannot exceed 10000");
         
@@ -172,7 +230,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param percentage The allocation percentage within the yield category (in basis points)
      * @return success True if the strategy was added successfully
      */
-    function addYieldStrategy(address strategy, uint256 percentage) external override onlyOwner returns (bool success) {
+    function addYieldStrategy(address strategy, uint256 percentage) external onlyOwner returns (bool success) {
         require(strategy != address(0), "Invalid strategy address");
         require(percentage <= 10000, "Percentage cannot exceed 10000");
         
@@ -212,7 +270,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param strategy The yield strategy address to remove
      * @return success True if the strategy was removed successfully
      */
-    function removeYieldStrategy(address strategy) external override onlyOwner returns (bool success) {
+    function removeYieldStrategy(address strategy) external onlyOwner returns (bool success) {
         require(strategy != address(0), "Invalid strategy address");
         
         bool found = false;
@@ -239,7 +297,30 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param percentage The new allocation percentage (in basis points)
      * @return success True if the allocation was updated successfully
      */
-    function updateYieldStrategyPercentage(address strategy, uint256 percentage) external override onlyOwner returns (bool success) {
+    function updateYieldStrategyPercentage(address strategy, uint256 percentage) external onlyOwner returns (bool success) {
+        require(strategy != address(0), "Invalid strategy address");
+        require(percentage <= 10000, "Percentage cannot exceed 10000");
+        
+        bool found = false;
+        for (uint256 i = 0; i < _yieldStrategies.length; i++) {
+            if (_yieldStrategies[i].strategy == strategy && _yieldStrategies[i].active) {
+                _yieldStrategies[i].percentage = percentage;
+                found = true;
+                break;
+            }
+        }
+        
+        require(found, "Yield strategy not found or inactive");
+        
+        _rebalanceYieldPercentages();
+        
+        emit YieldStrategyPercentageUpdated(strategy, percentage);
+        return true;
+    }
+    
+    function updateYieldStrategy(address strategy, uint256 percentage) external returns (bool success) {
+        return updateYieldStrategyPercentage(strategy, percentage);
+    }
         require(strategy != address(0), "Invalid strategy address");
         require(percentage <= 10000, "Percentage cannot exceed 10000");
         
@@ -264,48 +345,34 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @dev Gets all RWA synthetic tokens and their allocation percentages
      * @return tokens Array of RWA token structs
      */
-    function getRWATokens() external view override returns (RWAToken[] memory tokens) {
-        uint256 activeCount = 0;
+    function getRWATokens() external view returns (RWAAllocation[] memory tokens) {
+        RWAAllocation[] memory result = new RWAAllocation[](_rwaTokens.length);
         for (uint256 i = 0; i < _rwaTokens.length; i++) {
-            if (_rwaTokens[i].active) {
-                activeCount++;
-            }
+            result[i] = RWAAllocation({
+                rwaToken: _rwaTokens[i].rwaToken,
+                percentage: _rwaTokens[i].percentage,
+                active: _rwaTokens[i].active
+            });
         }
-        
-        RWAToken[] memory activeTokens = new RWAToken[](activeCount);
-        uint256 index = 0;
-        for (uint256 i = 0; i < _rwaTokens.length; i++) {
-            if (_rwaTokens[i].active) {
-                activeTokens[index] = _rwaTokens[i];
-                index++;
-            }
-        }
-        
-        return activeTokens;
+        return result;
+
     }
     
     /**
      * @dev Gets all yield strategies and their allocation percentages
      * @return strategies Array of yield strategy structs
      */
-    function getYieldStrategies() external view override returns (YieldStrategy[] memory strategies) {
-        uint256 activeCount = 0;
+    function getYieldStrategies() external view returns (StrategyAllocation[] memory strategies) {
+        StrategyAllocation[] memory result = new StrategyAllocation[](_yieldStrategies.length);
         for (uint256 i = 0; i < _yieldStrategies.length; i++) {
-            if (_yieldStrategies[i].active) {
-                activeCount++;
-            }
+            result[i] = StrategyAllocation({
+                strategy: _yieldStrategies[i].strategy,
+                percentage: _yieldStrategies[i].percentage,
+                active: _yieldStrategies[i].active
+            });
         }
-        
-        YieldStrategy[] memory activeStrategies = new YieldStrategy[](activeCount);
-        uint256 index = 0;
-        for (uint256 i = 0; i < _yieldStrategies.length; i++) {
-            if (_yieldStrategies[i].active) {
-                activeStrategies[index] = _yieldStrategies[i];
-                index++;
-            }
-        }
-        
-        return activeStrategies;
+        return result;
+
     }
     
     /**
@@ -313,7 +380,9 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param rwaToken The RWA token address
      * @return percentage The allocation percentage (in basis points)
      */
-    function getRWATokenPercentage(address rwaToken) external view override returns (uint256 percentage) {
+
+
+    function getRWATokenPercentage(address rwaToken) external view returns (uint256 percentage) {
         for (uint256 i = 0; i < _rwaTokens.length; i++) {
             if (_rwaTokens[i].rwaToken == rwaToken && _rwaTokens[i].active) {
                 return _rwaTokens[i].percentage;
@@ -327,7 +396,9 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @param strategy The yield strategy address
      * @return percentage The allocation percentage (in basis points)
      */
-    function getYieldStrategyPercentage(address strategy) external view override returns (uint256 percentage) {
+
+
+    function getYieldStrategyPercentage(address strategy) external view returns (uint256 percentage) {
         for (uint256 i = 0; i < _yieldStrategies.length; i++) {
             if (_yieldStrategies[i].strategy == strategy && _yieldStrategies[i].active) {
                 return _yieldStrategies[i].percentage;
