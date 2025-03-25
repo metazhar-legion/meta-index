@@ -92,11 +92,11 @@ contract DeployRWASP500 is Script {
         
         // Deploy concrete RWA index fund vault
         ConcreteRWAIndexFundVault vault = new ConcreteRWAIndexFundVault(
-            address(usdc),
-            address(indexRegistry),
-            address(priceOracle),
-            address(dex),
-            address(capitalAllocationManager)
+            usdc,
+            indexRegistry,
+            priceOracle,
+            dex,
+            capitalAllocationManager
         );
         console.log("ConcreteRWAIndexFundVault deployed at:", address(vault));
         
