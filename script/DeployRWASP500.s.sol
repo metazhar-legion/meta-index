@@ -116,6 +116,11 @@ contract DeployRWASP500 is Script {
         uint256 shareBalance = vault.balanceOf(deployer);
         console.log("Vault share balance:", shareBalance / 1e18, "shares");
         
+        // Transfer some USDC to the CapitalAllocationManager for rebalancing
+        // This is needed because the vault doesn't automatically transfer funds to the manager
+        usdc.mint(address(capitalAllocationManager), 7000 * 1e6); // 7000 USDC (70% of deposit)
+        console.log("Minted 7,000 USDC directly to CapitalAllocationManager for testing");
+        
         // Rebalance the vault to allocate funds to the RWA S&P500
         vault.rebalance();
         console.log("Rebalanced the vault to allocate funds to RWA S&P500");

@@ -139,6 +139,23 @@ contract Deploy is Script {
         capitalAllocationManager.transferOwnership(address(rwaVault));
         console.log("Transferred ownership of CapitalAllocationManager to the vault");
         
+        // Approve the vault to spend USDC
+        usdc.approve(address(rwaVault), 100_000 * 1e6); // 100,000 USDC
+        console.log("Approved RWA vault to spend 100,000 USDC");
+        
+        // Deposit into the RWA vault
+        rwaVault.deposit(10_000 * 1e6, deployer); // 10,000 USDC
+        console.log("Deposited 10,000 USDC into the RWA vault");
+        
+        // Transfer some USDC to the CapitalAllocationManager for rebalancing
+        // This is needed because the vault doesn't automatically transfer funds to the manager
+        usdc.mint(address(capitalAllocationManager), 7000 * 1e6); // 7000 USDC (70% of deposit)
+        console.log("Minted 7,000 USDC directly to CapitalAllocationManager for testing");
+        
+        // Rebalance the RWA vault to allocate funds to the RWA S&P500
+        rwaVault.rebalance();
+        console.log("Rebalanced the RWA vault to allocate funds to RWA S&P500");
+        
         vm.stopBroadcast();
         
         // Log deployed addresses
