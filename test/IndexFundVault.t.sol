@@ -7,6 +7,8 @@ import {IndexFundVault} from "../src/IndexFundVault.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
+import {MockFeeManager} from "../src/mocks/MockFeeManager.sol";
+import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
 
 /**
  * @title IndexFundVaultTest
@@ -20,6 +22,7 @@ contract IndexFundVaultTest is Test {
     MockERC20 public weth;
     MockPriceOracle public priceOracle;
     MockDEX public dex;
+    MockFeeManager public mockFeeManager;
     
     address public owner = address(1);
     address public user1 = address(2);
@@ -44,12 +47,16 @@ contract IndexFundVaultTest is Test {
         // Deploy index registry
         registry = new IndexRegistry();
         
+        // Deploy MockFeeManager
+        mockFeeManager = new MockFeeManager();
+        
         // Deploy vault
         vault = new IndexFundVault(
             usdc,
             registry,
             priceOracle,
-            dex
+            dex,
+            IFeeManager(address(mockFeeManager))
         );
         
         // Set up initial index
