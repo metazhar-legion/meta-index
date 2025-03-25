@@ -106,10 +106,13 @@ contract Deploy is Script {
         priceOracle.setPrice(address(rwaSP500), sp500Price);
         console.log("Set RWA S&P500 price to $5000 in the oracle");
         
-        // Approve USDC for RWASyntheticSP500 to spend
-        uint256 approvalAmount = 1000000 * 1e6; // 1,000,000 USDC
-        usdc.approve(address(rwaSP500), approvalAmount);
-        console.log("Approved RWASyntheticSP500 to spend 1,000,000 USDC");
+        // Define the amount of RWA tokens we want to mint
+        uint256 rwaMintAmount = 1 * 1e17; // 0.1 S&P500 tokens
+        
+        // Approve RWASyntheticSP500 to spend exactly the amount of USDC needed for minting
+        // In the mint function, it transfers exactly the amount of tokens we want to mint
+        usdc.approve(address(rwaSP500), rwaMintAmount);
+        console.log("Approved RWASyntheticSP500 to spend exact USDC amount needed");
         
         // Mint some initial RWA S&P500 tokens to the deployer for testing
         // The cost in USDC is calculated based on the price and decimals
