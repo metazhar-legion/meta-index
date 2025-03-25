@@ -76,8 +76,11 @@ contract DeployRWASP500 is Script {
         console.log("Approved RWASyntheticSP500 to spend 1,000,000 USDC");
         
         // Mint some initial RWA S&P500 tokens to the deployer for testing
-        rwaSP500.mint(deployer, 100 * 1e18); // 100 S&P500 tokens
-        console.log("Minted 100 RWA S&P500 tokens to deployer");
+        // The cost in USDC is calculated based on the price and decimals
+        // For 1 S&P500 token (1e18 units) at $5000, we need 5000 USDC
+        // Let's mint a smaller amount to stay within our approval
+        rwaSP500.mint(deployer, 1 * 1e17); // 0.1 S&P500 tokens (costs 500 USDC)
+        console.log("Minted 0.1 RWA S&P500 tokens to deployer");
         
         // Deploy index registry
         IndexRegistry indexRegistry = new IndexRegistry();
