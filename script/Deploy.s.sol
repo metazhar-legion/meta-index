@@ -5,9 +5,15 @@ import {Script} from "forge-std/Script.sol";
 import "forge-std/console.sol";
 import {IndexRegistry} from "../src/IndexRegistry.sol";
 import {IndexFundVault} from "../src/IndexFundVault.sol";
+import {RWAIndexFundVault} from "../src/RWAIndexFundVault.sol";
+import {ConcreteRWAIndexFundVault} from "../src/ConcreteRWAIndexFundVault.sol";
+import {CapitalAllocationManager} from "../src/CapitalAllocationManager.sol";
+import {RWASyntheticSP500} from "../src/RWASyntheticSP500.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
+import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
+import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
 
 /**
  * @title Deploy
@@ -30,7 +36,7 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy mock USDC for testing
-        MockERC20 usdc = new MockERC20("USD Coin", "USDC", 6);
+        MockUSDC usdc = new MockUSDC();
         
         // Deploy mock tokens for the index
         MockERC20 wbtc = new MockERC20("Wrapped Bitcoin", "WBTC", 8);
@@ -80,9 +86,63 @@ contract Deploy is Script {
         uni.mint(address(dex), 100000 * 1e18);  // 100,000 UNI
         aave.mint(address(dex), 10000 * 1e18);  // 10,000 AAVE
         
+        // Deploy RWA S&P500 components
+        console.log("\n=== Deploying RWA S&P500 Components ===");
+        
+        // Deploy mock perpetual trading platform
+        MockPerpetualTrading perpetualTrading = new MockPerpetualTrading(address(usdc));
+        console.log("MockPerpetualTrading deployed at:", address(perpetualTrading));
+        
+        // Deploy RWA Synthetic S&P500 token
+        RWASyntheticSP500 rwaSP500 = new RWASyntheticSP500(
+            address(usdc),
+            address(perpetualTrading),
+            address(priceOracle)
+        );
+        console.log("RWASyntheticSP500 deployed at:", address(rwaSP500));
+        
+        // Set price for RWA S&P500 in the oracle
+        uint256 sp500Price = 5000 * 1e18; // $5000 with 18 decimals
+        priceOracle.setPrice(address(rwaSP500), sp500Price);
+        console.log("Set RWA S&P500 price to $5000 in the oracle");
+        
+        // Add RWA S&P500 to the index with a 10% weight
+        // Adjust other weights to make room for S&P500
+        indexRegistry.updateTokenWeight(address(wbtc), 3500); // 35% (was 40%)
+        indexRegistry.updateTokenWeight(address(weth), 2500); // 25% (was 30%)
+        indexRegistry.addToken(address(rwaSP500), 1000); // 10% allocation to S&P500
+        console.log("Added RWA S&P500 to IndexRegistry with 10% weight");
+        
+        // Deploy capital allocation manager
+        CapitalAllocationManager capitalAllocationManager = new CapitalAllocationManager(address(usdc));
+        console.log("CapitalAllocationManager deployed at:", address(capitalAllocationManager));
+        
+        // Set allocation percentages (70% RWA, 20% yield, 10% liquidity buffer)
+        capitalAllocationManager.setAllocation(7000, 2000, 1000);
+        console.log("Set allocation percentages in CapitalAllocationManager");
+        
+        // Add RWA S&P500 to the capital allocation manager with 100% allocation within the RWA category
+        capitalAllocationManager.addRWAToken(address(rwaSP500), 10000); // 100% allocation
+        console.log("Added RWA S&P500 to CapitalAllocationManager with 100% allocation");
+        
+        // Deploy concrete RWA index fund vault
+        ConcreteRWAIndexFundVault rwaVault = new ConcreteRWAIndexFundVault(
+            address(usdc),
+            address(indexRegistry),
+            address(priceOracle),
+            address(dex),
+            address(capitalAllocationManager)
+        );
+        console.log("ConcreteRWAIndexFundVault deployed at:", address(rwaVault));
+        
+        // Transfer ownership of the capital allocation manager to the vault
+        capitalAllocationManager.transferOwnership(address(rwaVault));
+        console.log("Transferred ownership of CapitalAllocationManager to the vault");
+        
         vm.stopBroadcast();
         
         // Log deployed addresses
+        console.log("\n=== Deployment Summary ===");
         console.log("USDC deployed at:", address(usdc));
         console.log("WBTC deployed at:", address(wbtc));
         console.log("WETH deployed at:", address(weth));
@@ -93,5 +153,10 @@ contract Deploy is Script {
         console.log("DEX deployed at:", address(dex));
         console.log("Index Registry deployed at:", address(indexRegistry));
         console.log("Index Fund Vault deployed at:", address(vault));
+        console.log("\n=== RWA Components ===");
+        console.log("MockPerpetualTrading deployed at:", address(perpetualTrading));
+        console.log("RWASyntheticSP500 deployed at:", address(rwaSP500));
+        console.log("CapitalAllocationManager deployed at:", address(capitalAllocationManager));
+        console.log("ConcreteRWAIndexFundVault deployed at:", address(rwaVault));
     }
 }
