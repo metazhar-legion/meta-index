@@ -90,6 +90,10 @@ contract DeployRWASP500 is Script {
         capitalAllocationManager.addRWAToken(address(rwaSP500), 5000); // 50% allocation
         console.log("Added RWA S&P500 to CapitalAllocationManager with 50% allocation");
         
+        // Transfer ownership of RWA S&P500 to the capital allocation manager
+        rwaSP500.transferOwnership(address(capitalAllocationManager));
+        console.log("Transferred ownership of RWA S&P500 to CapitalAllocationManager");
+        
         // Deploy concrete RWA index fund vault
         ConcreteRWAIndexFundVault vault = new ConcreteRWAIndexFundVault(
             usdc,
