@@ -106,20 +106,19 @@ contract Deploy is Script {
         priceOracle.setPrice(address(rwaSP500), sp500Price);
         console.log("Set RWA S&P500 price to $5000 in the oracle");
         
-        // Define the amount of RWA tokens we want to mint
-        uint256 rwaMintAmount = 1 * 1e17; // 0.1 S&P500 tokens
+        // Define the amount of RWA tokens we want to mint - use USDC decimal precision (6 decimals)
+        // Since USDC has 6 decimals and we minted 1,000,000 USDC (1e12 units), we should mint tokens
+        // with a value that fits within this balance
+        uint256 rwaMintAmount = 1 * 1e6; // 1 token with 6 decimals instead of 18
         
         // Approve RWASyntheticSP500 to spend exactly the amount of USDC needed for minting
-        // In the mint function, it transfers exactly the amount of tokens we want to mint
         usdc.approve(address(rwaSP500), rwaMintAmount);
         console.log("Approved RWASyntheticSP500 to spend exact USDC amount needed");
         
-        // Mint some initial RWA S&P500 tokens to the deployer for testing
-        // The cost in USDC is calculated based on the price and decimals
-        // For 1 S&P500 token (1e18 units) at $5000, we need 5000 USDC
-        // Let's mint a smaller amount to stay within our approval
-        rwaSP500.mint(deployer, 1 * 1e17); // 0.1 S&P500 tokens (costs 500 USDC)
-        console.log("Minted 0.1 RWA S&P500 tokens to deployer");
+        // Mint RWA S&P500 tokens to the deployer for testing
+        // Using the same amount with 6 decimals to match USDC's precision
+        rwaSP500.mint(deployer, rwaMintAmount); // 1 token with 6 decimals
+        console.log("Minted RWA S&P500 tokens to deployer with 6 decimal precision");
         
         // Add RWA S&P500 to the index with a 10% weight
         // Adjust other weights to make room for S&P500
