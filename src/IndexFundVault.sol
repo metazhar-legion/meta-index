@@ -14,6 +14,7 @@ import {IIndexFundVault} from "./interfaces/IIndexFundVault.sol";
 import {IIndexRegistry} from "./interfaces/IIndexRegistry.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
 import {IDEX} from "./interfaces/IDEX.sol";
+import {IFeeManager} from "./interfaces/IFeeManager.sol";
 
 /**
  * @title IndexFundVault
@@ -35,6 +36,9 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
     // Price oracle and DEX
     IPriceOracle public priceOracle;
     IDEX public dex;
+    
+    // Fee manager
+    IFeeManager public feeManager;
     
     // Rebalancing settings
     uint256 public rebalancingInterval = 7 days;
@@ -60,6 +64,7 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
     event RebalancingThresholdUpdated(uint256 newThreshold);
     event ManagementFeeUpdated(uint256 newFee);
     event PerformanceFeeUpdated(uint256 newFee);
+    event FeeManagerUpdated(address indexed newFeeManager);
 
     /**
      * @dev Constructor that initializes the vault with the asset token and a name
@@ -67,12 +72,14 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
      * @param registry_ The index registry contract address
      * @param oracle_ The price oracle contract address
      * @param dex_ The DEX contract address
+     * @param feeManager_ The fee manager contract address
      */
     constructor(
         IERC20 asset_,
         IIndexRegistry registry_,
         IPriceOracle oracle_,
-        IDEX dex_
+        IDEX dex_,
+        IFeeManager feeManager_
     ) 
         ERC4626(asset_)
         ERC20(
@@ -84,6 +91,7 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
         indexRegistry = registry_;
         priceOracle = oracle_;
         dex = dex_;
+        feeManager = feeManager_;
         lastRebalanceTimestamp = block.timestamp;
         highWaterMark = 0;
     }
@@ -156,6 +164,16 @@ contract IndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndexFundVault {
         require(newFee <= 3000, "Fee too high"); // Max 30%
         performanceFeePercentage = newFee;
         emit PerformanceFeeUpdated(newFee);
+    }
+    
+    /**
+     * @dev Sets the fee manager address
+     * @param newFeeManager The new fee manager contract address
+     */
+    function setFeeManager(IFeeManager newFeeManager) external onlyOwner {
+        require(address(newFeeManager) != address(0), "Invalid fee manager address");
+        feeManager = newFeeManager;
+        emit FeeManagerUpdated(address(newFeeManager));
     }
 
     /**
