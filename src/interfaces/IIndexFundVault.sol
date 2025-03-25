@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IIndexRegistry} from "./IIndexRegistry.sol";
+import {IFeeManager} from "./IFeeManager.sol";
 
 /**
  * @title IIndexFundVault
@@ -27,6 +28,12 @@ interface IIndexFundVault is IERC4626 {
      */
     function setRebalancingThreshold(uint256 newThreshold) external;
 
+    /**
+     * @dev Sets the fee manager address
+     * @param newFeeManager The new fee manager contract address
+     */
+    function setFeeManager(IFeeManager newFeeManager) external;
+    
     /**
      * @dev Sets the management fee percentage
      * @param newFee The new fee in basis points

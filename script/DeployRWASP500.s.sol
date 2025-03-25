@@ -12,6 +12,8 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
 import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
+import {FeeManager} from "../src/FeeManager.sol";
+import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
 
 /**
  * @title DeployRWASP500
@@ -96,6 +98,10 @@ contract DeployRWASP500 is Script {
         CapitalAllocationManager capitalAllocationManager = new CapitalAllocationManager(address(usdc));
         console.log("CapitalAllocationManager deployed at:", address(capitalAllocationManager));
         
+        // Deploy fee manager
+        FeeManager feeManager = new FeeManager();
+        console.log("FeeManager deployed at:", address(feeManager));
+        
         // Set allocation percentages (70% RWA, 20% yield, 10% liquidity buffer)
         capitalAllocationManager.setAllocation(7000, 2000, 1000);
         console.log("Set allocation percentages in CapitalAllocationManager");
@@ -114,13 +120,18 @@ contract DeployRWASP500 is Script {
             indexRegistry,
             priceOracle,
             dex,
-            capitalAllocationManager
+            capitalAllocationManager,
+            IFeeManager(address(feeManager))
         );
         console.log("ConcreteRWAIndexFundVault deployed at:", address(vault));
         
         // Transfer ownership of the capital allocation manager to the vault
         capitalAllocationManager.transferOwnership(address(vault));
         console.log("Transferred ownership of CapitalAllocationManager to the vault");
+        
+        // Transfer ownership of the fee manager to the vault
+        feeManager.transferOwnership(address(vault));
+        console.log("Transferred ownership of FeeManager to the vault");
         
         // Approve the vault to spend USDC
         usdc.approve(address(vault), 100_000 * 1e6); // 100,000 USDC

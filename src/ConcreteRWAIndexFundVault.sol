@@ -7,6 +7,7 @@ import {IIndexRegistry} from "./interfaces/IIndexRegistry.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
 import {IDEX} from "./interfaces/IDEX.sol";
 import {ICapitalAllocationManager} from "./interfaces/ICapitalAllocationManager.sol";
+import {IFeeManager} from "./interfaces/IFeeManager.sol";
 
 /**
  * @title ConcreteRWAIndexFundVault
@@ -20,44 +21,48 @@ contract ConcreteRWAIndexFundVault is RWAIndexFundVault {
      * @param oracle_ The price oracle contract address
      * @param dex_ The DEX contract address
      * @param capitalManager_ The capital allocation manager contract address
+     * @param feeManager_ The fee manager contract address
      */
     constructor(
         IERC20 asset_,
         IIndexRegistry registry_,
         IPriceOracle oracle_,
         IDEX dex_,
-        ICapitalAllocationManager capitalManager_
+        ICapitalAllocationManager capitalManager_,
+        IFeeManager feeManager_
     ) 
         RWAIndexFundVault(
             asset_,
             registry_,
             oracle_,
             dex_,
-            capitalManager_
+            capitalManager_,
+            feeManager_
         )
     {}
 
     /**
-     * @dev Collects management and performance fees
+     * @dev Collects management and performance fees using the fee manager
      */
     function _collectFees() internal override {
         uint256 totalValue = totalAssets();
         if (totalValue == 0) return;
         
-        // Calculate management fee (annual fee prorated by time since last collection)
-        uint256 timeSinceLastCollection = block.timestamp - lastRebalanceTimestamp;
-        uint256 managementFee = (totalValue * managementFeePercentage * timeSinceLastCollection) / (BASIS_POINTS * 365 days);
+        // Use fee manager to calculate fees
+        uint256 managementFee = feeManager.calculateManagementFee(
+            address(this),
+            totalValue,
+            block.timestamp
+        );
         
-        // Calculate performance fee if current value exceeds high watermark
-        uint256 performanceFee = 0;
-        if (totalValue > highWaterMark && highWaterMark > 0) {
-            uint256 gain = totalValue - highWaterMark;
-            performanceFee = (gain * performanceFeePercentage) / BASIS_POINTS;
-            highWaterMark = totalValue - performanceFee; // Update high watermark
-        } else if (highWaterMark == 0) {
-            // Initialize high watermark on first collection
-            highWaterMark = totalValue;
-        }
+        // Calculate performance fee using the fee manager
+        uint256 currentSharePrice = convertToAssets(10**decimals());
+        uint256 performanceFee = feeManager.calculatePerformanceFee(
+            address(this),
+            currentSharePrice,
+            totalSupply(),
+            decimals()
+        );
         
         uint256 totalFee = managementFee + performanceFee;
         if (totalFee == 0) return;

@@ -10,11 +10,13 @@ import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
 import {MockIndexRegistry} from "../src/mocks/MockIndexRegistry.sol";
 import {MockCapitalAllocationManager} from "../src/mocks/MockCapitalAllocationManager.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
+import {MockFeeManager} from "../src/mocks/MockFeeManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IIndexRegistry} from "../src/interfaces/IIndexRegistry.sol";
 import {IPriceOracle} from "../src/interfaces/IPriceOracle.sol";
 import {IDEX} from "../src/interfaces/IDEX.sol";
 import {ICapitalAllocationManager} from "../src/interfaces/ICapitalAllocationManager.sol";
+import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
 
 contract ConcreteRWAIndexFundVaultTest is Test {
     ConcreteRWAIndexFundVault public vault;
@@ -25,6 +27,7 @@ contract ConcreteRWAIndexFundVaultTest is Test {
     MockIndexRegistry public mockIndexRegistry;
     MockCapitalAllocationManager public mockCapitalAllocationManager;
     MockDEX public mockDEX;
+    MockFeeManager public mockFeeManager;
 
     address public owner;
     address public user1;
@@ -84,13 +87,17 @@ contract ConcreteRWAIndexFundVaultTest is Test {
         );
         mockCapitalAllocationManager.addRWAToken(address(rwaSyntheticSP500), 10000); // 100% allocation to SP500
 
+        // Deploy MockFeeManager
+        mockFeeManager = new MockFeeManager();
+        
         // Deploy ConcreteRWAIndexFundVault
         vault = new ConcreteRWAIndexFundVault(
             IERC20(address(mockUSDC)),
             IIndexRegistry(address(mockIndexRegistry)),
             IPriceOracle(address(mockPriceOracle)),
             IDEX(address(mockDEX)),
-            ICapitalAllocationManager(address(mockCapitalAllocationManager))
+            ICapitalAllocationManager(address(mockCapitalAllocationManager)),
+            IFeeManager(address(mockFeeManager))
         );
 
         // Mint some USDC to users for testing

@@ -14,6 +14,8 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
 import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
+import {FeeManager} from "../src/FeeManager.sol";
+import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
 
 /**
  * @title Deploy
@@ -41,6 +43,7 @@ contract Deploy is Script {
     MockPerpetualTrading public perpetualTrading;
     RWASyntheticSP500 public rwaSP500;
     CapitalAllocationManager public capitalAllocationManager;
+    FeeManager public feeManager;
     ConcreteRWAIndexFundVault public rwaVault;
     
     function run() external {
@@ -175,6 +178,10 @@ contract Deploy is Script {
         // Deploy capital allocation manager
         capitalAllocationManager = new CapitalAllocationManager(address(usdc));
         console.log("CapitalAllocationManager deployed at:", address(capitalAllocationManager));
+        
+        // Deploy fee manager
+        feeManager = new FeeManager();
+        console.log("FeeManager deployed at:", address(feeManager));
     }
     
     function configureAndTest() internal {
@@ -201,13 +208,18 @@ contract Deploy is Script {
             indexRegistry,
             priceOracle,
             dex,
-            capitalAllocationManager
+            capitalAllocationManager,
+            IFeeManager(address(feeManager))
         );
         console.log("ConcreteRWAIndexFundVault deployed at:", address(rwaVault));
         
         // Transfer ownership of the capital allocation manager to the vault
         capitalAllocationManager.transferOwnership(address(rwaVault));
         console.log("Transferred ownership of CapitalAllocationManager to the vault");
+        
+        // Transfer ownership of the fee manager to the vault
+        feeManager.transferOwnership(address(rwaVault));
+        console.log("Transferred ownership of FeeManager to the vault");
         
         // Approve and deposit into the RWA vault
         usdc.approve(address(rwaVault), 100_000 * 1e6); // 100,000 USDC
@@ -239,6 +251,7 @@ contract Deploy is Script {
         console.log("MockPerpetualTrading deployed at:", address(perpetualTrading));
         console.log("RWASyntheticSP500 deployed at:", address(rwaSP500));
         console.log("CapitalAllocationManager deployed at:", address(capitalAllocationManager));
+        console.log("FeeManager deployed at:", address(feeManager));
         console.log("ConcreteRWAIndexFundVault deployed at:", address(rwaVault));
     }
 }

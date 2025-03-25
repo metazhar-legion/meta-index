@@ -17,6 +17,7 @@ import {IDEX} from "./interfaces/IDEX.sol";
 import {ICapitalAllocationManager} from "./interfaces/ICapitalAllocationManager.sol";
 import {IRWASyntheticToken} from "./interfaces/IRWASyntheticToken.sol";
 import {IYieldStrategy} from "./interfaces/IYieldStrategy.sol";
+import {IFeeManager} from "./interfaces/IFeeManager.sol";
 
 /**
  * @title RWAIndexFundVault
@@ -43,18 +44,15 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
     // Capital allocation manager
     ICapitalAllocationManager public capitalAllocationManager;
     
+    // Fee manager
+    IFeeManager public feeManager;
+    
     // Rebalancing settings
     uint256 public rebalancingInterval = 7 days;
     uint256 public lastRebalanceTimestamp;
     uint256 public rebalancingThreshold = 5; // 5% deviation triggers rebalance
     
-    // Fee structure
-    uint256 public managementFeePercentage = 100; // 1% annual (in basis points)
-    uint256 public performanceFeePercentage = 1000; // 10% (in basis points)
     uint256 public constant BASIS_POINTS = 10000;
-    
-    // High watermark for performance fees
-    uint256 public highWaterMark;
     
     // Events
     event Rebalanced(uint256 timestamp);
@@ -66,8 +64,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
     event PerformanceFeeCollected(uint256 amount);
     event RebalancingIntervalUpdated(uint256 newInterval);
     event RebalancingThresholdUpdated(uint256 newThreshold);
-    event ManagementFeeUpdated(uint256 newFee);
-    event PerformanceFeeUpdated(uint256 newFee);
+    event FeeManagerUpdated(address indexed newFeeManager);
     event RWAAdded(address indexed rwaToken);
     event RWARemoved(address indexed rwaToken);
     event YieldStrategyAdded(address indexed strategy);
@@ -80,13 +77,15 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param oracle_ The price oracle contract address
      * @param dex_ The DEX contract address
      * @param capitalManager_ The capital allocation manager contract address
+     * @param feeManager_ The fee manager contract address
      */
     constructor(
         IERC20 asset_,
         IIndexRegistry registry_,
         IPriceOracle oracle_,
         IDEX dex_,
-        ICapitalAllocationManager capitalManager_
+        ICapitalAllocationManager capitalManager_,
+        IFeeManager feeManager_
     ) 
         ERC4626(asset_)
         ERC20(
@@ -99,8 +98,11 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
         priceOracle = oracle_;
         dex = dex_;
         capitalAllocationManager = capitalManager_;
+        feeManager = feeManager_;
         lastRebalanceTimestamp = block.timestamp;
-        highWaterMark = 0;
+        
+        // Initialize fee collection timestamp in the fee manager
+        feeManager.setLastFeeCollectionTimestamp(address(this), block.timestamp);
     }
     
     /**
@@ -164,23 +166,29 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
     }
     
     /**
-     * @dev Updates the management fee percentage
-     * @param newFee The new fee in basis points
+     * @dev Updates the fee manager address
+     * @param newFeeManager The new fee manager contract address
      */
-    function setManagementFeePercentage(uint256 newFee) external onlyOwner {
-        require(newFee <= 500, "Fee too high"); // Max 5%
-        managementFeePercentage = newFee;
-        emit ManagementFeeUpdated(newFee);
+    function setFeeManager(IFeeManager newFeeManager) external onlyOwner {
+        require(address(newFeeManager) != address(0), "Invalid fee manager address");
+        feeManager = newFeeManager;
+        emit FeeManagerUpdated(address(newFeeManager));
     }
     
     /**
-     * @dev Updates the performance fee percentage
+     * @dev Proxy function to set management fee percentage on the fee manager
+     * @param newFee The new fee in basis points
+     */
+    function setManagementFeePercentage(uint256 newFee) external onlyOwner {
+        feeManager.setManagementFeePercentage(newFee);
+    }
+    
+    /**
+     * @dev Proxy function to set performance fee percentage on the fee manager
      * @param newFee The new fee in basis points
      */
     function setPerformanceFeePercentage(uint256 newFee) external onlyOwner {
-        require(newFee <= 3000, "Fee too high"); // Max 30%
-        performanceFeePercentage = newFee;
-        emit PerformanceFeeUpdated(newFee);
+        feeManager.setPerformanceFeePercentage(newFee);
     }
     
     /**
@@ -464,15 +472,16 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
     }
     
     /**
-     * @dev Collects management and performance fees
+     * @dev Collects management and performance fees using the fee manager
      */
     function _collectFees() internal virtual {
         // Calculate management fee
         uint256 totalAssetsValue = totalAssets();
-        uint256 timeSinceLastRebalance = block.timestamp - lastRebalanceTimestamp;
-        
-        // Management fee is prorated based on time since last rebalance
-        uint256 managementFee = (totalAssetsValue * managementFeePercentage * timeSinceLastRebalance) / (BASIS_POINTS * 365 days);
+        uint256 managementFee = feeManager.calculateManagementFee(
+            address(this),
+            totalAssetsValue,
+            block.timestamp
+        );
         
         if (managementFee > 0) {
             // Mint shares to the owner as management fee
@@ -482,22 +491,17 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
         
         // Calculate performance fee
         uint256 currentSharePrice = convertToAssets(10**decimals());
+        uint256 performanceFee = feeManager.calculatePerformanceFee(
+            address(this),
+            currentSharePrice,
+            totalSupply(),
+            decimals()
+        );
         
-        if (currentSharePrice > highWaterMark) {
-            uint256 appreciation = currentSharePrice - highWaterMark;
-            uint256 performanceFee = (appreciation * performanceFeePercentage) / BASIS_POINTS;
-            
-            if (performanceFee > 0) {
-                // Calculate total performance fee based on total supply
-                uint256 totalPerformanceFee = (performanceFee * totalSupply()) / 10**decimals();
-                
-                // Mint shares to the owner as performance fee
-                _mint(owner(), convertToShares(totalPerformanceFee));
-                emit PerformanceFeeCollected(totalPerformanceFee);
-            }
-            
-            // Update high watermark
-            highWaterMark = currentSharePrice;
+        if (performanceFee > 0) {
+            // Mint shares to the owner as performance fee
+            _mint(owner(), convertToShares(performanceFee));
+            emit PerformanceFeeCollected(performanceFee);
         }
     }
     
@@ -684,20 +688,16 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @dev Sets the management fee percentage
      * @param newFee The new fee in basis points
      */
-    function setManagementFee(uint256 newFee) external onlyOwner {
-        require(newFee <= 1000, "Fee too high"); // Max 10%
-        managementFeePercentage = newFee;
-        emit ManagementFeeUpdated(newFee);
+    function setManagementFee(uint256 newFee) external override onlyOwner {
+        feeManager.setManagementFeePercentage(newFee);
     }
     
     /**
      * @dev Sets the performance fee percentage
      * @param newFee The new fee in basis points
      */
-    function setPerformanceFee(uint256 newFee) external onlyOwner {
-        require(newFee <= 3000, "Fee too high"); // Max 30%
-        performanceFeePercentage = newFee;
-        emit PerformanceFeeUpdated(newFee);
+    function setPerformanceFee(uint256 newFee) external override onlyOwner {
+        feeManager.setPerformanceFeePercentage(newFee);
     }
     
     /**
