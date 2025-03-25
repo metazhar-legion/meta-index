@@ -134,13 +134,22 @@ contract Deploy is Script {
         indexRegistry.addToken(address(aave), 1000); // 10%
         console.log("Set up initial index with token weights");
         
+        // Deploy fee manager for the index fund vault
+        FeeManager indexVaultFeeManager = new FeeManager();
+        console.log("FeeManager for IndexFundVault deployed at:", address(indexVaultFeeManager));
+        
         // Deploy index fund vault
         vault = new IndexFundVault(
             usdc,
             indexRegistry,
             priceOracle,
-            dex
+            dex,
+            IFeeManager(address(indexVaultFeeManager))
         );
+        
+        // Transfer ownership of the fee manager to the vault
+        indexVaultFeeManager.transferOwnership(address(vault));
+        console.log("Transferred ownership of FeeManager to the IndexFundVault");
         console.log("IndexFundVault deployed at:", address(vault));
     }
     
