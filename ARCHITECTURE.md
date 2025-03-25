@@ -38,24 +38,26 @@ This document provides a detailed overview of the Web3 Index Fund architecture, 
 
 ### Core Contracts
 
-#### IndexFundVault (ERC4626)
+#### RWAIndexFundVault (ERC4626)
 
-The main vault contract that implements the ERC4626 standard, handling deposits, withdrawals, and accounting.
+The main vault contract that implements the ERC4626 standard, handling deposits, withdrawals, and accounting with RWA support.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     IndexFundVault                          │
+│                     RWAIndexFundVault                       │
 ├─────────────────────────────────────────────────────────────┤
 │ State Variables:                                            │
-│ - asset: address                                            │
+│ - asset: IERC20                                             │
 │ - indexRegistry: IIndexRegistry                             │
 │ - priceOracle: IPriceOracle                                 │
 │ - dex: IDEX                                                 │
 │ - capitalAllocationManager: ICapitalAllocationManager       │
-│ - managementFee: uint256                                    │
-│ - performanceFee: uint256                                   │
+│ - managementFeePercentage: uint256                          │
+│ - performanceFeePercentage: uint256                         │
 │ - highWaterMark: uint256                                    │
-│ - lastFeeCollection: uint256                                │
+│ - lastRebalanceTimestamp: uint256                           │
+│ - rebalancingInterval: uint256                              │
+│ - rebalancingThreshold: uint256                             │
 ├─────────────────────────────────────────────────────────────┤
 │ Core ERC4626 Functions:                                     │
 │ - deposit(uint256 assets, address receiver)                 │
@@ -63,17 +65,18 @@ The main vault contract that implements the ERC4626 standard, handling deposits,
 │ - withdraw(uint256 assets, address receiver, address owner) │
 │ - redeem(uint256 shares, address receiver, address owner)   │
 ├─────────────────────────────────────────────────────────────┤
-│ Index Fund Specific Functions:                              │
+│ RWA Index Fund Specific Functions:                          │
 │ - rebalance()                                               │
-│ - collectManagementFee()                                    │
-│ - collectPerformanceFee()                                   │
+│ - addRWAToken(address token, uint256 allocation)            │
+│ - removeRWAToken(address token)                             │
+│ - addYieldStrategy(address strategy, uint256 allocation)    │
+│ - removeYieldStrategy(address strategy)                     │
 │ - setManagementFee(uint256 newFee)                          │
 │ - setPerformanceFee(uint256 newFee)                         │
 │ - setPriceOracle(address newOracle)                         │
 │ - setDEX(address newDEX)                                    │
-│ - getCapitalAllocation()                                    │
-│ - getRWATokens()                                            │
-│ - getYieldStrategies()                                      │
+│ - totalAssets()                                             │
+│ - _collectFees()                                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -138,18 +141,25 @@ Manages the allocation of capital across different asset classes including crypt
 │ - rwaPercentage: uint256                                    │
 │ - yieldPercentage: uint256                                  │
 │ - liquidityBufferPercentage: uint256                        │
-│ - rwaTokens: RWAToken[]                                     │
-│ - yieldStrategies: YieldStrategy[]                          │
+│ - rwaTokens: mapping(address => RWAToken)                   │
+│ - rwaTokenAddresses: address[]                              │
+│ - yieldStrategies: mapping(address => YieldStrategy)        │
+│ - yieldStrategyAddresses: address[]                         │
 │ - lastRebalanced: uint256                                   │
+│ - rebalancingThreshold: uint256                             │
 │ - owner: address                                            │
 ├─────────────────────────────────────────────────────────────┤
 │ Core Functions:                                             │
 │ - setAllocation(uint256 rwa, uint256 yield, uint256 buffer) │
-│ - addRWAToken(address token, uint256 percentage)            │
+│ - addRWAToken(address token, uint256 allocation)            │
 │ - removeRWAToken(address token)                             │
-│ - addYieldStrategy(address strategy, uint256 percentage)    │
+│ - addYieldStrategy(address strategy, uint256 allocation)    │
 │ - removeYieldStrategy(address strategy)                     │
 │ - rebalance()                                               │
+│ - getTotalValue()                                           │
+│ - getRWAValue()                                             │
+│ - getYieldValue()                                           │
+│ - getLiquidityBufferValue()                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -165,17 +175,24 @@ Interface for synthetic tokens that represent real-world assets.
 │ - name: string                                              │
 │ - symbol: string                                            │
 │ - assetType: uint8                                          │
-│ - oracle: address                                           │
+│ - baseAsset: IERC20                                         │
+│ - perpetualTrading: IPerpetualTrading                       │
+│ - priceOracle: address                                      │
 │ - lastPrice: uint256                                        │
 │ - lastUpdated: uint256                                      │
 │ - marketId: bytes32                                         │
-│ - isActive: bool                                            │
+│ - collateralRatio: uint256                                  │
+│ - totalCollateral: uint256                                  │
+│ - leverage: uint256                                         │
 ├─────────────────────────────────────────────────────────────┤
 │ Core Functions:                                             │
-│ - getAssetInfo()                                            │
+│ - mint(address to, uint256 amount)                          │
+│ - burn(address from, uint256 amount)                        │
 │ - updatePrice()                                             │
-│ - setOracle(address newOracle)                              │
-│ - setActive(bool active)                                    │
+│ - getAssetInfo()                                            │
+│ - openPosition(uint256 collateralAmount)                    │
+│ - closePosition()                                           │
+│ - adjustPosition(uint256 newCollateralAmount)               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -192,6 +209,30 @@ Interface for price oracles that provide asset pricing data.
 │ Functions:                                                  │
 │ - getPrice(address token) returns (uint256)                 │
 │ - getPriceUSD(address token) returns (uint256)              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### IPerpetualTrading
+
+Interface for perpetual trading platforms used for RWA synthetic tokens.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     IPerpetualTrading                       │
+├─────────────────────────────────────────────────────────────┤
+│ Functions:                                                  │
+│ - openPosition(bytes32 marketId, int256 size,               │
+│                uint256 collateral, uint256 leverage)        │
+│                returns (bytes32 positionId)                 │
+│ - closePosition(bytes32 positionId)                         │
+│                returns (int256 pnl)                         │
+│ - adjustPosition(bytes32 positionId, int256 newSize,        │
+│                  uint256 newCollateral, uint256 newLeverage)│
+│ - getPositionValue(bytes32 positionId)                      │
+│                    returns (uint256 value)                  │
+│ - getMarketPrice(bytes32 marketId)                          │
+│                  returns (uint256 price)                    │
+│ - setMarketPrice(bytes32 marketId, uint256 price)           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
