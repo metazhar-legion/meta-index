@@ -70,6 +70,10 @@ contract DeployRWASP500 is Script {
         priceOracle.setPrice(address(rwaSP500), sp500Price);
         console.log("Set RWA S&P500 price to $5000 in the oracle");
         
+        // Mint some initial RWA S&P500 tokens to the deployer for testing
+        rwaSP500.mint(deployer, 100 * 1e18); // 100 S&P500 tokens
+        console.log("Minted 100 RWA S&P500 tokens to deployer");
+        
         // Deploy index registry
         IndexRegistry indexRegistry = new IndexRegistry();
         console.log("IndexRegistry deployed at:", address(indexRegistry));

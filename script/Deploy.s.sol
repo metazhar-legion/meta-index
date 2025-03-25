@@ -106,6 +106,10 @@ contract Deploy is Script {
         priceOracle.setPrice(address(rwaSP500), sp500Price);
         console.log("Set RWA S&P500 price to $5000 in the oracle");
         
+        // Mint some initial RWA S&P500 tokens to the deployer for testing
+        rwaSP500.mint(deployer, 100 * 1e18); // 100 S&P500 tokens
+        console.log("Minted 100 RWA S&P500 tokens to deployer");
+        
         // Add RWA S&P500 to the index with a 10% weight
         // Adjust other weights to make room for S&P500
         indexRegistry.updateTokenWeight(address(wbtc), 3500); // 35% (was 40%)
@@ -124,6 +128,10 @@ contract Deploy is Script {
         // Add RWA S&P500 to the capital allocation manager with 100% allocation within the RWA category
         capitalAllocationManager.addRWAToken(address(rwaSP500), 10000); // 100% allocation
         console.log("Added RWA S&P500 to CapitalAllocationManager with 100% allocation");
+        
+        // Transfer ownership of RWA S&P500 to the capital allocation manager
+        rwaSP500.transferOwnership(address(capitalAllocationManager));
+        console.log("Transferred ownership of RWA S&P500 to CapitalAllocationManager");
         
         // Deploy concrete RWA index fund vault
         ConcreteRWAIndexFundVault rwaVault = new ConcreteRWAIndexFundVault(
