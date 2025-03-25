@@ -363,7 +363,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @dev Rebalances the capital allocation according to the set percentages
      * @return success Whether the rebalance was successful
      */
-    function rebalance() external returns (bool success) {
+    function rebalance() external pure returns (bool success) {
         // Mock implementation - just return true
         return true;
     }
@@ -372,7 +372,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @dev Gets the total value of all assets under management
      * @return totalValue The total value in the base asset (e.g., USDC)
      */
-    function getTotalValue() external view returns (uint256 totalValue) {
+    function getTotalValue() external pure returns (uint256 totalValue) {
         // Mock implementation - return 0
         return 0;
     }
@@ -381,7 +381,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @dev Gets the value of assets allocated to RWA synthetics
      * @return rwaValue The value in the base asset
      */
-    function getRWAValue() external view returns (uint256 rwaValue) {
+    function getRWAValue() external pure returns (uint256 rwaValue) {
         // Mock implementation - return 0
         return 0;
     }
@@ -390,7 +390,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @dev Gets the value of assets allocated to yield strategies
      * @return yieldValue The value in the base asset
      */
-    function getYieldValue() external view returns (uint256 yieldValue) {
+    function getYieldValue() external pure returns (uint256 yieldValue) {
         // Mock implementation - return 0
         return 0;
     }
@@ -399,7 +399,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @dev Gets the value of assets kept as liquidity buffer
      * @return bufferValue The value in the base asset
      */
-    function getLiquidityBufferValue() external view returns (uint256 bufferValue) {
+    function getLiquidityBufferValue() external pure returns (uint256 bufferValue) {
         // Mock implementation - return 0
         return 0;
     }

@@ -32,6 +32,7 @@ contract ConcreteRWAIndexFundVaultTest is Test {
 
     uint256 public constant INITIAL_PRICE = 5000 * 1e6; // $5000 in USDC decimals
     uint256 public constant DEPOSIT_AMOUNT = 10000 * 1e6; // 10000 USDC
+    uint256 public constant INITIAL_BALANCE = 100000 * 1e6; // 100000 USDC initial balance for users
     uint256 public constant COLLATERAL_RATIO = 12000; // 120% in basis points
     uint256 public constant RWA_ALLOCATION = 7000; // 70% in basis points
     uint256 public constant YIELD_ALLOCATION = 2000; // 20% in basis points
@@ -97,7 +98,7 @@ contract ConcreteRWAIndexFundVaultTest is Test {
         mockUSDC.mint(user2, 100000 * 1e6);
     }
 
-    function test_Initialization() public {
+    function test_Initialization() public view {
         // The vault name includes the asset name
         assertEq(vault.name(), "RWA Index Fund Vault USD Coin");
         assertEq(vault.symbol(), "rwaUSDC");
@@ -277,7 +278,8 @@ contract ConcreteRWAIndexFundVaultTest is Test {
         
         // User 1 withdraws all shares
         uint256 withdrawShares = vault.balanceOf(user1);
-        uint256 expectedWithdrawAmount = vault.previewRedeem(withdrawShares); // All assets including yield
+        // Calculate expected withdrawal amount (including yield) for verification
+        uint256 expectedWithdrawAmount = vault.previewRedeem(withdrawShares);
         
         vm.startPrank(user1);
         vault.redeem(withdrawShares, user1, user1);
@@ -286,7 +288,7 @@ contract ConcreteRWAIndexFundVaultTest is Test {
         // Verify user received all assets including yield
         // Initial balance (100000 * 1e6) - depositAmount + expectedWithdrawAmount (which includes yield)
         // Use assertApproxEqAbs to account for potential rounding issues in share/asset conversions
-        assertApproxEqAbs(mockUSDC.balanceOf(user1), 101000 * 1e6, 1);
+        assertApproxEqAbs(mockUSDC.balanceOf(user1), INITIAL_BALANCE - depositAmount + expectedWithdrawAmount, 1);
         assertEq(vault.balanceOf(user1), 0);
         
         // Due to rounding in the share/asset conversion, there might be a tiny amount of dust left in the vault
@@ -384,7 +386,8 @@ contract ConcreteRWAIndexFundVaultTest is Test {
         if (hasPaused) {
             vm.startPrank(user1);
             vm.expectRevert(ownerError);
-            (bool success,) = address(vault).call(abi.encodeWithSignature("pause()"));
+            // We're expecting this call to revert, so we don't need to check the return value
+            (bool ignored,) = address(vault).call(abi.encodeWithSignature("pause()"));
             vm.stopPrank();
         } else {
             // If the vault doesn't have a paused() function, skip this part of the test
