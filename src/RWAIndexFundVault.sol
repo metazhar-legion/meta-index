@@ -10,6 +10,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import {CommonErrors} from "./errors/CommonErrors.sol";
+
 import {IIndexFundVault} from "./interfaces/IIndexFundVault.sol";
 import {IIndexRegistry} from "./interfaces/IIndexRegistry.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
@@ -110,7 +112,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param newRegistry The new registry contract address
      */
     function setIndexRegistry(IIndexRegistry newRegistry) external onlyOwner {
-        require(address(newRegistry) != address(0), "Invalid registry address");
+        if (address(newRegistry) == address(0)) revert CommonErrors.ZeroAddress();
         indexRegistry = newRegistry;
         emit IndexRegistryUpdated(address(newRegistry));
     }
@@ -120,7 +122,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param newOracle The new oracle contract address
      */
     function setPriceOracle(address newOracle) external onlyOwner {
-        require(newOracle != address(0), "Zero address");
+        if (newOracle == address(0)) revert CommonErrors.ZeroAddress();
         priceOracle = IPriceOracle(newOracle);
         emit PriceOracleUpdated(newOracle);
     }
@@ -130,7 +132,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param newDex The new DEX contract address
      */
     function setDEX(address newDex) external onlyOwner {
-        require(newDex != address(0), "Zero address");
+        if (newDex == address(0)) revert CommonErrors.ZeroAddress();
         dex = IDEX(newDex);
         emit DEXUpdated(newDex);
     }
@@ -140,7 +142,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param newManager The new capital allocation manager contract address
      */
     function setCapitalAllocationManager(ICapitalAllocationManager newManager) external onlyOwner {
-        require(address(newManager) != address(0), "Invalid manager address");
+        if (address(newManager) == address(0)) revert CommonErrors.ZeroAddress();
         capitalAllocationManager = newManager;
         emit CapitalAllocationManagerUpdated(address(newManager));
     }
@@ -150,7 +152,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param newInterval The new interval in seconds
      */
     function setRebalancingInterval(uint256 newInterval) external onlyOwner {
-        require(newInterval > 0, "Invalid interval");
+        if (newInterval == 0) revert CommonErrors.ValueTooLow();
         rebalancingInterval = newInterval;
         emit RebalancingIntervalUpdated(newInterval);
     }
@@ -160,7 +162,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param newThreshold The new threshold in percentage points
      */
     function setRebalancingThreshold(uint256 newThreshold) external onlyOwner {
-        require(newThreshold > 0 && newThreshold <= 50, "Invalid threshold");
+        if (newThreshold == 0 || newThreshold > 50) revert CommonErrors.ValueOutOfRange(newThreshold, 1, 50);
         rebalancingThreshold = newThreshold;
         emit RebalancingThresholdUpdated(newThreshold);
     }
@@ -170,7 +172,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param newFeeManager The new fee manager contract address
      */
     function setFeeManager(IFeeManager newFeeManager) external onlyOwner {
-        require(address(newFeeManager) != address(0), "Invalid fee manager address");
+        if (address(newFeeManager) == address(0)) revert CommonErrors.ZeroAddress();
         feeManager = newFeeManager;
         emit FeeManagerUpdated(address(newFeeManager));
     }
@@ -197,8 +199,8 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param percentage The allocation percentage within the RWA portion
      */
     function addRWAToken(address rwaToken, uint256 percentage) external onlyOwner {
-        require(rwaToken != address(0), "Invalid RWA token address");
-        require(percentage > 0 && percentage <= BASIS_POINTS, "Invalid percentage");
+        if (rwaToken == address(0)) revert CommonErrors.ZeroAddress();
+        if (percentage == 0 || percentage > BASIS_POINTS) revert CommonErrors.ValueOutOfRange(percentage, 1, BASIS_POINTS);
         
         capitalAllocationManager.addRWAToken(rwaToken, percentage);
         
@@ -210,7 +212,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param rwaToken The RWA token address
      */
     function removeRWAToken(address rwaToken) external onlyOwner {
-        require(rwaToken != address(0), "Invalid RWA token address");
+        if (rwaToken == address(0)) revert CommonErrors.ZeroAddress();
         
         capitalAllocationManager.removeRWAToken(rwaToken);
         
@@ -223,8 +225,8 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param percentage The allocation percentage within the yield portion
      */
     function addYieldStrategy(address strategy, uint256 percentage) external onlyOwner {
-        require(strategy != address(0), "Invalid strategy address");
-        require(percentage > 0 && percentage <= BASIS_POINTS, "Invalid percentage");
+        if (strategy == address(0)) revert CommonErrors.ZeroAddress();
+        if (percentage == 0 || percentage > BASIS_POINTS) revert CommonErrors.ValueOutOfRange(percentage, 1, BASIS_POINTS);
         
         capitalAllocationManager.addYieldStrategy(strategy, percentage);
         
@@ -236,7 +238,7 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @param strategy The yield strategy address
      */
     function removeYieldStrategy(address strategy) external onlyOwner {
-        require(strategy != address(0), "Invalid strategy address");
+        if (strategy == address(0)) revert CommonErrors.ZeroAddress();
         
         capitalAllocationManager.removeYieldStrategy(strategy);
         
@@ -254,8 +256,8 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
         uint256 yieldPercentage,
         uint256 liquidityBufferPercentage
     ) external onlyOwner {
-        require(rwaPercentage + yieldPercentage + liquidityBufferPercentage == BASIS_POINTS, 
-                "Percentages must sum to 100%");
+        if (rwaPercentage + yieldPercentage + liquidityBufferPercentage != BASIS_POINTS)
+            revert CommonErrors.TotalExceeds100Percent();
         
         capitalAllocationManager.setAllocation(
             rwaPercentage,
@@ -268,11 +270,8 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * @dev Rebalances the capital allocation
      */
     function rebalanceCapitalAllocation() external {
-        require(
-            block.timestamp >= lastRebalanceTimestamp + rebalancingInterval ||
-            _isRebalancingNeeded(),
-            "Rebalancing not needed"
-        );
+        if (block.timestamp < lastRebalanceTimestamp + rebalancingInterval && !_isRebalancingNeeded())
+            revert CommonErrors.OperationFailed();
         
         // Collect fees before rebalancing
         _collectFees();
@@ -292,19 +291,16 @@ abstract contract RWAIndexFundVault is ERC4626, Ownable, ReentrancyGuard, IIndex
      * has passed or if the deviation exceeds the threshold
      */
     function rebalance() external override {
-        require(
-            block.timestamp >= lastRebalanceTimestamp + rebalancingInterval ||
-            _isRebalancingNeeded(),
-            "Rebalancing not needed"
-        );
+        if (block.timestamp < lastRebalanceTimestamp + rebalancingInterval && !_isRebalancingNeeded())
+            revert CommonErrors.OperationFailed();
         
         // Collect fees before rebalancing
         _collectFees();
         
         // Get the current index composition
         (address[] memory tokens, uint256[] memory weights) = indexRegistry.getCurrentIndex();
-        require(tokens.length > 0, "Empty index");
-        require(tokens.length == weights.length, "Mismatched arrays");
+        if (tokens.length == 0) revert CommonErrors.EmptyArray();
+        if (tokens.length != weights.length) revert CommonErrors.MismatchedArrayLengths();
         
         // Calculate the total assets to allocate to the index (excluding RWA and yield allocations)
         // uint256 totalAssetsValue = totalAssets();

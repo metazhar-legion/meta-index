@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {CommonErrors} from "./errors/CommonErrors.sol";
 
 /**
  * @title FeeManager
@@ -33,7 +34,7 @@ contract FeeManager is Ownable {
      * @param newFee The new fee in basis points
      */
     function setManagementFeePercentage(uint256 newFee) external onlyOwner {
-        require(newFee <= 500, "Fee too high"); // Max 5%
+        if (newFee > 500) revert CommonErrors.ValueOutOfRange(newFee, 0, 500); // Max 5%
         managementFeePercentage = newFee;
         emit ManagementFeeUpdated(newFee);
     }
@@ -43,7 +44,7 @@ contract FeeManager is Ownable {
      * @param newFee The new fee in basis points
      */
     function setPerformanceFeePercentage(uint256 newFee) external onlyOwner {
-        require(newFee <= 3000, "Fee too high"); // Max 30%
+        if (newFee > 3000) revert CommonErrors.ValueOutOfRange(newFee, 0, 3000); // Max 30%
         performanceFeePercentage = newFee;
         emit PerformanceFeeUpdated(newFee);
     }

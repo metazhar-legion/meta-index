@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
+import {CommonErrors} from "../errors/CommonErrors.sol";
 
 /**
  * @title MockPriceOracle
@@ -37,7 +38,7 @@ contract MockPriceOracle is IPriceOracle, Ownable {
      * @return The price in base asset terms (with 18 decimals)
      */
     function getPrice(address token) external view returns (uint256) {
-        require(prices[token] > 0, "Price not set");
+        if (prices[token] == 0) revert CommonErrors.PriceNotAvailable();
         return prices[token];
     }
 
@@ -48,7 +49,7 @@ contract MockPriceOracle is IPriceOracle, Ownable {
      * @return The equivalent amount in base asset terms
      */
     function convertToBaseAsset(address token, uint256 amount) external view returns (uint256) {
-        require(prices[token] > 0, "Price not set");
+        if (prices[token] == 0) revert CommonErrors.PriceNotAvailable();
         return (amount * prices[token]) / 1e18;
     }
 
@@ -59,7 +60,7 @@ contract MockPriceOracle is IPriceOracle, Ownable {
      * @return The equivalent amount in token terms
      */
     function convertFromBaseAsset(address token, uint256 amount) external view returns (uint256) {
-        require(prices[token] > 0, "Price not set");
+        if (prices[token] == 0) revert CommonErrors.PriceNotAvailable();
         return (amount * 1e18) / prices[token];
     }
 }

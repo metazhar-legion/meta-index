@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IIndexRegistry} from "./interfaces/IIndexRegistry.sol";
+import {CommonErrors} from "./errors/CommonErrors.sol";
 
 /**
  * @title IndexRegistry
@@ -62,13 +63,13 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @param weight The token weight in basis points
      */
     function addToken(address token, uint256 weight) external onlyOwnerOrGovernance {
-        require(token != address(0), "Invalid token address");
-        require(!isTokenInIndex[token], "Token already in index");
-        require(weight > 0, "Weight must be positive");
+        if (token == address(0)) revert CommonErrors.ZeroAddress();
+        if (isTokenInIndex[token]) revert CommonErrors.TokenAlreadyExists();
+        if (weight == 0) revert CommonErrors.ValueTooLow();
         
         // Check that total weight doesn't exceed BASIS_POINTS
         uint256 totalWeight = getTotalWeight();
-        require(totalWeight + weight <= BASIS_POINTS, "Total weight exceeds 100%");
+        if (totalWeight + weight > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         indexTokens.push(token);
         tokenWeights[token] = weight;
@@ -82,7 +83,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @param token The token address
      */
     function removeToken(address token) external onlyOwnerOrGovernance {
-        require(isTokenInIndex[token], "Token not in index");
+        if (!isTokenInIndex[token]) revert CommonErrors.TokenNotFound();
         
         // Find and remove the token from the array
         for (uint256 i = 0; i < indexTokens.length; i++) {
@@ -108,12 +109,12 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @param newWeight The new weight in basis points
      */
     function updateTokenWeight(address token, uint256 newWeight) external onlyOwnerOrGovernance {
-        require(isTokenInIndex[token], "Token not in index");
-        require(newWeight > 0, "Weight must be positive");
+        if (!isTokenInIndex[token]) revert CommonErrors.TokenNotFound();
+        if (newWeight == 0) revert CommonErrors.ValueTooLow();
         
         // Calculate the total weight without this token
         uint256 totalWeight = getTotalWeight() - tokenWeights[token];
-        require(totalWeight + newWeight <= BASIS_POINTS, "Total weight exceeds 100%");
+        if (totalWeight + newWeight > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         tokenWeights[token] = newWeight;
         
@@ -125,7 +126,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      */
     function rebalanceIndex() external onlyOwnerOrGovernance {
         uint256 totalWeight = getTotalWeight();
-        require(totalWeight > 0, "No tokens in index");
+        if (totalWeight == 0) revert CommonErrors.EmptyArray();
         
         if (totalWeight != BASIS_POINTS) {
             // Normalize weights
@@ -181,7 +182,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @param daoAddress The address of the DAO governance contract
      */
     function enableGovernance(address daoAddress) external onlyOwner {
-        require(daoAddress != address(0), "Invalid DAO address");
+        if (daoAddress == address(0)) revert CommonErrors.ZeroAddress();
         daoGovernance = daoAddress;
         isGovernanceEnabled = true;
         
@@ -208,18 +209,18 @@ contract IndexRegistry is IIndexRegistry, Ownable {
         uint256[] calldata weights,
         uint256 votingPeriod
     ) external {
-        require(isGovernanceEnabled, "Governance not enabled");
-        require(tokens.length > 0, "Empty proposal");
-        require(tokens.length == weights.length, "Mismatched arrays");
-        require(votingPeriod >= 1 days, "Voting period too short");
+        if (!isGovernanceEnabled) revert CommonErrors.GovernanceDisabled();
+        if (tokens.length == 0) revert CommonErrors.EmptyArray();
+        if (tokens.length != weights.length) revert CommonErrors.MismatchedArrayLengths();
+        if (votingPeriod < 1 days) revert CommonErrors.InvalidTimeParameters();
         
         // Check that weights sum up to BASIS_POINTS
         uint256 totalWeight = 0;
         for (uint256 i = 0; i < weights.length; i++) {
-            require(weights[i] > 0, "Weight must be positive");
+            if (weights[i] == 0) revert CommonErrors.ValueTooLow();
             totalWeight += weights[i];
         }
-        require(totalWeight == BASIS_POINTS, "Weights must sum to 100%");
+        if (totalWeight != BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         // Create the proposal
         proposals.push(IndexProposal({
@@ -241,15 +242,15 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @param support Whether to support the proposal
      */
     function vote(uint256 proposalId, bool support) external {
-        require(isGovernanceEnabled, "Governance not enabled");
-        require(proposalId < proposals.length, "Invalid proposal ID");
+        if (!isGovernanceEnabled) revert CommonErrors.GovernanceDisabled();
+        if (proposalId >= proposals.length) revert CommonErrors.ProposalInvalid();
         
         IndexProposal storage proposal = proposals[proposalId];
         
-        require(!proposal.executed, "Proposal already executed");
-        require(!proposal.canceled, "Proposal canceled");
-        require(block.timestamp < proposal.endTime, "Voting period ended");
-        require(!hasVoted[proposalId][msg.sender], "Already voted");
+        if (proposal.executed) revert CommonErrors.ProposalAlreadyExecuted();
+        if (proposal.canceled) revert CommonErrors.ProposalCanceled();
+        if (block.timestamp >= proposal.endTime) revert CommonErrors.VotingPeriodEnded();
+        if (hasVoted[proposalId][msg.sender]) revert CommonErrors.AlreadyVoted();
         
         // In a real implementation, this would check the voter's voting power
         // based on their token holdings or other governance mechanism
@@ -271,15 +272,15 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @param proposalId The ID of the proposal
      */
     function executeProposal(uint256 proposalId) external {
-        require(isGovernanceEnabled, "Governance not enabled");
-        require(proposalId < proposals.length, "Invalid proposal ID");
+        if (!isGovernanceEnabled) revert CommonErrors.GovernanceDisabled();
+        if (proposalId >= proposals.length) revert CommonErrors.ProposalInvalid();
         
         IndexProposal storage proposal = proposals[proposalId];
         
-        require(!proposal.executed, "Proposal already executed");
-        require(!proposal.canceled, "Proposal canceled");
-        require(block.timestamp >= proposal.endTime, "Voting period not ended");
-        require(proposal.votesFor > proposal.votesAgainst, "Proposal did not pass");
+        if (proposal.executed) revert CommonErrors.ProposalAlreadyExecuted();
+        if (proposal.canceled) revert CommonErrors.ProposalCanceled();
+        if (block.timestamp < proposal.endTime) revert CommonErrors.VotingPeriodActive();
+        if (proposal.votesFor <= proposal.votesAgainst) revert CommonErrors.ProposalRejected();
         
         // Clear the current index
         for (uint256 i = 0; i < indexTokens.length; i++) {
@@ -309,12 +310,12 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @param proposalId The ID of the proposal
      */
     function cancelProposal(uint256 proposalId) external onlyOwner {
-        require(proposalId < proposals.length, "Invalid proposal ID");
+        if (proposalId >= proposals.length) revert CommonErrors.ProposalInvalid();
         
         IndexProposal storage proposal = proposals[proposalId];
         
-        require(!proposal.executed, "Proposal already executed");
-        require(!proposal.canceled, "Proposal already canceled");
+        if (proposal.executed) revert CommonErrors.ProposalAlreadyExecuted();
+        if (proposal.canceled) revert CommonErrors.ProposalCanceled();
         
         proposal.canceled = true;
         
@@ -325,11 +326,10 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @dev Modifier that allows only the owner or the DAO governance to call a function
      */
     modifier onlyOwnerOrGovernance() {
-        require(
-            msg.sender == owner() || 
-            (isGovernanceEnabled && msg.sender == daoGovernance),
-            "Not authorized"
-        );
+        if (msg.sender != owner() && 
+            !(isGovernanceEnabled && msg.sender == daoGovernance)) {
+            revert CommonErrors.Unauthorized();
+        }
         _;
     }
 }
