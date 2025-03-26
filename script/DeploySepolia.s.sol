@@ -8,6 +8,8 @@ import {IndexFundVault} from "../src/IndexFundVault.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
+import {FeeManager} from "../src/FeeManager.sol";
+import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
 
 /**
  * @title DeploySepolia
@@ -55,13 +57,22 @@ contract DeploySepolia is Script {
         // Deploy index registry
         IndexRegistry indexRegistry = new IndexRegistry();
         
+        // Deploy fee manager
+        FeeManager feeManager = new FeeManager();
+        console.log("FeeManager deployed at:", address(feeManager));
+        
         // Deploy index fund vault
         IndexFundVault vault = new IndexFundVault(
             usdc,
             indexRegistry,
             priceOracle,
-            dex
+            dex,
+            IFeeManager(address(feeManager))
         );
+        
+        // Transfer ownership of the fee manager to the vault
+        feeManager.transferOwnership(address(vault));
+        console.log("Transferred ownership of FeeManager to the vault");
         
         // Set up initial index
         indexRegistry.addToken(address(wbtc), 4000); // 40%
