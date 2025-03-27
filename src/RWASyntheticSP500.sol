@@ -9,6 +9,7 @@ import {console2} from "forge-std/console2.sol";
 
 import {IRWASyntheticToken} from "./interfaces/IRWASyntheticToken.sol";
 import {IPerpetualTrading} from "./interfaces/IPerpetualTrading.sol";
+import {CommonErrors} from "./errors/CommonErrors.sol";
 
 /**
  * @title RWASyntheticSP500
@@ -58,9 +59,9 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
         address _perpetualTrading,
         address _priceOracle
     ) ERC20("S&P 500 Index Synthetic", "sSP500") Ownable(msg.sender) {
-        require(_baseAsset != address(0), "Invalid base asset address");
-        require(_perpetualTrading != address(0), "Invalid perpetual trading address");
-        require(_priceOracle != address(0), "Invalid price oracle address");
+        if (_baseAsset == address(0)) revert CommonErrors.ZeroAddress();
+        if (_perpetualTrading == address(0)) revert CommonErrors.ZeroAddress();
+        if (_priceOracle == address(0)) revert CommonErrors.ZeroAddress();
         
         baseAsset = IERC20(_baseAsset);
         perpetualTrading = IPerpetualTrading(_perpetualTrading);
@@ -106,7 +107,7 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
         // In a real implementation, this would call the oracle
         // For now, we'll use the perpetual trading platform's market price
         uint256 newPrice = perpetualTrading.getMarketPrice(MARKET_ID);
-        require(newPrice > 0, "Invalid price from oracle");
+        if (newPrice == 0) revert CommonErrors.PriceNotAvailable();
         
         assetInfo.lastPrice = newPrice;
         assetInfo.lastUpdated = block.timestamp;
@@ -123,8 +124,8 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
      * @return success Whether the mint was successful
      */
     function mint(address to, uint256 amount) external override onlyOwner returns (bool success) {
-        require(to != address(0), "Invalid recipient address");
-        require(amount > 0, "Amount must be positive");
+        if (to == address(0)) revert CommonErrors.ZeroAddress();
+        if (amount == 0) revert CommonErrors.ValueTooLow();
         
         // Transfer base asset from sender to this contract
         baseAsset.safeTransferFrom(msg.sender, address(this), amount);
@@ -160,9 +161,9 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
      * @return success Whether the burn was successful
      */
     function burn(address from, uint256 amount) external override onlyOwner returns (bool success) {
-        require(from != address(0), "Invalid address");
-        require(amount > 0, "Amount must be positive");
-        require(balanceOf(from) >= amount, "Insufficient balance");
+        if (from == address(0)) revert CommonErrors.ZeroAddress();
+        if (amount == 0) revert CommonErrors.ValueTooLow();
+        if (balanceOf(from) < amount) revert CommonErrors.InsufficientBalance();
         
         // Calculate collateral to release
         uint256 collateralToRelease = (amount * COLLATERAL_RATIO) / 10000;
@@ -280,8 +281,8 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
      * @param collateralToRemove The amount of collateral to remove
      */
     function _reducePosition(uint256 collateralToRemove) internal {
-        require(activePositionId != bytes32(0), "No active position");
-        require(collateralToRemove <= totalCollateral, "Insufficient collateral");
+        if (activePositionId == bytes32(0)) revert CommonErrors.InvalidState();
+        if (collateralToRemove > totalCollateral) revert CommonErrors.InsufficientBalance();
         
         // Get current position
         IPerpetualTrading.Position memory position = perpetualTrading.getPosition(activePositionId);

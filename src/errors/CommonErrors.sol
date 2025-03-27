@@ -42,6 +42,7 @@ library CommonErrors {
     error TokenAlreadyExists();
     error TokenNotFound();
     error TransferFailed();
+    error InsufficientBalance();
     
     // Time-related errors
     error InvalidTimeParameters();
@@ -57,4 +58,7 @@ library CommonErrors {
     error VotingPeriodEnded();
     error AlreadyVoted();
     error ProposalRejected();
+    
+    // Price errors
+    error PriceNotAvailable();
 }
