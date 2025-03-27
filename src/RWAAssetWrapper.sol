@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -42,6 +43,9 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
     
     // Total capital allocated to this wrapper
     uint256 public totalAllocated;
+    
+    // Yield strategy shares owned by this wrapper
+    uint256 private yieldShares;
     
     // Events
     event CapitalAllocated(uint256 totalAmount, uint256 rwaAmount, uint256 yieldAmount);
@@ -110,10 +114,11 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
         uint256 yieldAmount = amount - rwaAmount;
         
         // Allocate to RWA token
-        rwaToken.mint(rwaAmount);
+        rwaToken.mint(address(this), rwaAmount);
         
         // Allocate to yield strategy
-        yieldStrategy.deposit(yieldAmount);
+        uint256 shares = yieldStrategy.deposit(yieldAmount);
+        yieldShares += shares;
         
         // Update total allocated
         totalAllocated += amount;
@@ -140,12 +145,19 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
         
         // Withdraw from RWA token
         if (rwaWithdrawAmount > 0) {
-            rwaToken.burn(rwaWithdrawAmount);
+            rwaToken.burn(address(this), rwaWithdrawAmount);
         }
         
         // Withdraw from yield strategy
         if (yieldWithdrawAmount > 0) {
-            yieldStrategy.withdraw(yieldWithdrawAmount);
+            // Calculate shares to withdraw based on value proportion
+            uint256 yieldValue = getYieldValue();
+            uint256 sharesToWithdraw = yieldValue > 0 ? (yieldWithdrawAmount * yieldShares) / yieldValue : 0;
+            
+            if (sharesToWithdraw > 0) {
+                yieldStrategy.withdraw(sharesToWithdraw);
+                yieldShares -= sharesToWithdraw;
+            }
         }
         
         // Transfer the base asset to the caller
@@ -216,8 +228,9 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
         // Get the price of the RWA token
         uint256 rwaPrice = priceOracle.getPrice(address(rwaToken));
         
-        // Calculate the value
-        return (rwaBalance * rwaPrice) / 10**rwaToken.decimals();
+        // Calculate the value - use 18 decimals for price and convert to base asset decimals
+        uint8 baseDecimals = IERC20Metadata(address(baseAsset)).decimals();
+        return (rwaBalance * rwaPrice) / 10**18;
     }
     
     /**
@@ -225,7 +238,6 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
      * @return The value in base asset units
      */
     function getYieldValue() public view returns (uint256) {
-        uint256 yieldShares = yieldStrategy.balanceOf(address(this));
         if (yieldShares == 0) return 0;
         
         // Get the value of the yield shares
@@ -247,20 +259,27 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
             // Need to allocate more to RWA
             uint256 amountToMove = targetRwaValue - currentRwaValue;
             
-            // Withdraw from yield strategy
-            yieldStrategy.withdraw(amountToMove);
+            // Calculate shares to withdraw based on value proportion
+            uint256 yieldValue = getYieldValue();
+            uint256 sharesToWithdraw = yieldValue > 0 ? (amountToMove * yieldShares) / yieldValue : 0;
             
-            // Allocate to RWA token
-            rwaToken.mint(amountToMove);
+            if (sharesToWithdraw > 0) {
+                yieldStrategy.withdraw(sharesToWithdraw);
+                yieldShares -= sharesToWithdraw;
+                
+                // Allocate to RWA token
+                rwaToken.mint(address(this), amountToMove);
+            }
         } else if (currentRwaValue > targetRwaValue) {
             // Need to allocate more to yield
             uint256 amountToMove = currentRwaValue - targetRwaValue;
             
             // Withdraw from RWA token
-            rwaToken.burn(amountToMove);
+            rwaToken.burn(address(this), amountToMove);
             
             // Allocate to yield strategy
-            yieldStrategy.deposit(amountToMove);
+            uint256 shares = yieldStrategy.deposit(amountToMove);
+            yieldShares += shares;
         }
     }
 }

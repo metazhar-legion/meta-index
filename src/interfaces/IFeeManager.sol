@@ -49,9 +49,27 @@ interface IFeeManager {
     /**
      * @dev Manually set the high water mark for a vault
      * @param vault The address of the vault
-     * @param newHighWaterMark The new high water mark
+     * @param highWaterMark The new high water mark
      */
-    function setHighWaterMark(address vault, uint256 newHighWaterMark) external;
+    function setHighWaterMark(address vault, uint256 highWaterMark) external;
+    
+    /**
+     * @dev Collect management and performance fees
+     * @param totalValue The total value of the vault
+     * @param timeElapsed The time elapsed since last fee collection
+     * @return managementFee The management fee collected
+     * @return performanceFee The performance fee collected
+     */
+    function collectFees(
+        uint256 totalValue,
+        uint256 timeElapsed
+    ) external returns (uint256 managementFee, uint256 performanceFee);
+    
+    /**
+     * @dev Get the fee recipient address
+     * @return recipient The address of the fee recipient
+     */
+    function getFeeRecipient() external view returns (address recipient);
     
     /**
      * @dev Manually set the last fee collection timestamp for a vault

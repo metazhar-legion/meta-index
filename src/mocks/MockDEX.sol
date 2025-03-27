@@ -15,6 +15,7 @@ import {CommonErrors} from "../errors/CommonErrors.sol";
 contract MockDEX is IDEX, Ownable {
     using SafeERC20 for IERC20;
 
+    address public priceOracleAddress;
     MockPriceOracle public priceOracle;
     uint256 public constant FEE_BASIS_POINTS = 30; // 0.3% fee
     uint256 public constant BASIS_POINTS = 10000;
@@ -23,8 +24,9 @@ contract MockDEX is IDEX, Ownable {
      * @dev Constructor that initializes the DEX with a price oracle
      * @param _priceOracle The price oracle address
      */
-    constructor(MockPriceOracle _priceOracle) Ownable(msg.sender) {
-        priceOracle = _priceOracle;
+    constructor(address _priceOracle) Ownable(msg.sender) {
+        priceOracleAddress = _priceOracle;
+        priceOracle = MockPriceOracle(_priceOracle);
     }
 
     /**

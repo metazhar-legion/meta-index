@@ -24,8 +24,13 @@ contract MockFeeManager is IFeeManager, Ownable {
     uint256 public mockManagementFee = 0;
     uint256 public mockPerformanceFee = 0;
     bool public useFixedFees = false;
+    
+    // Fee recipient
+    address public feeRecipient;
 
-    constructor() Ownable(msg.sender) {}
+    constructor() Ownable(msg.sender) {
+        feeRecipient = msg.sender;
+    }
     
     /**
      * @dev Updates the management fee percentage
@@ -125,7 +130,7 @@ contract MockFeeManager is IFeeManager, Ownable {
      * @param vault The address of the vault
      * @param newHighWaterMark The new high water mark
      */
-    function setHighWaterMark(address vault, uint256 newHighWaterMark) external override onlyOwner {
+    function setHighWaterMark(address vault, uint256 newHighWaterMark) external override {
         _highWaterMarks[vault] = newHighWaterMark;
     }
     
@@ -164,6 +169,39 @@ contract MockFeeManager is IFeeManager, Ownable {
      */
     function lastFeeCollectionTimestamps(address vault) external view override returns (uint256) {
         return _lastFeeCollectionTimestamps[vault];
+    }
+    
+    /**
+     * @dev Collect management and performance fees
+     * @param totalValue The total value of the vault
+     * @param timeElapsed The time elapsed since last fee collection
+     * @return managementFee The management fee collected
+     * @return performanceFee The performance fee collected
+     */
+    function collectFees(
+        uint256 totalValue,
+        uint256 timeElapsed
+    ) external override returns (uint256 managementFee, uint256 performanceFee) {
+        if (useFixedFees) {
+            return (mockManagementFee, mockPerformanceFee);
+        }
+        
+        // Calculate management fee (annualized)
+        managementFee = (totalValue * _managementFeePercentage * timeElapsed) / (BASIS_POINTS * 365 days);
+        
+        // For simplicity, we'll just return a performance fee as a percentage of the total value
+        // In a real implementation, this would compare against a high water mark
+        performanceFee = (totalValue * _performanceFeePercentage) / (BASIS_POINTS * 10); // Reduced for testing
+        
+        return (managementFee, performanceFee);
+    }
+    
+    /**
+     * @dev Get the fee recipient address
+     * @return recipient The address of the fee recipient
+     */
+    function getFeeRecipient() external view override returns (address recipient) {
+        return feeRecipient;
     }
     
     // Test helper functions
