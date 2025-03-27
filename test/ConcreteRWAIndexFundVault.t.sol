@@ -17,6 +17,7 @@ import {IPriceOracle} from "../src/interfaces/IPriceOracle.sol";
 import {IDEX} from "../src/interfaces/IDEX.sol";
 import {ICapitalAllocationManager} from "../src/interfaces/ICapitalAllocationManager.sol";
 import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
+import {CommonErrors} from "../src/errors/CommonErrors.sol";
 
 contract ConcreteRWAIndexFundVaultTest is Test {
     ConcreteRWAIndexFundVault public vault;
@@ -57,10 +58,11 @@ contract ConcreteRWAIndexFundVaultTest is Test {
     event RWAAdded(address indexed rwaToken);
 
     function setUp() public {
-        owner = address(this);
+        // Set up addresses
+        owner = address(this); // Use the test contract as the owner
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
-
+        
         // Deploy mock contracts
         mockUSDC = new MockUSDC();
         mockPriceOracle = new MockPriceOracle(address(mockUSDC));
@@ -90,7 +92,7 @@ contract ConcreteRWAIndexFundVaultTest is Test {
         // Deploy MockFeeManager
         mockFeeManager = new MockFeeManager();
         
-        // Deploy ConcreteRWAIndexFundVault
+        // Deploy ConcreteRWAIndexFundVault - this will set the owner to the msg.sender (owner address)
         vault = new ConcreteRWAIndexFundVault(
             IERC20(address(mockUSDC)),
             IIndexRegistry(address(mockIndexRegistry)),
@@ -370,7 +372,8 @@ contract ConcreteRWAIndexFundVaultTest is Test {
             address(mockPriceOracle)
         );
         
-        // We need to use the exact error message format from the Ownable contract
+        // We need to use the error from the Ownable contract
+        // The error is OwnableUnauthorizedAccount(address) from OpenZeppelin's Ownable contract
         bytes memory ownerError = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", user1);
         
         // Try to add RWA token as non-owner

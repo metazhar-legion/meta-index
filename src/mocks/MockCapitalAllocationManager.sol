@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {ICapitalAllocationManager} from "../interfaces/ICapitalAllocationManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {CommonErrors} from "../errors/CommonErrors.sol";
 
 /**
  * @title MockCapitalAllocationManager
@@ -64,7 +65,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
         uint256 yieldPercentage_,
         uint256 liquidityBufferPercentage_
     ) external onlyOwner returns (bool success) {
-        require(rwaPercentage_ + yieldPercentage_ + liquidityBufferPercentage_ == 10000, "Percentages must sum to 10000");
+        if (rwaPercentage_ + yieldPercentage_ + liquidityBufferPercentage_ != 10000) revert CommonErrors.TotalExceeds100Percent();
         
         rwaPercentage = rwaPercentage_;
         yieldPercentage = yieldPercentage_;
@@ -81,8 +82,8 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @return success True if the token was added successfully
      */
     function addRWAToken(address rwaToken, uint256 percentage) external onlyOwner returns (bool success) {
-        require(rwaToken != address(0), "Invalid RWA token address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
+        if (rwaToken == address(0)) revert CommonErrors.ZeroAddress();
+        if (percentage > 10000) revert CommonErrors.PercentageTooHigh();
         
         // Check if token already exists
         for (uint256 i = 0; i < _rwaTokens.length; i++) {
@@ -95,7 +96,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
                     emit RWATokenAdded(rwaToken, percentage);
                     return true;
                 } else {
-                    revert("RWA token already exists");
+                    revert CommonErrors.TokenAlreadyExists();
                 }
             }
         }
@@ -122,8 +123,8 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @return success True if the update was successful
      */
     function updateRWAToken(address rwaToken, uint256 percentage) external onlyOwner returns (bool success) {
-        require(rwaToken != address(0), "Invalid RWA token address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
+        if (rwaToken == address(0)) revert CommonErrors.ZeroAddress();
+        if (percentage > 10000) revert CommonErrors.PercentageTooHigh();
         
         bool found = false;
         for (uint256 i = 0; i < _rwaTokens.length; i++) {
@@ -134,7 +135,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
             }
         }
         
-        require(found, "RWA token not found or inactive");
+        if (!found) revert CommonErrors.TokenNotFound();
         
         _rebalanceRWAPercentages();
         
@@ -148,7 +149,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @return success True if the token was removed successfully
      */
     function removeRWAToken(address rwaToken) external onlyOwner returns (bool success) {
-        require(rwaToken != address(0), "Invalid RWA token address");
+        if (rwaToken == address(0)) revert CommonErrors.ZeroAddress();
         
         bool found = false;
         for (uint256 i = 0; i < _rwaTokens.length; i++) {
@@ -160,7 +161,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
             }
         }
         
-        require(found, "RWA token not found or already inactive");
+        if (!found) revert CommonErrors.TokenNotFound();
         
         _rebalanceRWAPercentages();
         
@@ -175,8 +176,8 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @return success True if the strategy was added successfully
      */
     function addYieldStrategy(address strategy, uint256 percentage) external onlyOwner returns (bool success) {
-        require(strategy != address(0), "Invalid strategy address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
+        if (strategy == address(0)) revert CommonErrors.ZeroAddress();
+        if (percentage > 10000) revert CommonErrors.PercentageTooHigh();
         
         // Check if strategy already exists
         for (uint256 i = 0; i < _yieldStrategies.length; i++) {
@@ -189,7 +190,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
                     emit YieldStrategyAdded(strategy, percentage);
                     return true;
                 } else {
-                    revert("Yield strategy already exists");
+                    revert CommonErrors.TokenAlreadyExists();
                 }
             }
         }
@@ -216,8 +217,8 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @return success True if the update was successful
      */
     function updateYieldStrategy(address strategy, uint256 percentage) external onlyOwner returns (bool success) {
-        require(strategy != address(0), "Invalid strategy address");
-        require(percentage <= 10000, "Percentage cannot exceed 10000");
+        if (strategy == address(0)) revert CommonErrors.ZeroAddress();
+        if (percentage > 10000) revert CommonErrors.PercentageTooHigh();
         
         bool found = false;
         for (uint256 i = 0; i < _yieldStrategies.length; i++) {
@@ -228,7 +229,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
             }
         }
         
-        require(found, "Yield strategy not found or inactive");
+        if (!found) revert CommonErrors.TokenNotFound();
         
         _rebalanceYieldPercentages();
         
@@ -242,7 +243,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
      * @return success True if the strategy was removed successfully
      */
     function removeYieldStrategy(address strategy) external onlyOwner returns (bool success) {
-        require(strategy != address(0), "Invalid strategy address");
+        if (strategy == address(0)) revert CommonErrors.ZeroAddress();
         
         bool found = false;
         for (uint256 i = 0; i < _yieldStrategies.length; i++) {
@@ -254,7 +255,7 @@ contract MockCapitalAllocationManager is ICapitalAllocationManager, Ownable {
             }
         }
         
-        require(found, "Yield strategy not found or already inactive");
+        if (!found) revert CommonErrors.TokenNotFound();
         
         _rebalanceYieldPercentages();
         

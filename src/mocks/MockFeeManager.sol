@@ -134,7 +134,7 @@ contract MockFeeManager is IFeeManager, Ownable {
      * @param vault The address of the vault
      * @param timestamp The timestamp to set
      */
-    function setLastFeeCollectionTimestamp(address vault, uint256 timestamp) external override onlyOwner {
+    function setLastFeeCollectionTimestamp(address vault, uint256 timestamp) external override {
         _lastFeeCollectionTimestamps[vault] = timestamp;
     }
     
