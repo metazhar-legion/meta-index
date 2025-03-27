@@ -6,6 +6,7 @@ import {RWASyntheticSP500} from "../src/RWASyntheticSP500.sol";
 import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
+import {CommonErrors} from "../src/errors/CommonErrors.sol";
 
 contract RWASyntheticSP500Test is Test {
     RWASyntheticSP500 public rwaSyntheticSP500;

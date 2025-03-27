@@ -107,7 +107,7 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
         // In a real implementation, this would call the oracle
         // For now, we'll use the perpetual trading platform's market price
         uint256 newPrice = perpetualTrading.getMarketPrice(MARKET_ID);
-        if (newPrice == 0) revert CommonErrors.PriceNotAvailable();
+        if (newPrice == 0) revert CommonErrors.ValueTooLow();
         
         assetInfo.lastPrice = newPrice;
         assetInfo.lastUpdated = block.timestamp;
