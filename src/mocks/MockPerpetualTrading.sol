@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IPerpetualTrading} from "../interfaces/IPerpetualTrading.sol";
+import {CommonErrors} from "../errors/CommonErrors.sol";
 
 /**
  * @title MockPerpetualTrading
@@ -41,7 +42,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
      * @param _baseAsset Address of the base asset (e.g., USDC)
      */
     constructor(address _baseAsset) Ownable(msg.sender) {
-        require(_baseAsset != address(0), "Invalid base asset address");
+        if (_baseAsset == address(0)) revert CommonErrors.ZeroAddress();
         baseAsset = IERC20(_baseAsset);
         
         // Initialize some default market prices for testing
@@ -69,10 +70,10 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
         uint256 leverage,
         uint256 collateral
     ) external override returns (bytes32 positionId) {
-        require(marketPrices[marketId] > 0, "Market not supported");
-        require(size != 0, "Size cannot be zero");
-        require(leverage > 0, "Leverage must be positive");
-        require(collateral > 0, "Collateral must be positive");
+        if (marketPrices[marketId] == 0) revert CommonErrors.InvalidValue();
+        if (size == 0) revert CommonErrors.ValueTooLow();
+        if (leverage == 0) revert CommonErrors.ValueTooLow();
+        if (collateral == 0) revert CommonErrors.ValueTooLow();
         
         // Transfer collateral from sender
         baseAsset.safeTransferFrom(msg.sender, address(this), collateral);
@@ -102,7 +103,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
      */
     function closePosition(bytes32 positionId) external override returns (int256 pnl) {
         Position memory position = positions[positionId];
-        require(position.size != 0, "Position does not exist");
+        if (position.size == 0) revert CommonErrors.InvalidState();
         
         // Calculate PnL
         pnl = _calculatePnL(positionId);
@@ -143,7 +144,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
         int256 collateralDelta
     ) external override returns (bool) {
         Position storage position = positions[positionId];
-        require(position.size != 0, "Position does not exist");
+        if (position.size == 0) revert CommonErrors.InvalidState();
         
         // Handle collateral changes
         if (collateralDelta > 0) {
@@ -153,7 +154,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
         } else if (collateralDelta < 0) {
             // Remove collateral
             uint256 collateralToRemove = uint256(-collateralDelta);
-            require(position.collateral > collateralToRemove, "Insufficient collateral");
+            if (position.collateral <= collateralToRemove) revert CommonErrors.InsufficientBalance();
             position.collateral -= collateralToRemove;
             baseAsset.safeTransfer(msg.sender, collateralToRemove);
         }
@@ -182,7 +183,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
      * @return price The current market price
      */
     function getMarketPrice(bytes32 marketId) external view override returns (uint256 price) {
-        require(marketPrices[marketId] > 0, "Market not supported");
+        if (marketPrices[marketId] == 0) revert CommonErrors.InvalidValue();
         return marketPrices[marketId];
     }
     
@@ -192,7 +193,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
      * @return position The position details
      */
     function getPosition(bytes32 positionId) external view override returns (Position memory position) {
-        require(positions[positionId].size != 0, "Position does not exist");
+        if (positions[positionId].size == 0) revert CommonErrors.InvalidState();
         return positions[positionId];
     }
     
@@ -203,7 +204,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
      */
     function getPositionValue(bytes32 positionId) external view override returns (uint256 value) {
         Position memory position = positions[positionId];
-        require(position.size != 0, "Position does not exist");
+        if (position.size == 0) revert CommonErrors.InvalidState();
         
         int256 pnl = _calculatePnL(positionId);
         
@@ -223,7 +224,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
      * @return fundingRate The current funding rate (can be positive or negative)
      */
     function getFundingRate(bytes32 marketId) external view override returns (int256 fundingRate) {
-        require(marketPrices[marketId] > 0, "Market not supported");
+        if (marketPrices[marketId] == 0) revert CommonErrors.InvalidValue();
         return fundingRates[marketId];
     }
     
