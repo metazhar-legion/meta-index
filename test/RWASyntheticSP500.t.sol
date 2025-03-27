@@ -158,7 +158,9 @@ contract RWASyntheticSP500Test is Test {
         // Try to burn more tokens than user1 owns
         uint256 tooManyTokens = mintAmount + 1;
         
-        vm.expectRevert(abi.encodeWithSelector(CommonErrors.InsufficientBalance.selector));
+        // Use the custom error from CommonErrors library
+        bytes4 selector = CommonErrors.InsufficientBalance.selector;
+        vm.expectRevert(abi.encodeWithSelector(selector));
         rwaSyntheticSP500.burn(user1, tooManyTokens);
     }
 
