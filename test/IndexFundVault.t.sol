@@ -42,7 +42,7 @@ contract IndexFundVaultTest is Test {
         priceOracle.setPrice(address(weth), 3_000 * 1e18);
         
         // Deploy DEX
-        dex = new MockDEX(priceOracle);
+        dex = new MockDEX(address(priceOracle));
         
         // Deploy index registry
         registry = new IndexRegistry();

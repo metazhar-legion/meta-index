@@ -52,7 +52,7 @@ contract DeploySepolia is Script {
         priceOracle.setPrice(address(aave), 100 * 1e18);
         
         // Deploy DEX
-        MockDEX dex = new MockDEX(priceOracle);
+        MockDEX dex = new MockDEX(address(priceOracle));
         
         // Deploy index registry
         IndexRegistry indexRegistry = new IndexRegistry();

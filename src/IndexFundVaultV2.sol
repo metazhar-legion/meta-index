@@ -60,6 +60,18 @@ contract IndexFundVaultV2 is BaseVault {
     event DEXUpdated(address indexed oldDEX, address indexed newDEX);
     
     /**
+     * @dev Get information about an asset
+     * @param assetAddress The address of the asset wrapper
+     * @return wrapper The address of the asset wrapper
+     * @return weight The weight of the asset in basis points
+     * @return active Whether the asset is active
+     */
+    function getAssetInfo(address assetAddress) external view returns (address wrapper, uint256 weight, bool active) {
+        AssetInfo memory info = assets[assetAddress];
+        return (address(info.wrapper), info.weight, info.active);
+    }
+    
+    /**
      * @dev Constructor that initializes the vault with the asset token and dependencies
      * @param asset_ The underlying asset token (typically a stablecoin)
      * @param feeManager_ The fee manager contract address

@@ -111,7 +111,7 @@ contract Deploy is Script {
         console.log("Set prices for tokens in the oracle");
         
         // Deploy DEX
-        dex = new MockDEX(priceOracle);
+        dex = new MockDEX(address(priceOracle));
         console.log("MockDEX deployed at:", address(dex));
         
         // Mint tokens to the DEX for liquidity

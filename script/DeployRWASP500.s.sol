@@ -52,7 +52,7 @@ contract DeployRWASP500 is Script {
         console.log("MockPriceOracle deployed at:", address(priceOracle));
         
         // Deploy mock DEX
-        MockDEX dex = new MockDEX(priceOracle);
+        MockDEX dex = new MockDEX(address(priceOracle));
         console.log("MockDEX deployed at:", address(dex));
         
         // Deploy mock perpetual trading platform

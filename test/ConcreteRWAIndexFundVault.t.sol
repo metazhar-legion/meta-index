@@ -68,7 +68,7 @@ contract ConcreteRWAIndexFundVaultTest is Test {
         mockPriceOracle = new MockPriceOracle(address(mockUSDC));
         mockPerpetualTrading = new MockPerpetualTrading(address(mockUSDC));
         mockIndexRegistry = new MockIndexRegistry();
-        mockDEX = new MockDEX(mockPriceOracle);
+        mockDEX = new MockDEX(address(mockPriceOracle));
 
         // Deploy RWASyntheticSP500
         rwaSyntheticSP500 = new RWASyntheticSP500(
