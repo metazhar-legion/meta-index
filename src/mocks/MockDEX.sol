@@ -6,6 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {MockPriceOracle} from "./MockPriceOracle.sol";
 import {IDEX} from "../interfaces/IDEX.sol";
+import {CommonErrors} from "../errors/CommonErrors.sol";
 
 /**
  * @title MockDEX
@@ -40,8 +41,8 @@ contract MockDEX is IDEX, Ownable {
         uint256 fromAmount,
         uint256 minToAmount
     ) external returns (uint256 toAmount) {
-        require(fromToken != toToken, "Same token");
-        require(fromAmount > 0, "Zero amount");
+        if (fromToken == toToken) revert CommonErrors.InvalidValue();
+        if (fromAmount == 0) revert CommonErrors.ValueTooLow();
 
         // Transfer the fromToken from the sender to this contract
         IERC20(fromToken).safeTransferFrom(msg.sender, address(this), fromAmount);
@@ -52,7 +53,7 @@ contract MockDEX is IDEX, Ownable {
         uint256 toValueInBase = fromValueInBase - feeAmount;
         toAmount = priceOracle.convertFromBaseAsset(toToken, toValueInBase);
 
-        require(toAmount >= minToAmount, "Slippage too high");
+        if (toAmount < minToAmount) revert CommonErrors.SlippageTooHigh();
 
         // Transfer the toToken to the sender
         IERC20(toToken).safeTransfer(msg.sender, toAmount);
@@ -74,8 +75,8 @@ contract MockDEX is IDEX, Ownable {
         uint256 fromAmount,
         uint256 minToAmount
     ) external returns (uint256 toAmount) {
-        require(fromToken != toToken, "Same token");
-        require(fromAmount > 0, "Zero amount");
+        if (fromToken == toToken) revert CommonErrors.InvalidValue();
+        if (fromAmount == 0) revert CommonErrors.ValueTooLow();
 
         // Transfer the fromToken from the sender to this contract
         IERC20(fromToken).safeTransferFrom(msg.sender, address(this), fromAmount);
@@ -86,7 +87,7 @@ contract MockDEX is IDEX, Ownable {
         uint256 toValueInBase = fromValueInBase - feeAmount;
         toAmount = priceOracle.convertFromBaseAsset(toToken, toValueInBase);
 
-        require(toAmount >= minToAmount, "Slippage too high");
+        if (toAmount < minToAmount) revert CommonErrors.SlippageTooHigh();
 
         // Transfer the toToken to the sender
         IERC20(toToken).safeTransfer(msg.sender, toAmount);

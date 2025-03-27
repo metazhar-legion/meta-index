@@ -54,7 +54,7 @@ contract RWASyntheticSP500Test is Test {
         mockUSDC.mint(user2, 10000 * 1e6);
     }
 
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(rwaSyntheticSP500.name(), "S&P 500 Index Synthetic");
         assertEq(rwaSyntheticSP500.symbol(), "sSP500");
         assertEq(address(rwaSyntheticSP500.baseAsset()), address(mockUSDC));

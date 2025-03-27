@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {IIndexRegistry} from "../interfaces/IIndexRegistry.sol";
+import {CommonErrors} from "../errors/CommonErrors.sol";
 
 /**
  * @title MockIndexRegistry
@@ -22,14 +23,14 @@ contract MockIndexRegistry is IIndexRegistry {
      * @return success True if the update was successful
      */
     function updateIndex(address[] memory tokens, uint256[] memory weights) external returns (bool success) {
-        require(tokens.length == weights.length, "Tokens and weights length mismatch");
+        if (tokens.length != weights.length) revert CommonErrors.MismatchedArrayLengths();
         
         // Validate weights sum to 10000 (100%)
         uint256 totalWeight = 0;
         for (uint256 i = 0; i < weights.length; i++) {
             totalWeight += weights[i];
         }
-        require(totalWeight == 10000, "Weights must sum to 10000");
+        if (totalWeight != 10000) revert CommonErrors.TotalExceeds100Percent();
         
         // Update index
         delete _tokens;

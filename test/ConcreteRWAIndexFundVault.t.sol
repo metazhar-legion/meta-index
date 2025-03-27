@@ -397,7 +397,10 @@ contract ConcreteRWAIndexFundVaultTest is Test {
             vm.startPrank(user1);
             vm.expectRevert(ownerError);
             // We're expecting this call to revert, so we don't need to check the return value
-            (bool ignored,) = address(vault).call(abi.encodeWithSignature("pause()"));
+            // We're only checking if the call reverts, not the return value
+            (bool pauseSuccess,) = address(vault).call(abi.encodeWithSignature("pause()"));
+            // Use the pauseSuccess variable to avoid compiler warning
+            pauseSuccess;
             vm.stopPrank();
         } else {
             // If the vault doesn't have a paused() function, skip this part of the test

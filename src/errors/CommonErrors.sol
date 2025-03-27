@@ -43,6 +43,7 @@ library CommonErrors {
     error TokenNotFound();
     error TransferFailed();
     error InsufficientBalance();
+    error SlippageTooHigh();
     
     // Time-related errors
     error InvalidTimeParameters();

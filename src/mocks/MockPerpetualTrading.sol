@@ -234,7 +234,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
      * @param price The new market price
      */
     function setMarketPrice(bytes32 marketId, uint256 price) external onlyOwner {
-        require(price > 0, "Price must be positive");
+        if (price == 0) revert CommonErrors.ValueTooLow();
         marketPrices[marketId] = price;
         emit MarketPriceUpdated(marketId, price);
     }

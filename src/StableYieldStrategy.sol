@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -7,6 +8,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IYieldStrategy} from "./interfaces/IYieldStrategy.sol";
+import {CommonErrors} from "./errors/CommonErrors.sol";
 
 /**
  * @title StableYieldStrategy
@@ -55,10 +57,10 @@ contract StableYieldStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGuard 
         address _yieldToken,
         address _feeRecipient
     ) ERC20(string(abi.encodePacked(_name, " Shares")), string(abi.encodePacked("s", _name))) Ownable(msg.sender) {
-        require(_baseAsset != address(0), "Invalid base asset address");
-        require(_yieldProtocol != address(0), "Invalid yield protocol address");
-        require(_yieldToken != address(0), "Invalid yield token address");
-        require(_feeRecipient != address(0), "Invalid fee recipient address");
+        if (_baseAsset == address(0)) revert CommonErrors.ZeroAddress();
+        if (_yieldProtocol == address(0)) revert CommonErrors.ZeroAddress();
+        if (_yieldToken == address(0)) revert CommonErrors.ZeroAddress();
+        if (_feeRecipient == address(0)) revert CommonErrors.ZeroAddress();
         
         baseAsset = IERC20(_baseAsset);
         yieldProtocol = _yieldProtocol;
@@ -84,7 +86,7 @@ contract StableYieldStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGuard 
      * @return shares The number of shares received
      */
     function deposit(uint256 amount) external override nonReentrant returns (uint256 shares) {
-        require(amount > 0, "Amount must be positive");
+        if (amount == 0) revert CommonErrors.ValueTooLow();
         
         // Transfer base asset from sender to this contract
         baseAsset.safeTransferFrom(msg.sender, address(this), amount);
@@ -113,8 +115,8 @@ contract StableYieldStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGuard 
      * @return amount The amount withdrawn
      */
     function withdraw(uint256 shares) external override nonReentrant returns (uint256 amount) {
-        require(shares > 0, "Shares must be positive");
-        require(balanceOf(msg.sender) >= shares, "Insufficient shares");
+        if (shares == 0) revert CommonErrors.ValueTooLow();
+        if (balanceOf(msg.sender) < shares) revert CommonErrors.InsufficientBalance();
         
         // Calculate amount
         amount = getValueOfShares(shares);
@@ -173,7 +175,7 @@ contract StableYieldStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGuard 
      * @dev Gets the current APY of the strategy
      * @return apy The current APY in basis points
      */
-    function getCurrentAPY() external view override returns (uint256 apy) {
+    function getCurrentAPY() external pure override returns (uint256 apy) {
         // In a real implementation, this would call the yield protocol to get the current APY
         // For simplicity, we'll return a fixed APY
         return 500; // 5% APY
@@ -230,7 +232,7 @@ contract StableYieldStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGuard 
      * @param _feePercentage New fee percentage in basis points
      */
     function setFeePercentage(uint256 _feePercentage) external onlyOwner {
-        require(_feePercentage <= 1000, "Fee too high"); // Max 10%
+        if (_feePercentage > 1000) revert CommonErrors.ValueOutOfRange(_feePercentage, 0, 1000); // Max 10%
         feePercentage = _feePercentage;
         
         emit FeePercentageUpdated(_feePercentage);
@@ -241,7 +243,7 @@ contract StableYieldStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGuard 
      * @param _feeRecipient New fee recipient address
      */
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
-        require(_feeRecipient != address(0), "Invalid fee recipient address");
+        if (_feeRecipient == address(0)) revert CommonErrors.ZeroAddress();
         feeRecipient = _feeRecipient;
         
         emit FeeRecipientUpdated(_feeRecipient);
