@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ConcreteRWAIndexFundVault} from "../src/ConcreteRWAIndexFundVault.sol";
 import {RWASyntheticSP500} from "../src/RWASyntheticSP500.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
@@ -334,7 +334,6 @@ contract ConcreteRWAIndexFundVaultTest is Test {
             (bool success,) = address(vault).call(abi.encodeWithSignature("pause()"));
             if (!success) {
                 // If we can't pause, skip the test
-                console2.log("Vault does not support pause, skipping test_RevertWhenVaultPaused");
                 return;
             }
             
@@ -360,7 +359,6 @@ contract ConcreteRWAIndexFundVaultTest is Test {
             }
         } else {
             // If the vault doesn't have a paused() function, skip this test
-            console2.log("Vault is not pausable, skipping test_RevertWhenVaultPaused");
         }
     }
 
@@ -404,7 +402,6 @@ contract ConcreteRWAIndexFundVaultTest is Test {
             vm.stopPrank();
         } else {
             // If the vault doesn't have a paused() function, skip this part of the test
-            console2.log("Vault is not pausable, skipping pause test");
         }
     }
 }

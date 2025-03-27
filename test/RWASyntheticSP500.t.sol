@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {RWASyntheticSP500} from "../src/RWASyntheticSP500.sol";
 import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
