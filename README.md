@@ -1,44 +1,42 @@
-# Web3 Index Fund
+# Web3 Index Fund (Meta-Index)
 
-A decentralized ERC4626-compliant index fund vault that allows participants to deposit tokens and invest in a basket of assets. The indices can be voted on by a DAO, but are initially implemented by the vault owner.
+A gas-optimized, ERC4626-compliant index fund vault that allows participants to deposit tokens and invest in a basket of real-world assets (RWAs) and yield-generating strategies. The vault uses a modular architecture with asset wrappers to simplify management and improve efficiency.
 
 ## Overview
 
 This project implements a web3-based index fund using Solidity smart contracts with the following key components:
 
-- **ERC4626 Vault**: A standard-compliant tokenized vault that handles deposits, withdrawals, and accounting
-- **Index Registry**: Manages the composition of the index (tokens and their weights)
-- **DAO Governance**: Allows token holders to vote on index changes (optional)
+- **IndexFundVaultV2**: A gas-optimized, ERC4626-compliant tokenized vault that handles deposits, withdrawals, and rebalancing
+- **RWAAssetWrapper**: Wrapper contracts that encapsulate RWA tokens and handle allocation between assets and yield strategies
+- **StableYieldStrategy**: Manages yield generation for idle capital
 - **Price Oracle Integration**: For accurate asset pricing
 - **DEX Integration**: For rebalancing and trading between assets
 
 ## Key Features
 
-- **Automated Rebalancing**: Maintains the desired asset allocation
-- **Fee Structure**: Management and performance fees
-- **DAO Governance**: Decentralized control of the index composition
-- **Cross-Chain Support**: Extensible for cross-chain assets (future enhancement)
-- **RWA Support**: Extensible for real-world assets (future enhancement)
+- **Modular Architecture**: Clean separation of concerns through asset wrappers
+- **Gas-Optimized Storage**: Efficient variable packing and data type optimization
+- **Automated Rebalancing**: Maintains the desired asset allocation with configurable thresholds
+- **Fee Structure**: Management and performance fees with configurable parameters
+- **RWA Support**: Built-in support for real-world assets through synthetic tokens
+- **Yield Generation**: Integrated yield strategies for idle capital
 
 ## Project Structure
 
 ```
 ├── src/
-│   ├── IndexFundVault.sol       # Main vault contract
-│   ├── IndexRegistry.sol        # Index composition registry
+│   ├── IndexFundVaultV2.sol     # Main vault contract (gas-optimized)
+│   ├── RWAAssetWrapper.sol      # Wrapper for RWA tokens
+│   ├── RWASyntheticSP500.sol    # Example synthetic RWA token
+│   ├── StableYieldStrategy.sol  # Yield strategy for idle capital
+│   ├── FeeManager.sol           # Fee calculation and collection
 │   ├── interfaces/              # Contract interfaces
 │   └── mocks/                   # Mock contracts for testing
 ├── script/                      # Deployment scripts
+│   ├── DeployIndexFundVaultV2.s.sol  # Deploy basic vault
+│   └── DeployMultiAssetVault.s.sol   # Deploy vault with multiple assets
 ├── test/                        # Test files
-└── frontend/                    # React TypeScript UI
-    ├── src/
-    │   ├── components/          # Reusable UI components
-    │   ├── contexts/            # React contexts including Web3Context
-    │   ├── hooks/               # Custom hooks for contracts
-    │   ├── pages/               # Page components for different user roles
-    │   ├── theme/               # UI theme configuration
-    │   └── contracts/           # Contract interfaces and ABIs
-    └── public/                  # Static assets
+└── frontend/                    # React TypeScript UI (future enhancement)
 ```
 
 ## Prerequisites
@@ -100,15 +98,21 @@ forge test --match-test testDeposit -vvv
 anvil
 ```
 
-2. In a new terminal, deploy the contracts to the local node:
+2. In a new terminal, deploy the basic vault to the local node:
 
 ```shell
-forge script script/Deploy.s.sol:Deploy --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+forge script script/DeployIndexFundVaultV2.s.sol:DeployIndexFundVaultV2 --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```
+
+Or deploy the multi-asset vault with RWA tokens:
+
+```shell
+forge script script/DeployMultiAssetVault.s.sol:DeployMultiAssetVault --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
 Note: The private key above is the default private key for the first account in Anvil.
 
-## Sepolia Testnet Deployment
+## Testnet Deployment
 
 1. Create a `.env` file with your private key:
 
@@ -116,11 +120,11 @@ Note: The private key above is the default private key for the first account in 
 PRIVATE_KEY=your_private_key_here
 ```
 
-2. Deploy to Sepolia testnet:
+2. Deploy to a testnet (e.g., Sepolia):
 
 ```shell
 source .env
-forge script script/DeploySepolia.s.sol:DeploySepolia --rpc-url https://sepolia.infura.io/v3/YOUR_INFURA_KEY --broadcast
+forge script script/DeployMultiAssetVault.s.sol:DeployMultiAssetVault --rpc-url https://sepolia.infura.io/v3/YOUR_INFURA_KEY --broadcast
 ```
 
 Replace `YOUR_INFURA_KEY` with your actual Infura API key.
@@ -147,59 +151,51 @@ cast send <VAULT_ADDRESS> "rebalance()" --rpc-url <RPC_URL> --private-key <PRIVA
 
 ## Contract Architecture
 
-### IndexFundVault
+### IndexFundVaultV2
 
-The main vault contract that implements the ERC4626 standard. It handles deposits, withdrawals, and rebalancing of the index.
+The main vault contract that implements the ERC4626 standard with gas optimizations. It handles deposits, withdrawals, and rebalancing of the index through asset wrappers.
 
-### IndexRegistry
+### RWAAssetWrapper
 
-Manages the composition of the index, including token addresses and their weights.
+A wrapper contract that encapsulates RWA tokens and manages the allocation between the RWA asset and yield strategies. This modular approach simplifies asset management and improves separation of concerns.
 
-### DAO Governance
+### StableYieldStrategy
 
-Allows token holders to vote on proposals to change the index composition.
+Manages yield generation for idle capital, allowing the vault to earn returns on assets not currently allocated to RWA tokens.
+
+### FeeManager
+
+Handles the calculation and collection of management and performance fees, with configurable parameters for fee rates and collection periods.
 
 ## Fee Structure
 
-- **Management Fee**: Annual fee based on total assets under management (default: 1%)
-- **Performance Fee**: Fee on profits above the high water mark (default: 10%)
+- **Management Fee**: Annual fee based on total assets under management (configurable, default: 1%)
+- **Performance Fee**: Fee on profits above the high water mark (configurable, default: 10%)
+- **Fee Collection**: Fees are collected during rebalancing operations and when explicitly triggered
+
+## Gas Optimizations
+
+- **Storage Packing**: Variables are carefully packed to minimize storage slots
+- **Data Type Optimization**: Using uint32, uint16, etc. where appropriate to reduce gas costs
+- **Modular Architecture**: Asset wrappers reduce complexity and gas costs in the main vault
+- **Caching**: Array lengths and frequently accessed values are cached to reduce gas usage
+- **Reduced External Calls**: Logic is structured to minimize expensive external calls
 
 ## Security Considerations
 
-- The contracts use OpenZeppelin's security libraries
-- Reentrancy protection is implemented for critical functions
-- Fee limits are enforced to prevent excessive fees
+- **OpenZeppelin Libraries**: The contracts use OpenZeppelin's security libraries
+- **Reentrancy Protection**: Implemented for critical functions using ReentrancyGuard
+- **Fee Limits**: Enforced to prevent excessive fees
+- **Access Control**: Proper ownership and access controls for sensitive operations
+- **Overflow Protection**: Using Solidity 0.8.x built-in overflow checks
 
-## Frontend Application
+## Future Enhancements
 
-The project includes a React TypeScript frontend that provides a user interface for interacting with the smart contracts.
-
-### Features
-
-- **User Roles**: Support for Investors, DAO Members, and Portfolio Managers
-- **Dark Mode UI**: Modern Material UI design with dark mode
-- **Wallet Integration**: Connect with MetaMask and other Ethereum wallets
-- **Role-Based Dashboards**: Different interfaces for different user types
-
-### Running the Frontend
-
-1. Navigate to the frontend directory:
-
-```shell
-cd frontend
-```
-
-2. Install dependencies:
-
-```shell
-npm install
-```
-
-3. Start the development server:
-
-```shell
-npm start
-```
+- **Capital Allocation Manager**: Advanced strategies for capital allocation
+- **Enhanced Yield Strategies**: Additional yield generation options
+- **Frontend Application**: React TypeScript UI for interacting with the contracts
+- **Cross-Chain Support**: Integration with cross-chain bridges
+- **DAO Governance**: Decentralized control of the index composition
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
