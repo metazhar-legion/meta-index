@@ -1,13 +1,13 @@
-# Web3 Index Fund - Architecture
+# Meta-Index (Web3 Index Fund) - Architecture
 
-This document provides a detailed overview of the Web3 Index Fund architecture, including both smart contracts and frontend components.
+This document provides a detailed overview of the Meta-Index architecture, focusing on the gas-optimized IndexFundVaultV2 implementation and its components.
 
 ## System Architecture
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
 │                                                                       │
-│                         Web3 Index Fund System                        │
+│                     Meta-Index Fund System                            │
 │                                                                       │
 └───────────────────────────────────┬───────────────────────────────────┘
                                     │
@@ -16,28 +16,30 @@ This document provides a detailed overview of the Web3 Index Fund architecture, 
 ┌───────────────▼───────────────┐       ┌───────────────▼───────────────┐
 │                               │       │                               │
 │     Smart Contract Layer      │       │       Frontend Layer          │
-│                               │       │                               │
-└───────────────┬───────────────┘       └───────────────┬───────────────┘
-                │                                       │
-    ┌───────────┴───────────┐               ┌───────────┴───────────┐
-    │                       │               │                       │
-┌───▼───┐   ┌───────┐   ┌───▼───┐       ┌───▼───┐   ┌───────┐   ┌───▼───┐
-│       │   │       │   │       │       │       │   │       │   │       │
-│  RWA  │◄──┤Registry│◄──┤  DAO  │       │  UI   │◄──┤Web3   │◄──┤ API   │
-│ Vault │   │       │   │       │       │       │   │Context│   │Service│
-└───┬───┘   └───────┘   └───────┘       └───────┘   └───┬───┘   └───────┘
-    │                                                   │
-┌───▼───────────────────────────────────────┐   ┌───────▼─────────────────┐
-│                                           │   │                         │
-│  Asset Management & External Integrations │◄──┤    User Interactions    │
-└─┬─────────────────┬───────────────────┬───┘   └─────────────────────────┘
+│                               │       │     (Future Enhancement)      │
+└───────────────┬───────────────┘       └───────────────────────────────┘
+                │                                       
+    ┌───────────┴───────────────────────────┐               
+    │                                       │               
+┌───▼───────────────┐   ┌──────────────────▼───┐       
+│                   │   │                      │       
+│  IndexFundVaultV2 │◄──┤    FeeManager       │       
+│    (ERC4626)      │   │                      │       
+└───┬───────────────┘   └──────────────────────┘       
+    │                                                   
+    │                                                   
+    │                                                   
+┌───▼───────────────────────────────────────┐   
+│                                           │   
+│  Asset Management & External Integrations │   
+└─┬─────────────────┬───────────────────┬───┘   
   │                 │                   │
   │                 │                   │
 ┌─▼─────────────┐ ┌─▼──────────┐ ┌─────▼──────────┐
 │               │ │            │ │                │
-│    Capital    │ │    RWA     │ │   External     │
-│  Allocation   │ │ Synthetic  │ │   Services     │
-│   Manager     │ │   Tokens   │ │ (Oracle, DEX)  │
+│ RWAAsset      │ │ Stable    │ │   External     │
+│ Wrapper       │ │ Yield     │ │   Services     │
+│               │ │ Strategy  │ │ (Oracle, DEX)  │
 └───────────────┘ └────────────┘ └────────────────┘
 ```
 
@@ -45,86 +47,132 @@ This document provides a detailed overview of the Web3 Index Fund architecture, 
 
 ### Core Contracts
 
-#### RWAIndexFundVault (ERC4626)
+#### IndexFundVaultV2 (ERC4626)
 
-The main vault contract that implements the ERC4626 standard, handling deposits, withdrawals, and accounting with RWA support.
+The main vault contract that implements the ERC4626 standard with gas optimizations, handling deposits, withdrawals, and rebalancing through asset wrappers.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     RWAIndexFundVault                       │
+│                     IndexFundVaultV2                        │
 ├─────────────────────────────────────────────────────────────┤
 │ State Variables:                                            │
-│ - asset: IERC20                                             │
-│ - indexRegistry: IIndexRegistry                             │
-│ - priceOracle: IPriceOracle                                 │
-│ - dex: IDEX                                                 │
-│ - capitalAllocationManager: ICapitalAllocationManager       │
-│ - managementFeePercentage: uint256                          │
-│ - performanceFeePercentage: uint256                         │
-│ - highWaterMark: uint256                                    │
-│ - lastRebalanceTimestamp: uint256                           │
-│ - rebalancingInterval: uint256                              │
-│ - rebalancingThreshold: uint256                             │
+│ - asset: address                                            │
+│ - assetList: address[]                                      │
+│ - assets: mapping(address => AssetInfo)                     │
+│ - feeManager: IFeeManager                                   │
+│ - lastRebalance: uint32                                     │
+│ - rebalanceInterval: uint32                                 │
+│ - rebalanceThreshold: uint16                                │
+│ - lastFeeCollection: uint32                                 │
+│ - totalWeight: uint16                                       │
+│ - paused: bool                                              │
 ├─────────────────────────────────────────────────────────────┤
 │ Core ERC4626 Functions:                                     │
 │ - deposit(uint256 assets, address receiver)                 │
 │ - mint(uint256 shares, address receiver)                    │
 │ - withdraw(uint256 assets, address receiver, address owner) │
 │ - redeem(uint256 shares, address receiver, address owner)   │
-├─────────────────────────────────────────────────────────────┤
-│ RWA Index Fund Specific Functions:                          │
-│ - rebalance()                                               │
-│ - addRWAToken(address token, uint256 allocation)            │
-│ - removeRWAToken(address token)                             │
-│ - addYieldStrategy(address strategy, uint256 allocation)    │
-│ - removeYieldStrategy(address strategy)                     │
-│ - setManagementFee(uint256 newFee)                          │
-│ - setPerformanceFee(uint256 newFee)                         │
-│ - setPriceOracle(address newOracle)                         │
-│ - setDEX(address newDEX)                                    │
 │ - totalAssets()                                             │
-│ - _collectFees()                                            │
+├─────────────────────────────────────────────────────────────┤
+│ Asset Management Functions:                                 │
+│ - addAsset(address assetAddress, address wrapper, uint16 weight) │
+│ - removeAsset(address assetAddress)                         │
+│ - updateAssetWeight(address assetAddress, uint16 weight)    │
+│ - rebalance()                                               │
+│ - harvestYield()                                            │
+│ - collectFees()                                             │
+│ - pause()                                                   │
+│ - unpause()                                                 │
+│ - isRebalanceNeeded()                                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### IndexRegistry
+#### RWAAssetWrapper
 
-Manages the composition of the index, including token addresses and their weights.
+A wrapper contract that encapsulates RWA tokens and manages the allocation between the RWA asset and yield strategies.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     IndexRegistry                           │
+│                     RWAAssetWrapper                         │
 ├─────────────────────────────────────────────────────────────┤
 │ State Variables:                                            │
-│ - tokens: address[]                                         │
-│ - weights: mapping(address => uint256)                      │
-│ - totalWeight: uint256                                      │
+│ - rwaToken: IERC20                                          │
+│ - baseAsset: IERC20                                         │
+│ - priceOracle: IPriceOracle                                 │
+│ - dex: IDEX                                                 │
+│ - yieldStrategy: IYieldStrategy                             │
 │ - owner: address                                            │
-│ - dao: address                                              │
+│ - yieldAllocation: uint256                                  │
 ├─────────────────────────────────────────────────────────────┤
 │ Core Functions:                                             │
-│ - addToken(address token, uint256 weight)                   │
-│ - removeToken(address token)                                │
-│ - updateWeight(address token, uint256 newWeight)            │
-│ - getTokens() returns (address[])                           │
-│ - getWeight(address token) returns (uint256)                │
-│ - getTotalWeight() returns (uint256)                        │
+│ - allocateCapital(uint256 amount)                           │
+│ - withdrawCapital(uint256 amount)                           │
+│ - getValueInBaseAsset()                                     │
+│ - harvestYield()                                            │
+│ - setYieldAllocation(uint256 allocation)                    │
+│ - setYieldStrategy(address strategy)                        │
+│ - emergencyWithdraw()                                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### DAO Governance
+#### FeeManager
 
-Allows token holders to vote on proposals to change the index composition.
+Handles the calculation and collection of management and performance fees.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     DAOGovernance                           │
+│                     FeeManager                              │
 ├─────────────────────────────────────────────────────────────┤
 │ State Variables:                                            │
-│ - proposals: mapping(uint256 => Proposal)                   │
-│ - nextProposalId: uint256                                   │
-│ - votingPeriod: uint256                                     │
-│ - quorum: uint256                                           │
+│ - managementFeeRate: uint256                                │
+│ - performanceFeeRate: uint256                               │
+│ - highWaterMark: uint256                                    │
+│ - feeRecipient: address                                     │
+│ - owner: address                                            │
+├─────────────────────────────────────────────────────────────┤
+│ Core Functions:                                             │
+│ - collectFees(uint256 totalValue, uint256 timeElapsed)      │
+│ - calculateManagementFee(uint256 totalValue, uint256 timeElapsed) │
+│ - calculatePerformanceFee(uint256 totalValue)               │
+│ - setManagementFeeRate(uint256 newRate)                     │
+│ - setPerformanceFeeRate(uint256 newRate)                    │
+│ - setFeeRecipient(address newRecipient)                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### StableYieldStrategy
+
+Manages yield generation for idle capital, allowing the vault to earn returns on assets not currently allocated to RWA tokens.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     StableYieldStrategy                     │
+├─────────────────────────────────────────────────────────────┤
+│ State Variables:                                            │
+│ - baseAsset: IERC20                                         │
+│ - yieldSource: address                                      │
+│ - owner: address                                            │
+│ - totalDeposited: uint256                                   │
+├─────────────────────────────────────────────────────────────┤
+│ Core Functions:                                             │
+│ - deposit(uint256 amount)                                   │
+│ - withdraw(uint256 amount)                                  │
+│ - harvestYield()                                            │
+│ - getValueInBaseAsset()                                     │
+│ - emergencyWithdraw()                                       │
+│ - setYieldSource(address newSource)                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Deployment Scripts
+
+#### DeployIndexFundVaultV2
+
+Deploys a basic vault with minimal configuration.
+
+#### DeployMultiAssetVault
+
+Deploys a fully configured vault with multiple RWA assets and yield strategies, optimized to avoid stack-too-deep errors.                      │
 │ - indexRegistry: IIndexRegistry                             │
 ├─────────────────────────────────────────────────────────────┤
 │ Core Functions:                                             │
