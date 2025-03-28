@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/**
+ * @title ILiquidStaking
+ * @dev Interface for liquid staking protocols like Lido or Rocket Pool
+ */
+interface ILiquidStaking {
+    /**
+     * @dev Stakes the base asset and mints liquid staking tokens
+     * @param amount The amount of base asset to stake
+     * @return stakingTokenAmount The amount of liquid staking tokens minted
+     */
+    function stake(uint256 amount) external returns (uint256 stakingTokenAmount);
+    
+    /**
+     * @dev Unstakes liquid staking tokens and returns base asset
+     * @param amount The amount of liquid staking tokens to unstake
+     * @return baseAmount The amount of base asset received
+     */
+    function unstake(uint256 amount) external returns (uint256 baseAmount);
+    
+    /**
+     * @dev Gets the current exchange rate between staking tokens and base asset
+     * @param stakingTokenAmount The amount of staking tokens
+     * @return baseAmount The equivalent amount in base asset
+     */
+    function getBaseAssetValue(uint256 stakingTokenAmount) external view returns (uint256 baseAmount);
+    
+    /**
+     * @dev Gets the current APR of the staking protocol
+     * @return apr The current APR in basis points (e.g., 450 = 4.50%)
+     */
+    function getCurrentAPR() external view returns (uint256 apr);
+    
+    /**
+     * @dev Gets the total amount of base asset staked in the protocol
+     * @return totalStaked The total amount staked
+     */
+    function getTotalStaked() external view returns (uint256 totalStaked);
+}
