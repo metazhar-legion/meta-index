@@ -107,15 +107,8 @@ contract MockFeeManager is IFeeManager, Ownable {
             if (feePerShare > 0) {
                 // Calculate total performance fee based on total supply
                 uint256 performanceFee = (feePerShare * totalSupply) / 10**decimals;
-                
-                // Update high watermark
-                _highWaterMarks[vault] = currentSharePrice;
-                
                 return performanceFee;
             }
-            
-            // Update high watermark even if no fee is collected
-            _highWaterMarks[vault] = currentSharePrice;
         }
         
         return 0;
