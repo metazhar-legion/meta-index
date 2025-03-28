@@ -21,7 +21,52 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev Deployment script for a multi-asset vault using the new IndexFundVaultV2 architecture
  */
 contract DeployMultiAssetVault is Script {
+    // Storage variables to reduce stack depth
+    MockUSDC public usdc;
+    MockPriceOracle public priceOracle;
+    MockDEX public dex;
+    MockPerpetualTrading public perpetualTrading;
+    FeeManager public feeManager;
+    IndexFundVaultV2 public vault;
+    StableYieldStrategy public yieldStrategy;
+    address public deployer;
+    
     function run() external {
+        uint256 deployerPrivateKey = getPrivateKey();
+        
+        vm.startBroadcast(deployerPrivateKey);
+        deployer = vm.addr(deployerPrivateKey);
+
+        console.log("Deploying Multi-Asset Vault with IndexFundVaultV2 architecture...");
+        console.log("Deployer address:", deployer);
+
+        // Step 1: Deploy base infrastructure
+        deployBaseInfrastructure();
+        
+        // Step 2: Deploy vault and yield strategy
+        deployVaultAndYieldStrategy();
+        
+        // Step 3: Deploy S&P500 assets
+        RWAAssetWrapper sp500Wrapper = deploySP500Assets();
+        
+        // Step 4: Deploy NASDAQ assets
+        RWAAssetWrapper nasdaqWrapper = deployNasdaqAssets();
+        
+        // Step 5: Deploy Real Estate assets
+        RWAAssetWrapper realEstateWrapper = deployRealEstateAssets();
+        
+        // Step 6: Configure vault allocations
+        configureVaultAllocations(sp500Wrapper, nasdaqWrapper, realEstateWrapper);
+        
+        // Step 7: Deposit and rebalance
+        depositAndRebalance();
+        
+        vm.stopBroadcast();
+        
+        console.log("Multi-Asset Vault deployment complete!");
+    }
+    
+    function getPrivateKey() internal view returns (uint256) {
         uint256 deployerPrivateKey;
         
         // Try to get the private key from environment variable
@@ -34,14 +79,12 @@ contract DeployMultiAssetVault is Script {
             console.log("Using default Anvil private key");
         }
         
-        vm.startBroadcast(deployerPrivateKey);
-        address deployer = vm.addr(deployerPrivateKey);
-
-        console.log("Deploying Multi-Asset Vault with IndexFundVaultV2 architecture...");
-        console.log("Deployer address:", deployer);
-
+        return deployerPrivateKey;
+    }
+    
+    function deployBaseInfrastructure() internal {
         // Deploy mock USDC
-        MockUSDC usdc = new MockUSDC();
+        usdc = new MockUSDC();
         console.log("MockUSDC deployed at:", address(usdc));
         
         // Mint USDC to the deployer
@@ -49,23 +92,25 @@ contract DeployMultiAssetVault is Script {
         console.log("Minted 10,000,000 USDC to deployer");
         
         // Deploy price oracle
-        MockPriceOracle priceOracle = new MockPriceOracle(address(usdc));
+        priceOracle = new MockPriceOracle(address(usdc));
         console.log("MockPriceOracle deployed at:", address(priceOracle));
         
         // Deploy mock DEX
-        MockDEX dex = new MockDEX(address(priceOracle));
+        dex = new MockDEX(address(priceOracle));
         console.log("MockDEX deployed at:", address(dex));
         
         // Deploy mock perpetual trading platform
-        MockPerpetualTrading perpetualTrading = new MockPerpetualTrading(address(usdc));
+        perpetualTrading = new MockPerpetualTrading(address(usdc));
         console.log("MockPerpetualTrading deployed at:", address(perpetualTrading));
-        
+    }
+    
+    function deployVaultAndYieldStrategy() internal {
         // Deploy fee manager
-        FeeManager feeManager = new FeeManager();
+        feeManager = new FeeManager();
         console.log("FeeManager deployed at:", address(feeManager));
         
         // Deploy the new vault
-        IndexFundVaultV2 vault = new IndexFundVaultV2(
+        vault = new IndexFundVaultV2(
             usdc,
             IFeeManager(address(feeManager)),
             priceOracle,
@@ -81,7 +126,7 @@ contract DeployMultiAssetVault is Script {
         console.log("Transferred ownership of FeeManager to the vault");
         
         // Deploy yield strategy for all assets
-        StableYieldStrategy yieldStrategy = new StableYieldStrategy(
+        yieldStrategy = new StableYieldStrategy(
             "Stable Yield",
             address(usdc),
             address(0), // No actual yield protocol in mock
@@ -90,6 +135,12 @@ contract DeployMultiAssetVault is Script {
         );
         console.log("StableYieldStrategy deployed at:", address(yieldStrategy));
         
+        // Transfer ownership of Yield Strategy to the vault
+        yieldStrategy.transferOwnership(address(vault));
+        console.log("Transferred ownership of StableYieldStrategy to vault");
+    }
+    
+    function deploySP500Assets() internal returns (RWAAssetWrapper) {
         // Deploy RWA Synthetic S&P500 token
         RWASyntheticSP500 rwaSP500 = new RWASyntheticSP500(
             address(usdc),
@@ -116,13 +167,16 @@ contract DeployMultiAssetVault is Script {
         rwaSP500.transferOwnership(address(sp500Wrapper));
         console.log("Transferred ownership of RWA S&P500 to its wrapper");
         
+        return sp500Wrapper;
+    }
+    
+    function deployNasdaqAssets() internal returns (RWAAssetWrapper) {
         // Deploy a synthetic NASDAQ token
         RWASyntheticSP500 rwaNasdaq = new RWASyntheticSP500(
             address(usdc),
             address(perpetualTrading),
             address(priceOracle)
         );
-        // We can't set name after deployment, so we'll just use the default name
         console.log("Synthetic NASDAQ deployed at:", address(rwaNasdaq));
         
         // Set price for NASDAQ in the oracle
@@ -143,13 +197,16 @@ contract DeployMultiAssetVault is Script {
         rwaNasdaq.transferOwnership(address(nasdaqWrapper));
         console.log("Transferred ownership of NASDAQ to its wrapper");
         
+        return nasdaqWrapper;
+    }
+    
+    function deployRealEstateAssets() internal returns (RWAAssetWrapper) {
         // Deploy a synthetic Real Estate token
         RWASyntheticSP500 rwaRealEstate = new RWASyntheticSP500(
             address(usdc),
             address(perpetualTrading),
             address(priceOracle)
         );
-        // We can't set name after deployment, so we'll just use the default name
         console.log("Synthetic Real Estate deployed at:", address(rwaRealEstate));
         
         // Set price for Real Estate in the oracle
@@ -170,16 +227,22 @@ contract DeployMultiAssetVault is Script {
         rwaRealEstate.transferOwnership(address(realEstateWrapper));
         console.log("Transferred ownership of Real Estate to its wrapper");
         
-        // Transfer ownership of Yield Strategy to the vault (single yield strategy for all assets)
-        yieldStrategy.transferOwnership(address(vault));
-        console.log("Transferred ownership of StableYieldStrategy to vault");
-        
+        return realEstateWrapper;
+    }
+    
+    function configureVaultAllocations(
+        RWAAssetWrapper sp500Wrapper,
+        RWAAssetWrapper nasdaqWrapper,
+        RWAAssetWrapper realEstateWrapper
+    ) internal {
         // Add the asset wrappers to the vault with appropriate allocations
         vault.addAsset(address(sp500Wrapper), 5000);      // 50% S&P500
         vault.addAsset(address(nasdaqWrapper), 3000);     // 30% NASDAQ
         vault.addAsset(address(realEstateWrapper), 2000); // 20% Real Estate
         console.log("Added all asset wrappers to the vault with their allocations");
-        
+    }
+    
+    function depositAndRebalance() internal {
         // Approve the vault to spend USDC
         usdc.approve(address(vault), 1_000_000 * 1e6); // 1M USDC
         console.log("Approved vault to spend 1,000,000 USDC");
@@ -195,9 +258,5 @@ contract DeployMultiAssetVault is Script {
         // Force a rebalance to allocate assets
         vault.rebalance();
         console.log("Forced rebalance to allocate assets");
-        
-        vm.stopBroadcast();
-        
-        console.log("Multi-Asset Vault deployment complete!");
     }
 }
