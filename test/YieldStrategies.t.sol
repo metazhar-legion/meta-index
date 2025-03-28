@@ -142,7 +142,7 @@ contract YieldStrategiesTest is Test {
         
         // Initial balances
         uint256 initialUserBalance = usdc.balanceOf(user1);
-        uint256 initialStrategyBalance = usdc.balanceOf(address(lendingStrategy));
+        // We'll verify the user balance change, no need to track strategy balance
         
         // Deposit
         uint256 shares = lendingStrategy.deposit(DEPOSIT_AMOUNT);
@@ -163,7 +163,7 @@ contract YieldStrategiesTest is Test {
         
         // Initial balances
         uint256 initialUserBalance = usdc.balanceOf(user1);
-        uint256 initialStrategyBalance = usdc.balanceOf(address(tBillStrategy));
+        // We'll verify the user balance change, no need to track strategy balance
         
         // Deposit
         uint256 shares = tBillStrategy.deposit(DEPOSIT_AMOUNT);
@@ -184,7 +184,7 @@ contract YieldStrategiesTest is Test {
         
         // Initial balances
         uint256 initialUserBalance = usdc.balanceOf(user1);
-        uint256 initialStrategyBalance = usdc.balanceOf(address(stakingStrategy));
+        // We'll verify the user balance change, no need to track strategy balance
         
         // Deposit
         uint256 shares = stakingStrategy.deposit(DEPOSIT_AMOUNT);

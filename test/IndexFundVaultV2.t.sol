@@ -232,7 +232,7 @@ contract IndexFundVaultV2Test is Test {
         vault.rebalance();
         
         // Check assets were allocated according to weights
-        uint256 totalAssets = vault.totalAssets();
+        // We don't need to check totalAssets here, just the allocation
         uint256 rwaValue = rwaWrapper.getValueInBaseAsset();
         
         // Since we mocked the value, we can use an exact assertion
@@ -316,7 +316,7 @@ contract IndexFundVaultV2Test is Test {
         vault.rebalance();
         
         // Check assets were allocated according to weights
-        uint256 totalAssets = vault.totalAssets();
+        // We don't need to check totalAssets here, just the allocation
         uint256 rwa1Value = rwaWrapper.getValueInBaseAsset();
         uint256 rwa2Value = rwaWrapper2.getValueInBaseAsset();
         
