@@ -6,7 +6,7 @@ import "forge-std/console.sol";
 import {IndexFundVaultV2} from "../src/IndexFundVaultV2.sol";
 import {RWAAssetWrapper} from "../src/RWAAssetWrapper.sol";
 import {RWASyntheticSP500} from "../src/RWASyntheticSP500.sol";
-import {StableYieldStrategy} from "../src/StableYieldStrategy.sol";
+import {StablecoinLendingStrategy} from "../src/StablecoinLendingStrategy.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
@@ -76,15 +76,15 @@ contract DeployIndexFundVaultV2 is Script {
         priceOracle.setPrice(address(rwaSP500), sp500Price);
         console.log("Set RWA S&P500 price to $5000 in the oracle");
         
-        // Deploy StableYieldStrategy
-        StableYieldStrategy yieldStrategy = new StableYieldStrategy(
+        // Deploy StablecoinLendingStrategy
+        StablecoinLendingStrategy yieldStrategy = new StablecoinLendingStrategy(
             "Stable Yield",
             address(usdc),
-            address(0), // No actual yield protocol in mock
-            address(usdc), // Use USDC as mock yield token
-            deployer // Fee recipient
+            address(0x1), // Mock lending protocol address - replace with real protocol in production
+            address(usdc), // Using USDC as yield token for simplicity - replace with real token in production
+            address(this) // Fee recipient
         );
-        console.log("StableYieldStrategy deployed at:", address(yieldStrategy));
+        console.log("StablecoinLendingStrategy deployed at:", address(yieldStrategy));
         
         // Deploy the new vault
         IndexFundVaultV2 vault = new IndexFundVaultV2(
@@ -118,7 +118,7 @@ contract DeployIndexFundVaultV2 is Script {
         
         // Transfer ownership of Yield Strategy to the RWA Asset Wrapper
         yieldStrategy.transferOwnership(address(rwaWrapper));
-        console.log("Transferred ownership of StableYieldStrategy to RWAAssetWrapper");
+        console.log("Transferred ownership of StablecoinLendingStrategy to RWAAssetWrapper");
         
         // Add the RWA Asset Wrapper to the vault with 80% allocation
         vault.addAsset(address(rwaWrapper), 8000); // 80% allocation

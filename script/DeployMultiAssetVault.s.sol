@@ -6,7 +6,7 @@ import "forge-std/console.sol";
 import {IndexFundVaultV2} from "../src/IndexFundVaultV2.sol";
 import {RWAAssetWrapper} from "../src/RWAAssetWrapper.sol";
 import {RWASyntheticSP500} from "../src/RWASyntheticSP500.sol";
-import {StableYieldStrategy} from "../src/StableYieldStrategy.sol";
+import {StablecoinLendingStrategy} from "../src/StablecoinLendingStrategy.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
@@ -28,7 +28,7 @@ contract DeployMultiAssetVault is Script {
     MockPerpetualTrading public perpetualTrading;
     FeeManager public feeManager;
     IndexFundVaultV2 public vault;
-    StableYieldStrategy public yieldStrategy;
+    StablecoinLendingStrategy public yieldStrategy;
     address public deployer;
     
     function run() external {
@@ -126,18 +126,18 @@ contract DeployMultiAssetVault is Script {
         console.log("Transferred ownership of FeeManager to the vault");
         
         // Deploy yield strategy for all assets
-        yieldStrategy = new StableYieldStrategy(
+        yieldStrategy = new StablecoinLendingStrategy(
             "Stable Yield",
             address(usdc),
-            address(0), // No actual yield protocol in mock
-            address(usdc), // Use USDC as mock yield token
-            deployer // Fee recipient
+            address(0x1), // Mock lending protocol address - replace with real protocol in production
+            address(usdc), // Using USDC as yield token for simplicity - replace with real token in production
+            address(this) // Fee recipient
         );
-        console.log("StableYieldStrategy deployed at:", address(yieldStrategy));
+        console.log("StablecoinLendingStrategy deployed at:", address(yieldStrategy));
         
         // Transfer ownership of Yield Strategy to the vault
         yieldStrategy.transferOwnership(address(vault));
-        console.log("Transferred ownership of StableYieldStrategy to vault");
+        console.log("Transferred ownership of StablecoinLendingStrategy to vault");
     }
     
     function deploySP500Assets() internal returns (RWAAssetWrapper) {
