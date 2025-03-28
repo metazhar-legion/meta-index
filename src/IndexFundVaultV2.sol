@@ -197,13 +197,21 @@ contract IndexFundVaultV2 is BaseVault {
         uint256 totalValue = totalAssets();
         if (totalValue == 0) return;
         
+        // Cache array length to avoid multiple storage reads
+        uint256 length = assetList.length;
+        
+        // Pre-calculate base asset balance once to avoid multiple external calls
+        IERC20 baseAsset = IERC20(asset());
+        uint256 baseAssetBalance = baseAsset.balanceOf(address(this));
+        
         // Calculate target allocations
-        for (uint256 i = 0; i < assetList.length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             address assetAddress = assetList[i];
             AssetInfo storage assetInfo = assets[assetAddress];
             
             if (!assetInfo.active) continue;
             
+            // Use uint32 weight directly to avoid unnecessary conversion
             uint256 targetValue = (totalValue * assetInfo.weight) / BASIS_POINTS;
             uint256 currentValue = assetInfo.wrapper.getValueInBaseAsset();
             
@@ -212,19 +220,26 @@ contract IndexFundVaultV2 is BaseVault {
                 uint256 amountToAllocate = targetValue - currentValue;
                 
                 // Ensure we have enough base asset
-                uint256 baseAssetBalance = IERC20(asset()).balanceOf(address(this));
                 if (baseAssetBalance < amountToAllocate) {
                     // Withdraw from other assets
                     _withdrawFromOtherAssets(assetAddress, amountToAllocate - baseAssetBalance);
+                    // Update base asset balance after withdrawal
+                    baseAssetBalance = baseAsset.balanceOf(address(this));
                 }
                 
-                // Allocate to the asset
-                IERC20(asset()).approve(assetAddress, amountToAllocate);
-                assetInfo.wrapper.allocateCapital(amountToAllocate);
+                // Only approve what we can actually allocate
+                uint256 actualAllocation = amountToAllocate > baseAssetBalance ? baseAssetBalance : amountToAllocate;
+                if (actualAllocation > 0) {
+                    baseAsset.approve(assetAddress, actualAllocation);
+                    assetInfo.wrapper.allocateCapital(actualAllocation);
+                    baseAssetBalance -= actualAllocation;
+                }
             } else if (currentValue > targetValue) {
                 // Need to withdraw from this asset
                 uint256 amountToWithdraw = currentValue - targetValue;
                 assetInfo.wrapper.withdrawCapital(amountToWithdraw);
+                // Update base asset balance after withdrawal
+                baseAssetBalance += amountToWithdraw;
             }
         }
         
