@@ -279,12 +279,14 @@ contract TokenizedTBillStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
      * @param amount The amount to deposit
      */
     function _depositToTBillProtocol(uint256 amount) internal {
-        // In a real implementation, this would call the T-Bill protocol's deposit function
+        // Transfer base asset to T-Bill protocol
+        baseAsset.safeTransfer(tBillProtocol, amount);
+        
+        // In a real implementation, the protocol would automatically mint T-Bill tokens to this address
         // For example:
         // ITBillToken(tBillProtocol).deposit(amount);
         
-        // For mock implementation, just simulate the deposit by transferring tokens
-        baseAsset.safeTransfer(tBillProtocol, amount);
+        // For testing purposes, the test will manually transfer T-Bill tokens to simulate this behavior
     }
     
     /**
@@ -296,7 +298,12 @@ contract TokenizedTBillStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
         // For example:
         // ITBillToken(tBillProtocol).redeem(amount);
         
-        // For mock implementation, just simulate the withdrawal
-        IERC20(tBillProtocol).safeTransfer(address(this), amount);
+        // For testing purposes, we would burn T-Bill tokens and receive base assets
+        // The test will have already transferred the base assets to this contract
+        // to simulate the withdrawal
+        
+        // Simulate burning T-Bill tokens by transferring them back to the protocol
+        uint256 tBillTokensToBurn = amount;
+        tBillToken.safeTransfer(tBillProtocol, tBillTokensToBurn);
     }
 }

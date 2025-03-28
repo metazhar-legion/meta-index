@@ -278,12 +278,14 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
      * @param amount The amount to deposit
      */
     function _depositToStakingProtocol(uint256 amount) internal {
-        // In a real implementation, this would call the staking protocol's stake function
+        // Transfer base asset to staking protocol
+        baseAsset.safeTransfer(stakingProtocol, amount);
+        
+        // In a real implementation, the protocol would automatically mint staking tokens to this address
         // For example:
         // ILiquidStaking(stakingProtocol).stake(amount);
         
-        // For mock implementation, just simulate the deposit by transferring tokens
-        baseAsset.safeTransfer(stakingProtocol, amount);
+        // For testing purposes, the test will manually transfer staking tokens to simulate this behavior
     }
     
     /**
@@ -295,7 +297,12 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
         // For example:
         // ILiquidStaking(stakingProtocol).unstake(amount);
         
-        // For mock implementation, just simulate the withdrawal
-        IERC20(stakingProtocol).safeTransfer(address(this), amount);
+        // For testing purposes, we would burn staking tokens and receive base assets
+        // The test will have already transferred the base assets to this contract
+        // to simulate the withdrawal
+        
+        // Simulate burning staking tokens by transferring them back to the protocol
+        uint256 stakingTokensToBurn = amount;
+        stakingToken.safeTransfer(stakingProtocol, stakingTokensToBurn);
     }
 }
