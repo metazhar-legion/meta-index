@@ -94,7 +94,7 @@ contract ChainlinkPriceOracleTest is Test {
         oracle.setPriceFeed(address(weth), address(ethAggregator));
     }
     
-    function test_GetPrice() public {
+    function test_GetPrice() public view {
         // Test BTC price
         uint256 btcPrice = oracle.getPrice(address(wbtc));
         assertEq(btcPrice, 60000 * 1e18); // Converted to 18 decimals
@@ -108,7 +108,7 @@ contract ChainlinkPriceOracleTest is Test {
         assertEq(usdcPrice, 1e18); // Base asset price is always 1
     }
     
-    function test_ConvertToBaseAsset() public {
+    function test_ConvertToBaseAsset() public view {
         // Test BTC to USDC conversion
         uint256 btcAmount = 1 * 1e8; // 1 BTC
         uint256 usdcAmount = oracle.convertToBaseAsset(address(wbtc), btcAmount);
@@ -120,7 +120,7 @@ contract ChainlinkPriceOracleTest is Test {
         assertEq(usdcAmount, 30000 * 1e6); // 30,000 USDC
     }
     
-    function test_ConvertFromBaseAsset() public {
+    function test_ConvertFromBaseAsset() public view {
         // Test USDC to BTC conversion
         uint256 usdcAmount = 60000 * 1e6; // 60,000 USDC
         uint256 btcAmount = oracle.convertFromBaseAsset(address(wbtc), usdcAmount);
