@@ -13,6 +13,7 @@ import {MockDEX} from "../src/mocks/MockDEX.sol";
 import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
 import {FeeManager} from "../src/FeeManager.sol";
 import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title DeployIndexFundVaultV2
@@ -76,15 +77,25 @@ contract DeployIndexFundVaultV2 is Script {
         console.log("Set RWA S&P500 price to $5000 in the oracle");
         
         // Deploy StableYieldStrategy
-        StableYieldStrategy yieldStrategy = new StableYieldStrategy(address(usdc));
+        StableYieldStrategy yieldStrategy = new StableYieldStrategy(
+            "Stable Yield",
+            address(usdc),
+            address(0), // No actual yield protocol in mock
+            address(usdc), // Use USDC as mock yield token
+            deployer // Fee recipient
+        );
         console.log("StableYieldStrategy deployed at:", address(yieldStrategy));
         
         // Deploy the new vault
         IndexFundVaultV2 vault = new IndexFundVaultV2(
             usdc,
             IFeeManager(address(feeManager)),
-            24 hours // 1 day rebalance interval
+            priceOracle,
+            dex
         );
+        
+        // Set rebalance interval
+        vault.setRebalanceInterval(24 hours);
         console.log("IndexFundVaultV2 deployed at:", address(vault));
         
         // Transfer ownership of the fee manager to the vault
@@ -93,10 +104,11 @@ contract DeployIndexFundVaultV2 is Script {
         
         // Deploy RWA Asset Wrapper for S&P500
         RWAAssetWrapper rwaWrapper = new RWAAssetWrapper(
-            address(usdc),
-            address(rwaSP500),
-            address(priceOracle),
-            address(yieldStrategy)
+            "S&P500 Wrapper",
+            IERC20(address(usdc)),
+            rwaSP500,
+            yieldStrategy,
+            priceOracle
         );
         console.log("RWAAssetWrapper for S&P500 deployed at:", address(rwaWrapper));
         

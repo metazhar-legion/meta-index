@@ -14,6 +14,7 @@ import {MockPerpetualTrading} from "../src/mocks/MockPerpetualTrading.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {FeeManager} from "../src/FeeManager.sol";
 import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title DeployMultiAssetVault
@@ -67,8 +68,12 @@ contract DeployMultiAssetVault is Script {
         IndexFundVaultV2 vault = new IndexFundVaultV2(
             usdc,
             IFeeManager(address(feeManager)),
-            24 hours // 1 day rebalance interval
+            priceOracle,
+            dex
         );
+        
+        // Set rebalance interval
+        vault.setRebalanceInterval(24 hours);
         console.log("IndexFundVaultV2 deployed at:", address(vault));
         
         // Transfer ownership of the fee manager to the vault
@@ -76,7 +81,13 @@ contract DeployMultiAssetVault is Script {
         console.log("Transferred ownership of FeeManager to the vault");
         
         // Deploy yield strategy for all assets
-        StableYieldStrategy yieldStrategy = new StableYieldStrategy(address(usdc));
+        StableYieldStrategy yieldStrategy = new StableYieldStrategy(
+            "Stable Yield",
+            address(usdc),
+            address(0), // No actual yield protocol in mock
+            address(usdc), // Use USDC as mock yield token
+            deployer // Fee recipient
+        );
         console.log("StableYieldStrategy deployed at:", address(yieldStrategy));
         
         // Deploy RWA Synthetic S&P500 token
@@ -93,10 +104,11 @@ contract DeployMultiAssetVault is Script {
         
         // Deploy RWA Asset Wrapper for S&P500
         RWAAssetWrapper sp500Wrapper = new RWAAssetWrapper(
-            address(usdc),
-            address(rwaSP500),
-            address(priceOracle),
-            address(yieldStrategy)
+            "S&P500 Wrapper",
+            IERC20(address(usdc)),
+            rwaSP500,
+            yieldStrategy,
+            priceOracle
         );
         console.log("RWAAssetWrapper for S&P500 deployed at:", address(sp500Wrapper));
         
@@ -110,7 +122,7 @@ contract DeployMultiAssetVault is Script {
             address(perpetualTrading),
             address(priceOracle)
         );
-        rwaNasdaq.setName("Synthetic NASDAQ", "sNASDAQ");
+        // We can't set name after deployment, so we'll just use the default name
         console.log("Synthetic NASDAQ deployed at:", address(rwaNasdaq));
         
         // Set price for NASDAQ in the oracle
@@ -119,10 +131,11 @@ contract DeployMultiAssetVault is Script {
         
         // Deploy RWA Asset Wrapper for NASDAQ
         RWAAssetWrapper nasdaqWrapper = new RWAAssetWrapper(
-            address(usdc),
-            address(rwaNasdaq),
-            address(priceOracle),
-            address(yieldStrategy)
+            "NASDAQ Wrapper",
+            IERC20(address(usdc)),
+            rwaNasdaq,
+            yieldStrategy,
+            priceOracle
         );
         console.log("RWAAssetWrapper for NASDAQ deployed at:", address(nasdaqWrapper));
         
@@ -136,7 +149,7 @@ contract DeployMultiAssetVault is Script {
             address(perpetualTrading),
             address(priceOracle)
         );
-        rwaRealEstate.setName("Synthetic Real Estate", "sREIT");
+        // We can't set name after deployment, so we'll just use the default name
         console.log("Synthetic Real Estate deployed at:", address(rwaRealEstate));
         
         // Set price for Real Estate in the oracle
@@ -145,10 +158,11 @@ contract DeployMultiAssetVault is Script {
         
         // Deploy RWA Asset Wrapper for Real Estate
         RWAAssetWrapper realEstateWrapper = new RWAAssetWrapper(
-            address(usdc),
-            address(rwaRealEstate),
-            address(priceOracle),
-            address(yieldStrategy)
+            "Real Estate Wrapper",
+            IERC20(address(usdc)),
+            rwaRealEstate,
+            yieldStrategy,
+            priceOracle
         );
         console.log("RWAAssetWrapper for Real Estate deployed at:", address(realEstateWrapper));
         

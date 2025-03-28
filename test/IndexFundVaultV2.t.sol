@@ -129,7 +129,7 @@ contract IndexFundVaultV2Test is Test {
         vm.stopPrank();
     }
     
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(address(vault.asset()), address(mockUSDC));
         assertEq(address(vault.feeManager()), address(mockFeeManager));
         assertEq(address(vault.priceOracle()), address(mockPriceOracle));

@@ -59,16 +59,15 @@ contract MockFeeManager is IFeeManager, Ownable {
         address vault,
         uint256 totalAssetsValue,
         uint256 currentTimestamp
-    ) external override returns (uint256) {
+    ) external view override returns (uint256) {
         if (useFixedFees) {
             return mockManagementFee;
         }
         
         uint256 lastTimestamp = _lastFeeCollectionTimestamps[vault];
         
-        // If this is the first fee calculation, set the timestamp and return 0
+        // For view function, we can't modify state, so we just calculate the fee
         if (lastTimestamp == 0) {
-            _lastFeeCollectionTimestamps[vault] = currentTimestamp;
             return 0;
         }
         
@@ -76,9 +75,6 @@ contract MockFeeManager is IFeeManager, Ownable {
         
         // Management fee is prorated based on time since last collection
         uint256 managementFee = (totalAssetsValue * _managementFeePercentage * timeSinceLastCollection) / (BASIS_POINTS * 365 days);
-        
-        // Update the last collection timestamp
-        _lastFeeCollectionTimestamps[vault] = currentTimestamp;
         
         return managementFee;
     }
@@ -96,7 +92,7 @@ contract MockFeeManager is IFeeManager, Ownable {
         uint256 currentSharePrice,
         uint256 totalSupply,
         uint8 decimals
-    ) external override returns (uint256) {
+    ) external view override returns (uint256) {
         if (useFixedFees) {
             return mockPerformanceFee;
         }
@@ -181,7 +177,7 @@ contract MockFeeManager is IFeeManager, Ownable {
     function collectFees(
         uint256 totalValue,
         uint256 timeElapsed
-    ) external override returns (uint256 managementFee, uint256 performanceFee) {
+    ) external view override returns (uint256 managementFee, uint256 performanceFee) {
         if (useFixedFees) {
             return (mockManagementFee, mockPerformanceFee);
         }

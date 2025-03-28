@@ -29,7 +29,7 @@ interface IFeeManager {
         address vault,
         uint256 totalAssetsValue,
         uint256 currentTimestamp
-    ) external returns (uint256 managementFee);
+    ) external view returns (uint256 managementFee);
     
     /**
      * @dev Calculates performance fee
@@ -44,7 +44,7 @@ interface IFeeManager {
         uint256 currentSharePrice,
         uint256 totalSupply,
         uint8 decimals
-    ) external returns (uint256 performanceFee);
+    ) external view returns (uint256 performanceFee);
     
     /**
      * @dev Manually set the high water mark for a vault
@@ -63,7 +63,7 @@ interface IFeeManager {
     function collectFees(
         uint256 totalValue,
         uint256 timeElapsed
-    ) external returns (uint256 managementFee, uint256 performanceFee);
+    ) external view returns (uint256 managementFee, uint256 performanceFee);
     
     /**
      * @dev Get the fee recipient address

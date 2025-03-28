@@ -229,7 +229,7 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
         uint256 rwaPrice = priceOracle.getPrice(address(rwaToken));
         
         // Calculate the value - use 18 decimals for price and convert to base asset decimals
-        uint8 baseDecimals = IERC20Metadata(address(baseAsset)).decimals();
+        // Note: We directly use 10**18 for division as we're working with 18 decimal places for price
         return (rwaBalance * rwaPrice) / 10**18;
     }
     

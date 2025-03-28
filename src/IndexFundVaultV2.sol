@@ -22,17 +22,17 @@ contract IndexFundVaultV2 is BaseVault {
     using SafeERC20 for IERC20;
     using Math for uint256;
     
-    // Struct to hold asset information
-    struct AssetInfo {
-        IAssetWrapper wrapper;
-        uint256 weight; // Weight in basis points (e.g., 2000 = 20%)
-        bool active;
-    }
-    
-    // Make the struct public so it can be accessed in tests
-    
     // Constants
     uint256 public constant BASIS_POINTS = 10000; // 100% in basis points
+    
+    // Optimized struct to hold asset information
+    // Pack related variables together to use fewer storage slots
+    struct AssetInfo {
+        IAssetWrapper wrapper;  // 20 bytes (address)
+        uint32 weight;         // 4 bytes (max 10000 for basis points, so uint32 is sufficient)
+        bool active;           // 1 byte
+        // 7 bytes of padding will be added by the compiler
+    }
     
     // Asset registry
     address[] public assetList;
@@ -42,12 +42,12 @@ contract IndexFundVaultV2 is BaseVault {
     IPriceOracle public priceOracle;
     IDEX public dex;
     
-    // Minimum time between rebalances
-    uint256 public rebalanceInterval = 1 days;
-    uint256 public lastRebalance;
+    // Pack time-related variables into a single storage slot
+    uint32 public rebalanceInterval = uint32(1 days);
+    uint32 public lastRebalance;
     
-    // Rebalance threshold in basis points (e.g., 500 = 5%)
-    uint256 public rebalanceThreshold = 500;
+    // Rebalance threshold (max 10000 basis points = 100%)
+    uint32 public rebalanceThreshold = 500;
     
     // Events
     event AssetAdded(address indexed assetAddress, uint256 weight);
@@ -68,7 +68,7 @@ contract IndexFundVaultV2 is BaseVault {
      */
     function getAssetInfo(address assetAddress) external view returns (address wrapper, uint256 weight, bool active) {
         AssetInfo memory info = assets[assetAddress];
-        return (address(info.wrapper), info.weight, info.active);
+        return (address(info.wrapper), uint256(info.weight), info.active);
     }
     
     /**
@@ -91,7 +91,7 @@ contract IndexFundVaultV2 is BaseVault {
         
         priceOracle = priceOracle_;
         dex = dex_;
-        lastRebalance = block.timestamp;
+        lastRebalance = uint32(block.timestamp);
     }
     
     /**
@@ -115,7 +115,7 @@ contract IndexFundVaultV2 is BaseVault {
         // Add the asset to the registry
         assets[assetAddress] = AssetInfo({
             wrapper: wrapper,
-            weight: weight,
+            weight: uint32(weight),
             active: true
         });
         
@@ -171,7 +171,7 @@ contract IndexFundVaultV2 is BaseVault {
         if (totalWeight > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         // Update the weight
-        assets[assetAddress].weight = newWeight;
+        assets[assetAddress].weight = uint32(newWeight);
         
         emit AssetWeightUpdated(assetAddress, oldWeight, newWeight);
     }
@@ -183,10 +183,13 @@ contract IndexFundVaultV2 is BaseVault {
         if (paused()) revert CommonErrors.OperationPaused();
         
         // Check if enough time has passed since the last rebalance
-        if (block.timestamp < lastRebalance + rebalanceInterval) {
+        if (block.timestamp < uint256(lastRebalance) + uint256(rebalanceInterval)) {
             // Allow rebalancing if the deviation exceeds the threshold
             if (!isRebalanceNeeded()) revert CommonErrors.TooEarly();
         }
+        
+        // Update last rebalance timestamp (safely cast to uint32)
+        lastRebalance = uint32(block.timestamp);
         
         // Collect fees before rebalancing
         collectFees();
@@ -225,7 +228,7 @@ contract IndexFundVaultV2 is BaseVault {
             }
         }
         
-        lastRebalance = block.timestamp;
+        lastRebalance = uint32(block.timestamp);
         emit Rebalanced();
     }
     
@@ -268,8 +271,10 @@ contract IndexFundVaultV2 is BaseVault {
      * @param interval The new interval in seconds
      */
     function setRebalanceInterval(uint256 interval) external onlyOwner {
+        if (interval > type(uint32).max) revert CommonErrors.ValueTooHigh();
+        
         uint256 oldInterval = rebalanceInterval;
-        rebalanceInterval = interval;
+        rebalanceInterval = uint32(interval);
         
         emit RebalanceIntervalUpdated(oldInterval, interval);
     }
@@ -282,7 +287,7 @@ contract IndexFundVaultV2 is BaseVault {
         if (threshold > BASIS_POINTS) revert CommonErrors.ValueTooHigh();
         
         uint256 oldThreshold = rebalanceThreshold;
-        rebalanceThreshold = threshold;
+        rebalanceThreshold = uint32(threshold);
         
         emit RebalanceThresholdUpdated(oldThreshold, threshold);
     }
@@ -318,9 +323,16 @@ contract IndexFundVaultV2 is BaseVault {
      * @return totalWeight The total weight in basis points
      */
     function getTotalWeight() public view returns (uint256 totalWeight) {
-        for (uint256 i = 0; i < assetList.length; i++) {
-            if (assets[assetList[i]].active) {
-                totalWeight += assets[assetList[i]].weight;
+        // Cache the length to avoid multiple storage reads
+        uint256 length = assetList.length;
+        
+        for (uint256 i = 0; i < length; i++) {
+            // Cache the asset address to avoid multiple storage reads
+            address assetAddress = assetList[i];
+            AssetInfo storage assetInfo = assets[assetAddress];
+            
+            if (assetInfo.active) {
+                totalWeight += assetInfo.weight;
             }
         }
         return totalWeight;
@@ -331,11 +343,15 @@ contract IndexFundVaultV2 is BaseVault {
      * @return activeAssets Array of active asset addresses
      */
     function getActiveAssets() external view returns (address[] memory activeAssets) {
+        // Cache the length to avoid multiple storage reads
+        uint256 length = assetList.length;
         uint256 activeCount = 0;
         
         // Count active assets
-        for (uint256 i = 0; i < assetList.length; i++) {
-            if (assets[assetList[i]].active) {
+        for (uint256 i = 0; i < length; i++) {
+            // Cache the asset address to avoid multiple storage reads
+            address assetAddress = assetList[i];
+            if (assets[assetAddress].active) {
                 activeCount++;
             }
         }
@@ -344,9 +360,10 @@ contract IndexFundVaultV2 is BaseVault {
         activeAssets = new address[](activeCount);
         uint256 index = 0;
         
-        for (uint256 i = 0; i < assetList.length; i++) {
-            if (assets[assetList[i]].active) {
-                activeAssets[index] = assetList[i];
+        for (uint256 i = 0; i < length; i++) {
+            address assetAddress = assetList[i];
+            if (assets[assetAddress].active) {
+                activeAssets[index] = assetAddress;
                 index++;
             }
         }
