@@ -39,7 +39,7 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
      */
     function addAdapter(address adapter) external onlyOwner {
         if (adapter == address(0)) revert CommonErrors.ZeroAddress();
-        if (isAdapter[adapter]) revert CommonErrors.AlreadyExists();
+        if (isAdapter[adapter]) revert CommonErrors.InvalidValue();
         
         IDEXAdapter dexAdapter = IDEXAdapter(adapter);
         dexAdapters.push(dexAdapter);

@@ -44,7 +44,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
      */
     function addAdapter(address adapter) external onlyOwner {
         if (adapter == address(0)) revert CommonErrors.ZeroAddress();
-        if (isAdapter[adapter]) revert CommonErrors.AlreadyExists();
+        if (isAdapter[adapter]) revert CommonErrors.InvalidValue();
         
         IPerpetualAdapter perpAdapter = IPerpetualAdapter(adapter);
         perpetualAdapters.push(perpAdapter);
@@ -188,7 +188,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
      * @param positionId The identifier for the position
      * @return position The position information
      */
-    function getPosition(bytes32 positionId) external view override returns (Position memory position) {
+    function getPosition(bytes32 positionId) external view override returns (Position memory) {
         address adapterAddress = positionToAdapter[positionId];
         if (adapterAddress == address(0)) revert CommonErrors.NotFound();
         
@@ -213,7 +213,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
      * @param marketId The identifier for the market
      * @return price The current market price
      */
-    function getMarketPrice(bytes32 marketId) external view override returns (uint256 price) {
+    function getMarketPrice(bytes32 marketId) external view returns (uint256 price) {
         IPerpetualAdapter bestPlatform = _getBestPlatformForMarket(marketId);
         if (address(bestPlatform) == address(0)) revert CommonErrors.NotFound();
         
@@ -225,7 +225,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
      * @param positionId The identifier for the position
      * @return pnl The profit or loss (can be negative)
      */
-    function calculatePnL(bytes32 positionId) external view override returns (int256 pnl) {
+    function calculatePnL(bytes32 positionId) external view returns (int256 pnl) {
         address adapterAddress = positionToAdapter[positionId];
         if (adapterAddress == address(0)) revert CommonErrors.NotFound();
         
