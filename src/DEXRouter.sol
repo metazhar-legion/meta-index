@@ -152,11 +152,11 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
         if (address(bestDex) == address(0)) revert CommonErrors.NotFound();
         
         // Transfer tokens from the user to this contract
-        IERC20(fromToken).safeTransferFrom(msg.sender, address(this), fromAmount);
+        SafeERC20.safeTransferFrom(IERC20(fromToken), msg.sender, address(this), fromAmount);
         
         // Approve the DEX to spend the tokens
-        IERC20(fromToken).safeApprove(address(bestDex), 0);
-        IERC20(fromToken).safeApprove(address(bestDex), fromAmount);
+        SafeERC20.safeApprove(IERC20(fromToken), address(bestDex), 0);
+        SafeERC20.safeApprove(IERC20(fromToken), address(bestDex), fromAmount);
         
         // Execute the swap
         toAmount = bestDex.swap(fromToken, toToken, fromAmount, minToAmount, msg.sender);
