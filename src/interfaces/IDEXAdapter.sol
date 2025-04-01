@@ -51,5 +51,5 @@ interface IDEXAdapter {
      * @dev Gets the name of the DEX
      * @return name The name of the DEX
      */
-    function getDexName() external pure returns (string memory name);
+    function getDexName() external view returns (string memory name);
 }

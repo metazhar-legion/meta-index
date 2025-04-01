@@ -79,7 +79,7 @@ interface IPerpetualAdapter {
      * @dev Gets the name of the perpetual trading platform
      * @return name The name of the platform
      */
-    function getPlatformName() external pure returns (string memory name);
+    function getPlatformName() external view returns (string memory name);
     
     /**
      * @dev Checks if a market is supported by the platform
