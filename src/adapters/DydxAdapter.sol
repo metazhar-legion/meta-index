@@ -86,7 +86,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
      * @param marketId The market identifier
      */
     function addMarket(bytes32 marketId) external onlyOwner {
-        if (marketId == bytes32(0)) revert CommonErrors.ZeroValue();
+        if (marketId == bytes32(0)) revert CommonErrors.InvalidValue();
         if (supportedMarkets[marketId]) revert CommonErrors.AlreadyExists();
         
         // Check if dYdX supports this market
@@ -154,7 +154,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
      * @return pnl The profit or loss from the position (can be negative)
      */
     function closePosition(bytes32 positionId) external override nonReentrant returns (int256 pnl) {
-        if (positionId == bytes32(0)) revert CommonErrors.ZeroValue();
+        if (positionId == bytes32(0)) revert CommonErrors.InvalidValue();
         
         // Close the position
         IDydxPerpetual.ClosePositionArgs memory args = IDydxPerpetual.ClosePositionArgs({
@@ -186,7 +186,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
         uint256 newLeverage,
         int256 collateralDelta
     ) external override nonReentrant {
-        if (positionId == bytes32(0)) revert CommonErrors.ZeroValue();
+        if (positionId == bytes32(0)) revert CommonErrors.InvalidValue();
         
         // Get the current position
         (bytes32 marketId, int256 currentSize, , uint256 currentLeverage, , ) = dydx.getPosition(positionId);
@@ -229,7 +229,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
      * @return position The position information
      */
     function getPosition(bytes32 positionId) external view override returns (Position memory position) {
-        if (positionId == bytes32(0)) revert CommonErrors.ZeroValue();
+        if (positionId == bytes32(0)) revert CommonErrors.InvalidValue();
         
         // Get the position from dYdX
         (
@@ -271,7 +271,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
      * @return pnl The profit or loss (can be negative)
      */
     function calculatePnL(bytes32 positionId) external view override returns (int256 pnl) {
-        if (positionId == bytes32(0)) revert CommonErrors.ZeroValue();
+        if (positionId == bytes32(0)) revert CommonErrors.InvalidValue();
         
         return dydx.calculatePnL(positionId);
     }

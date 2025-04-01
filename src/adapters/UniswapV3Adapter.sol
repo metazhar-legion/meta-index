@@ -160,7 +160,7 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
             feeTier,
             amountIn,
             0
-        ) returns (uint256 _amountOut, , , ) {
+        ) returns (uint256 _amountOut, uint160, uint32, uint256) {
             return _amountOut;
         } catch {
             return 0;

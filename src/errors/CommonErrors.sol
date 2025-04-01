@@ -11,6 +11,7 @@ library CommonErrors {
     error InvalidAddress();
     
     // Value validation errors
+    error ZeroValue();
     error InvalidValue();
     error ValueTooLow();
     error ValueTooHigh();
@@ -44,6 +45,13 @@ library CommonErrors {
     error TransferFailed();
     error InsufficientBalance();
     error SlippageTooHigh();
+    error PairNotSupported();
+    
+    // General errors
+    error AlreadyExists();
+    error NotFound();
+    error NotSupported();
+    error NotInitialized();
     
     // Time-related errors
     error InvalidTimeParameters();
