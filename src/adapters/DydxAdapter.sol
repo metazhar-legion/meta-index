@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IPerpetualAdapter} from "../interfaces/IPerpetualAdapter.sol";
@@ -50,7 +49,6 @@ interface IDydxPerpetual {
  * @dev Adapter for dYdX perpetual trading platform
  */
 contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
 
     // dYdX contract
     IDydxPerpetual public immutable dydx;
@@ -127,11 +125,11 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
         if (collateral == 0) revert CommonErrors.ValueTooLow();
         
         // Transfer collateral from the sender to this contract
-        baseAsset.safeTransferFrom(msg.sender, address(this), collateral);
+        baseAsset.transferFrom(msg.sender, address(this), collateral);
         
         // Approve dYdX to spend the collateral
-        baseAsset.safeApprove(address(dydx), 0);
-        baseAsset.safeApprove(address(dydx), collateral);
+        baseAsset.approve(address(dydx), 0);
+        baseAsset.approve(address(dydx), collateral);
         
         // Open the position
         IDydxPerpetual.OpenPositionArgs memory args = IDydxPerpetual.OpenPositionArgs({
@@ -165,7 +163,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
         
         // If there's a profit, transfer it to the sender
         if (pnl > 0) {
-            baseAsset.safeTransfer(msg.sender, uint256(pnl));
+            baseAsset.transfer(msg.sender, uint256(pnl));
         }
         
         emit PositionClosed(positionId, pnl);
@@ -198,11 +196,11 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
         // Handle collateral changes if needed
         if (collateralDelta > 0) {
             // Adding collateral
-            baseAsset.safeTransferFrom(msg.sender, address(this), uint256(collateralDelta));
+            baseAsset.transferFrom(msg.sender, address(this), uint256(collateralDelta));
             
             // Approve dYdX to spend the additional collateral
-            baseAsset.safeApprove(address(dydx), 0);
-            baseAsset.safeApprove(address(dydx), uint256(collateralDelta));
+            baseAsset.approve(address(dydx), 0);
+            baseAsset.approve(address(dydx), uint256(collateralDelta));
         }
         
         // Adjust the position
@@ -217,7 +215,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
         
         // If removing collateral, transfer it to the sender
         if (collateralDelta < 0) {
-            baseAsset.safeTransfer(msg.sender, uint256(-collateralDelta));
+            baseAsset.transfer(msg.sender, uint256(-collateralDelta));
         }
         
         emit PositionAdjusted(positionId, newSize, newLeverage, collateralDelta);

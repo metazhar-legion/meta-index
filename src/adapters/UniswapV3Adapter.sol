@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IDEXAdapter} from "../interfaces/IDEXAdapter.sol";
@@ -32,7 +31,7 @@ interface IUniswapV3QuoterV2 {
         uint24 fee,
         uint256 amountIn,
         uint160 sqrtPriceLimitX96
-    ) external returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate);
+    ) external view returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate);
 }
 
 interface IUniswapV3Factory {
@@ -44,7 +43,6 @@ interface IUniswapV3Factory {
  * @dev Adapter for Uniswap V3 DEX
  */
 contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
 
     // Uniswap V3 contracts
     IUniswapV3SwapRouter public immutable swapRouter;
@@ -109,11 +107,11 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
         if (feeTier == 0) revert CommonErrors.PairNotSupported();
         
         // Transfer tokens from the sender to this contract
-        IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
         
         // Approve the router to spend the tokens
-        IERC20(tokenIn).safeApprove(address(swapRouter), 0);
-        IERC20(tokenIn).safeApprove(address(swapRouter), amountIn);
+        IERC20(tokenIn).approve(address(swapRouter), 0);
+        IERC20(tokenIn).approve(address(swapRouter), amountIn);
         
         // Execute the swap
         IUniswapV3SwapRouter.ExactInputSingleParams memory params = IUniswapV3SwapRouter.ExactInputSingleParams({

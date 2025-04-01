@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IDEXAdapter} from "../interfaces/IDEXAdapter.sol";
@@ -32,7 +31,6 @@ interface ISushiSwapFactory {
  * @dev Adapter for SushiSwap DEX
  */
 contract SushiSwapAdapter is IDEXAdapter, Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
 
     // SushiSwap contracts
     ISushiSwapRouter public immutable router;
@@ -79,11 +77,11 @@ contract SushiSwapAdapter is IDEXAdapter, Ownable, ReentrancyGuard {
         if (!_isPairSupported(tokenIn, tokenOut)) revert CommonErrors.PairNotSupported();
         
         // Transfer tokens from the sender to this contract
-        IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
         
         // Approve the router to spend the tokens
-        IERC20(tokenIn).safeApprove(address(router), 0);
-        IERC20(tokenIn).safeApprove(address(router), amountIn);
+        IERC20(tokenIn).approve(address(router), 0);
+        IERC20(tokenIn).approve(address(router), amountIn);
         
         // Create the path
         address[] memory path = new address[](2);

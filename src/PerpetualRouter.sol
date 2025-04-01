@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {IPerpetualAdapter} from "./interfaces/IPerpetualAdapter.sol";
@@ -15,7 +14,6 @@ import {CommonErrors} from "./errors/CommonErrors.sol";
  * @dev Routes perpetual trading operations to the best platform based on available markets and pricing
  */
 contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
 
     // Array of perpetual trading adapters
     IPerpetualAdapter[] public perpetualAdapters;
@@ -107,13 +105,17 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         IPerpetualAdapter bestPlatform = _getBestPlatformForMarket(marketId);
         if (address(bestPlatform) == address(0)) revert CommonErrors.NotFound();
         
+        // In a real implementation, we would have a proper way to get the base asset
+        // For simplicity, we'll assume USDC is the base asset for all platforms
+        address baseAssetAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; // USDC on mainnet
+        IERC20 baseAsset = IERC20(baseAssetAddress);
+        
         // Transfer collateral from the user to this contract
-        IERC20 baseAsset = IERC20(bestPlatform.getPosition(0).marketId); // This is a hack to get the base asset, in a real implementation we would have a proper way to get the base asset
-        baseAsset.safeTransferFrom(msg.sender, address(this), collateral);
+        baseAsset.transferFrom(msg.sender, address(this), collateral);
         
         // Approve the platform to spend the collateral
-        baseAsset.safeApprove(address(bestPlatform), 0);
-        baseAsset.safeApprove(address(bestPlatform), collateral);
+        baseAsset.approve(address(bestPlatform), 0);
+        baseAsset.approve(address(bestPlatform), collateral);
         
         // Open the position
         positionId = bestPlatform.openPosition(marketId, size, leverage, collateral);
@@ -168,13 +170,17 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         
         // Handle collateral changes if needed
         if (collateralDelta > 0) {
+            // In a real implementation, we would have a proper way to get the base asset
+            // For simplicity, we'll assume USDC is the base asset for all platforms
+            address baseAssetAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; // USDC on mainnet
+            IERC20 baseAsset = IERC20(baseAssetAddress);
+            
             // Adding collateral
-            IERC20 baseAsset = IERC20(adapter.getPosition(0).marketId); // This is a hack to get the base asset, in a real implementation we would have a proper way to get the base asset
-            baseAsset.safeTransferFrom(msg.sender, address(this), uint256(collateralDelta));
+            baseAsset.transferFrom(msg.sender, address(this), uint256(collateralDelta));
             
             // Approve the platform to spend the additional collateral
-            baseAsset.safeApprove(address(adapter), 0);
-            baseAsset.safeApprove(address(adapter), uint256(collateralDelta));
+            baseAsset.approve(address(adapter), 0);
+            baseAsset.approve(address(adapter), uint256(collateralDelta));
         }
         
         // Adjust the position
