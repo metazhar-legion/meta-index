@@ -160,7 +160,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         int256 newSize,
         uint256 newLeverage,
         int256 collateralDelta
-    ) external override nonReentrant {
+    ) external override nonReentrant returns (bool) {
         address adapterAddress = positionToAdapter[positionId];
         if (adapterAddress == address(0)) revert CommonErrors.NotFound();
         
@@ -181,6 +181,8 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         adapter.adjustPosition(positionId, newSize, newLeverage, collateralDelta);
         
         emit PositionAdjusted(positionId, newSize, newLeverage, collateralDelta, adapterAddress);
+        
+        return true;
     }
     
     /**
