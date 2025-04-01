@@ -51,7 +51,6 @@ library CommonErrors {
     error AlreadyExists();
     error NotFound();
     error NotSupported();
-    error NotInitialized();
     
     // Time-related errors
     error InvalidTimeParameters();
