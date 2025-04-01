@@ -9,7 +9,30 @@ import {DEXRouter} from "../src/DEXRouter.sol";
 import {IDEXAdapter} from "../src/interfaces/IDEXAdapter.sol";
 import {IDEX} from "../src/interfaces/IDEX.sol";
 import {MockDEX} from "../src/mocks/MockDEX.sol";
-import {MockToken} from "../src/mocks/MockToken.sol";
+// Import MockToken directly
+
+/**
+ * @title MockToken for testing
+ */
+contract MockToken is ERC20 {
+    uint8 private _decimals;
+
+    constructor(string memory name, string memory symbol, uint8 decimals_) ERC20(name, symbol) {
+        _decimals = decimals_;
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return _decimals;
+    }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+
+    function burn(address from, uint256 amount) external {
+        _burn(from, amount);
+    }
+}
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 
 /**

@@ -196,7 +196,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         IPerpetualAdapter.Position memory adapterPosition = adapter.getPosition(positionId);
         
         // Convert from adapter position to IPerpetualTrading position
-        position = Position({
+        Position memory result = Position({
             marketId: adapterPosition.marketId,
             size: adapterPosition.size,
             entryPrice: adapterPosition.entryPrice,
@@ -205,7 +205,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
             lastUpdated: adapterPosition.lastUpdated
         });
         
-        return position;
+        return result;
     }
     
     /**
