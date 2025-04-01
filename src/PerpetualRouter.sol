@@ -234,6 +234,40 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
     }
     
     /**
+     * @dev Gets the funding rate for a market
+     * @param marketId The identifier for the market
+     * @return fundingRate The current funding rate (can be negative)
+     */
+    function getFundingRate(bytes32 marketId) external view returns (int256 fundingRate) {
+        // In a real implementation, we would get this from the platform
+        // For simplicity, we just return 0
+        return 0;
+    }
+    
+    /**
+     * @dev Gets the current value of a position
+     * @param positionId The identifier for the position
+     * @return value The current value of the position
+     */
+    function getPositionValue(bytes32 positionId) external view returns (uint256 value) {
+        address adapterAddress = positionToAdapter[positionId];
+        if (adapterAddress == address(0)) revert CommonErrors.NotFound();
+        
+        IPerpetualAdapter adapter = IPerpetualAdapter(adapterAddress);
+        IPerpetualAdapter.Position memory position = adapter.getPosition(positionId);
+        
+        // Calculate position value: collateral + PnL
+        int256 pnl = adapter.calculatePnL(positionId);
+        if (pnl >= 0) {
+            return position.collateral + uint256(pnl);
+        } else {
+            // If PnL is negative, subtract it from collateral (but don't go below 0)
+            uint256 absPnl = uint256(-pnl);
+            return position.collateral > absPnl ? position.collateral - absPnl : 0;
+        }
+    }
+    
+    /**
      * @dev Finds the best platform that supports a given market
      * @param marketId The identifier for the market
      * @return bestPlatform The platform that supports the market with the best conditions

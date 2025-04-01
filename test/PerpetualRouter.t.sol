@@ -198,7 +198,7 @@ contract MockPerpetualAdapter is IPerpetualAdapter {
         return pnl;
     }
     
-    function getPlatformName() external view override returns (string memory name) {
+    function getPlatformName() external pure override returns (string memory name) {
         return platformName;
     }
     

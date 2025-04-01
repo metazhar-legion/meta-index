@@ -101,7 +101,7 @@ contract MockDEXAdapter is IDEXAdapter {
         return supportedPairs[pairKey];
     }
 
-    function getDexName() external view override returns (string memory name) {
+    function getDexName() external pure override returns (string memory name) {
         return dexName;
     }
 }
