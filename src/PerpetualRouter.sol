@@ -246,7 +246,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
      * @param marketId The identifier for the market
      * @return fundingRate The current funding rate (can be negative)
      */
-    function getFundingRate(bytes32 marketId) external view returns (int256 fundingRate) {
+    function getFundingRate(bytes32 marketId) external pure returns (int256 fundingRate) {
         // In a real implementation, we would get this from the platform
         // For simplicity, we just return 0
         return 0;
