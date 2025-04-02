@@ -145,8 +145,14 @@ contract DEXRouterTest is Test {
         vm.startPrank(user);
         
         // Mint tokens to user
-        tokenA.mint(user, 1000 * 1e18);
-        tokenB.mint(user, 1000 * 1e18);
+        tokenA.mint(user, 100000 * 1e18);
+        tokenB.mint(user, 100000 * 1e18);
+        
+        // Also mint tokens to the mock DEXes for liquidity
+        tokenA.mint(address(adapter1), 100000 * 1e18);
+        tokenB.mint(address(adapter1), 100000 * 1e18);
+        tokenA.mint(address(adapter2), 100000 * 1e18);
+        tokenB.mint(address(adapter2), 100000 * 1e18);
         
         // Approve router to spend tokens
         tokenA.approve(address(router), type(uint256).max);

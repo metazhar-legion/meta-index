@@ -82,6 +82,12 @@ interface IPerpetualAdapter {
     function getPlatformName() external view returns (string memory name);
     
     /**
+     * @dev Gets the base asset (collateral token) used by this platform
+     * @return baseAsset The address of the base asset token
+     */
+    function getBaseAsset() external view returns (address baseAsset);
+    
+    /**
      * @dev Checks if a market is supported by the platform
      * @param marketId The identifier for the market
      * @return supported Whether the market is supported

@@ -105,10 +105,10 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         IPerpetualAdapter bestPlatform = _getBestPlatformForMarket(marketId);
         if (address(bestPlatform) == address(0)) revert CommonErrors.NotFound();
         
+        // Get the base asset from the best platform
         // In a real implementation, we would have a proper way to get the base asset
-        // For simplicity, we'll assume USDC is the base asset for all platforms
-        address baseAssetAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; // USDC on mainnet
-        IERC20 baseAsset = IERC20(baseAssetAddress);
+        // For testing, we'll get it from the adapter
+        IERC20 baseAsset = IERC20(bestPlatform.getBaseAsset());
         
         // Transfer collateral from the user to this contract
         baseAsset.transferFrom(msg.sender, address(this), collateral);
@@ -170,10 +170,8 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         
         // Handle collateral changes if needed
         if (collateralDelta > 0) {
-            // In a real implementation, we would have a proper way to get the base asset
-            // For simplicity, we'll assume USDC is the base asset for all platforms
-            address baseAssetAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; // USDC on mainnet
-            IERC20 baseAsset = IERC20(baseAssetAddress);
+            // Get the base asset from the adapter
+            IERC20 baseAsset = IERC20(adapter.getBaseAsset());
             
             // Adding collateral
             baseAsset.transferFrom(msg.sender, address(this), uint256(collateralDelta));
@@ -222,10 +220,13 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
      * @return price The current market price
      */
     function getMarketPrice(bytes32 marketId) external view returns (uint256 price) {
+        // Find the best platform for this market
         IPerpetualAdapter bestPlatform = _getBestPlatformForMarket(marketId);
         if (address(bestPlatform) == address(0)) revert CommonErrors.NotFound();
         
-        return bestPlatform.getMarketPrice(marketId);
+        // Get the price from the platform
+        price = bestPlatform.getMarketPrice(marketId);
+        return price;
     }
     
     /**

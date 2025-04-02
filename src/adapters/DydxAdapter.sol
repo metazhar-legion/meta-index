@@ -278,8 +278,16 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
      * @dev Gets the name of the perpetual trading platform
      * @return name The name of the platform
      */
-    function getPlatformName() external pure override returns (string memory name) {
+    function getPlatformName() external view override returns (string memory name) {
         return "dYdX";
+    }
+    
+    /**
+     * @dev Gets the base asset (collateral token) used by this platform
+     * @return baseAsset The address of the base asset token
+     */
+    function getBaseAsset() external view override returns (address) {
+        return address(baseAsset);
     }
     
     /**
