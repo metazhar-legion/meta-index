@@ -50,13 +50,17 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
      * @param _stakingToken Address of the staking token
      * @param _stakingProtocol Address of the staking protocol
      * @param _feeRecipient Address to receive fees
+     * @param _initialApy Initial APY in basis points (e.g., 450 = 4.5%)
+     * @param _riskLevel Risk level from 1 (lowest) to 10 (highest)
      */
     constructor(
         string memory _name,
         address _baseAsset,
         address _stakingToken,
         address _stakingProtocol,
-        address _feeRecipient
+        address _feeRecipient,
+        uint256 _initialApy,
+        uint256 _riskLevel
     ) ERC20(string(abi.encodePacked(_name, " Shares")), string(abi.encodePacked("s", _name))) Ownable(msg.sender) {
         if (_baseAsset == address(0)) revert CommonErrors.ZeroAddress();
         if (_stakingToken == address(0)) revert CommonErrors.ZeroAddress();
@@ -68,20 +72,24 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
         stakingProtocol = _stakingProtocol;
         feeRecipient = _feeRecipient;
         
+        // Validate APY and risk level
+        if (_initialApy > 10000) revert CommonErrors.ValueTooHigh(); // Max 100%
+        if (_riskLevel < 1 || _riskLevel > 10) revert CommonErrors.InvalidValue();
+        
         // Initialize strategy info
         strategyInfo = StrategyInfo({
             name: _name,
             asset: _baseAsset,
             totalDeposited: 0,
             currentValue: 0,
-            apy: 450, // 4.5% APY initially, will be updated
+            apy: _initialApy,
             lastUpdated: block.timestamp,
             active: true,
-            risk: 2 // Low risk for staking
+            risk: _riskLevel
         });
         
-        // Approve staking protocol to spend base asset
-        baseAsset.approve(_stakingProtocol, type(uint256).max);
+        // We don't approve unlimited amounts for better security
+        // Instead, we'll approve specific amounts before each deposit
     }
     
     /**
@@ -157,35 +165,40 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
     
     /**
      * @dev Gets the total value of all assets in the strategy
-     * @return value The total value
+     * @return value The total value in terms of base asset
      */
     function getTotalValue() public view override returns (uint256 value) {
-        // Value is the balance of staking tokens converted to base asset value
+        // Get the balance of staking tokens held by this contract
         uint256 stakingTokenBalance = stakingToken.balanceOf(address(this));
         
-        // In a real implementation, this would call the staking protocol to get the exchange rate
-        // For example:
-        // return ILiquidStaking(stakingProtocol).getBaseAssetValue(stakingTokenBalance);
+        // If we have no staking tokens, return 0
+        if (stakingTokenBalance == 0) return 0;
         
-        // For now, use a simple calculation that assumes staking tokens appreciate over time
-        uint256 timeElapsed = block.timestamp - strategyInfo.lastUpdated;
-        uint256 annualYield = (stakingTokenBalance * strategyInfo.apy) / 10000; // APY in basis points
-        uint256 accruedYield = (annualYield * timeElapsed) / 365 days;
+        // Call the staking protocol to get the current exchange rate and convert to base asset value
+        // This accounts for any appreciation in the value of staking tokens
+        uint256 baseAssetValue = ILiquidStaking(stakingProtocol).getBaseAssetValue(stakingTokenBalance);
         
-        return stakingTokenBalance + accruedYield;
+        // Add any base asset balance held by this contract (e.g., from recent withdrawals or deposits)
+        uint256 baseAssetBalance = baseAsset.balanceOf(address(this));
+        
+        return baseAssetValue + baseAssetBalance;
     }
     
     /**
      * @dev Gets the current APY of the strategy
-     * @return apy The current APY in basis points
+     * @return apy The current APY in basis points (e.g., 450 = 4.5%)
      */
     function getCurrentAPY() external view override returns (uint256 apy) {
-        // In a real implementation, this would query the staking protocol for current rates
-        // For example:
-        // return ILiquidStaking(stakingProtocol).getCurrentAPR();
+        // Query the staking protocol for the current APY
+        uint256 currentProtocolAPY = ILiquidStaking(stakingProtocol).getCurrentAPY();
         
-        // For now, return a fixed APY
-        return strategyInfo.apy;
+        // Update our stored APY if it has changed
+        if (currentProtocolAPY != strategyInfo.apy) {
+            // Note: This is a view function so we can't actually update storage
+            // The actual update happens in harvestYield() or other state-changing functions
+        }
+        
+        return currentProtocolAPY;
     }
     
     /**
@@ -261,6 +274,37 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
     }
     
     /**
+     * @dev Emergency withdrawal function to handle critical situations
+     * @notice This function will withdraw all assets from the staking protocol
+     * and transfer them to the owner. It should only be used in emergency situations.
+     */
+    function emergencyWithdraw() external onlyOwner nonReentrant {
+        // Get the current staking token balance
+        uint256 stakingTokenBalance = stakingToken.balanceOf(address(this));
+        
+        // If we have staking tokens, withdraw them from the protocol
+        if (stakingTokenBalance > 0) {
+            // Call the unstake function to get base assets back
+            stakingToken.approve(stakingProtocol, stakingTokenBalance);
+            ILiquidStaking(stakingProtocol).unstake(stakingTokenBalance);
+        }
+        
+        // Transfer all base assets to the owner
+        uint256 baseAssetBalance = baseAsset.balanceOf(address(this));
+        if (baseAssetBalance > 0) {
+            baseAsset.safeTransfer(owner(), baseAssetBalance);
+        }
+        
+        // Update strategy info to reflect the emergency withdrawal
+        strategyInfo.totalDeposited = 0;
+        strategyInfo.currentValue = 0;
+        strategyInfo.lastUpdated = block.timestamp;
+        strategyInfo.active = false;
+        
+        emit EmergencyWithdrawal(owner(), baseAssetBalance);
+    }
+    
+    /**
      * @dev Calculates shares based on amount
      * @param amount The amount of base asset
      * @return shares The number of shares
@@ -278,14 +322,17 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
      * @param amount The amount to deposit
      */
     function _depositToStakingProtocol(uint256 amount) internal {
-        // Transfer base asset to staking protocol
-        baseAsset.safeTransfer(stakingProtocol, amount);
+        // Approve the staking protocol to spend the exact amount of base asset
+        baseAsset.approve(stakingProtocol, 0); // Clear previous approval
+        baseAsset.approve(stakingProtocol, amount); // Approve exact amount
         
-        // In a real implementation, the protocol would automatically mint staking tokens to this address
-        // For example:
-        // ILiquidStaking(stakingProtocol).stake(amount);
+        // Call the staking protocol's stake function
+        // This will transfer the base asset and mint staking tokens to this contract
+        ILiquidStaking(stakingProtocol).stake(amount);
         
-        // For testing purposes, the test will manually transfer staking tokens to simulate this behavior
+        // Verify that we received the staking tokens
+        uint256 stakingTokenBalanceAfter = stakingToken.balanceOf(address(this));
+        require(stakingTokenBalanceAfter > 0, "Staking failed");
     }
     
     /**
@@ -293,16 +340,23 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
      * @param amount The amount to withdraw
      */
     function _withdrawFromStakingProtocol(uint256 amount) internal {
-        // In a real implementation, this would call the staking protocol's unstake function
-        // For example:
-        // ILiquidStaking(stakingProtocol).unstake(amount);
+        // Calculate how many staking tokens we need to unstake to get the desired amount of base asset
+        // In most liquid staking protocols, the exchange rate between staking token and base asset changes over time
+        uint256 stakingTokensToUnstake = ILiquidStaking(stakingProtocol).getStakingTokensForBaseAsset(amount);
         
-        // For testing purposes, we would burn staking tokens and receive base assets
-        // The test will have already transferred the base assets to this contract
-        // to simulate the withdrawal
+        // Ensure we have enough staking tokens
+        uint256 stakingTokenBalance = stakingToken.balanceOf(address(this));
+        require(stakingTokenBalance >= stakingTokensToUnstake, "Insufficient staking tokens");
         
-        // Simulate burning staking tokens by transferring them back to the protocol
-        uint256 stakingTokensToBurn = amount;
-        stakingToken.safeTransfer(stakingProtocol, stakingTokensToBurn);
+        // Approve the staking protocol to spend the staking tokens (if needed)
+        stakingToken.approve(stakingProtocol, stakingTokensToUnstake);
+        
+        // Call the unstake function to burn staking tokens and receive base assets
+        uint256 baseAssetsBefore = baseAsset.balanceOf(address(this));
+        ILiquidStaking(stakingProtocol).unstake(stakingTokensToUnstake);
+        
+        // Verify that we received the base assets
+        uint256 baseAssetsAfter = baseAsset.balanceOf(address(this));
+        require(baseAssetsAfter > baseAssetsBefore, "Unstaking failed");
     }
 }
