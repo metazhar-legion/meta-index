@@ -42,6 +42,7 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
     event YieldHarvested(uint256 amount, uint256 fee);
     event FeePercentageUpdated(uint256 newPercentage);
     event FeeRecipientUpdated(address newRecipient);
+    event EmergencyWithdrawal(address indexed recipient, uint256 amount);
     
     /**
      * @dev Constructor
