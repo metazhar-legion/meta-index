@@ -82,7 +82,9 @@ contract YieldStrategiesTest is Test {
             address(usdc),
             address(stakingToken),
             stakingProtocol,
-            feeRecipient
+            feeRecipient,
+            450, // 4.5% initial APY
+            2    // Low risk level
         );
         
         // Setup mock protocols to handle deposits and withdrawals

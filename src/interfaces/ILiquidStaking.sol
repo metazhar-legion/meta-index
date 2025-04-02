@@ -28,10 +28,17 @@ interface ILiquidStaking {
     function getBaseAssetValue(uint256 stakingTokenAmount) external view returns (uint256 baseAmount);
     
     /**
-     * @dev Gets the current APR of the staking protocol
-     * @return apr The current APR in basis points (e.g., 450 = 4.50%)
+     * @dev Gets the current APY of the staking protocol
+     * @return apy The current APY in basis points (e.g., 450 = 4.50%)
      */
-    function getCurrentAPR() external view returns (uint256 apr);
+    function getCurrentAPY() external view returns (uint256 apy);
+    
+    /**
+     * @dev Calculates how many staking tokens are needed to get a specific amount of base asset
+     * @param baseAssetAmount The amount of base asset desired
+     * @return stakingTokenAmount The amount of staking tokens needed
+     */
+    function getStakingTokensForBaseAsset(uint256 baseAssetAmount) external view returns (uint256 stakingTokenAmount);
     
     /**
      * @dev Gets the total amount of base asset staked in the protocol
