@@ -388,7 +388,7 @@ contract PerpetualRouterTest is Test {
         assertEq(position.collateral, collateral + uint256(collateralDelta));
     }
     
-    function testGetMarketPrice() public {
+    function testGetMarketPrice() public view {
         uint256 price = router.getMarketPrice(BTC_USD);
         
         // Should return the price from Platform 1 (first platform with this market)

@@ -187,7 +187,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
         if (positionId == bytes32(0)) revert CommonErrors.InvalidValue();
         
         // Get the current position
-        (bytes32 marketId, int256 currentSize, , uint256 currentLeverage, , ) = dydx.getPosition(positionId);
+        (, int256 currentSize, , uint256 currentLeverage, , ) = dydx.getPosition(positionId);
         
         // Use current values if not specified
         if (newSize == 0) newSize = currentSize;
@@ -278,7 +278,7 @@ contract DydxAdapter is IPerpetualAdapter, Ownable, ReentrancyGuard {
      * @dev Gets the name of the perpetual trading platform
      * @return name The name of the platform
      */
-    function getPlatformName() external view override returns (string memory name) {
+    function getPlatformName() external pure override returns (string memory name) {
         return "dYdX";
     }
     

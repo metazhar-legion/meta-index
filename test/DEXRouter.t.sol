@@ -187,7 +187,7 @@ contract DEXRouterTest is Test {
         assertTrue(router.isAdapter(address(adapter2)));
     }
 
-    function testGetExpectedAmount() public {
+    function testGetExpectedAmount() public view {
         // Should route to DEX 1 since it has better rate despite higher fee
         uint256 amountIn = 10 * 1e18;
         uint256 expectedAmount = router.getExpectedAmount(address(tokenA), address(tokenB), amountIn);
