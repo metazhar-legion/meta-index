@@ -139,8 +139,23 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         
         IPerpetualAdapter adapter = IPerpetualAdapter(adapterAddress);
         
+        // Get the base asset from the adapter
+        IERC20 baseAsset = IERC20(adapter.getBaseAsset());
+        
+        // Store initial balance to calculate how much we received
+        uint256 initialBalance = baseAsset.balanceOf(address(this));
+        
         // Close the position
         pnl = adapter.closePosition(positionId);
+        
+        // Calculate how much we received from the adapter
+        uint256 finalBalance = baseAsset.balanceOf(address(this));
+        uint256 amountReceived = finalBalance - initialBalance;
+        
+        // Transfer the received amount back to the user
+        if (amountReceived > 0) {
+            baseAsset.transfer(msg.sender, amountReceived);
+        }
         
         // Clean up the mapping
         delete positionToAdapter[positionId];
