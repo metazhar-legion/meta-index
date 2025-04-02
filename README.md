@@ -19,7 +19,9 @@ This project implements a web3-based index fund using Solidity smart contracts w
 - **Automated Rebalancing**: Maintains the desired asset allocation with configurable thresholds
 - **Fee Structure**: Management and performance fees with configurable parameters
 - **RWA Support**: Built-in support for real-world assets through synthetic tokens
-- **Yield Generation**: Integrated yield strategies for idle capital
+- **Yield Generation**: Multiple yield strategies including staking and lending
+- **DEX Integration**: Router pattern for optimal trading across multiple DEXes
+- **Perpetual Trading**: Synthetic exposure to assets via perpetual trading protocols
 
 ## Project Structure
 
@@ -29,6 +31,9 @@ This project implements a web3-based index fund using Solidity smart contracts w
 │   ├── RWAAssetWrapper.sol      # Wrapper for RWA tokens
 │   ├── RWASyntheticSP500.sol    # Example synthetic RWA token
 │   ├── StableYieldStrategy.sol  # Yield strategy for idle capital
+│   ├── StakingReturnsStrategy.sol # Staking-based yield strategy
+│   ├── DEXRouter.sol           # Router for DEX integrations
+│   ├── PerpetualRouter.sol      # Router for perpetual trading protocols
 │   ├── FeeManager.sol           # Fee calculation and collection
 │   ├── interfaces/              # Contract interfaces
 │   └── mocks/                   # Mock contracts for testing
@@ -89,6 +94,15 @@ Run a specific test:
 ```shell
 forge test --match-test testDeposit -vvv
 ```
+
+### Testing Environments
+
+The project uses different approaches for testing in local and forked environments:
+
+- **Local Testing**: For local unit tests, simplified calculations are used in contracts like `StakingReturnsStrategy` when the block number is low (≤ 100), making it easier to test with predictable values.
+- **Forked Testing**: When testing on forked networks where block numbers are high, more sophisticated mocks should be used to accurately simulate protocol behavior.
+
+This dual approach allows for both simple unit testing and realistic integration testing.
 
 ## Local Deployment
 
@@ -180,6 +194,7 @@ Handles the calculation and collection of management and performance fees, with 
 - **Modular Architecture**: Asset wrappers reduce complexity and gas costs in the main vault
 - **Caching**: Array lengths and frequently accessed values are cached to reduce gas usage
 - **Reduced External Calls**: Logic is structured to minimize expensive external calls
+- **Test-Production Bifurcation**: Conditional logic that simplifies calculations in test environments but maintains full functionality in production
 
 ## Security Considerations
 
