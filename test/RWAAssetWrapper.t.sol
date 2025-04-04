@@ -73,7 +73,7 @@ contract RWAAssetWrapperTest is Test {
         vm.stopPrank();
     }
 
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(wrapper.name(), "S&P 500 Wrapper");
         assertEq(address(wrapper.baseAsset()), address(usdc));
         assertEq(address(wrapper.rwaToken()), address(rwaToken));
@@ -97,7 +97,8 @@ contract RWAAssetWrapperTest is Test {
         
         // Calculate expected RWA and yield amounts
         uint256 expectedRwaAmount = (ALLOCATION_AMOUNT * RWA_ALLOCATION) / BASIS_POINTS;
-        uint256 expectedYieldAmount = ALLOCATION_AMOUNT - expectedRwaAmount;
+        // Commented out to fix unused variable warning
+        // uint256 expectedYieldAmount = ALLOCATION_AMOUNT - expectedRwaAmount;
         
         // Check RWA token balance
         assertEq(rwaToken.balanceOf(address(wrapper)), expectedRwaAmount);
@@ -255,9 +256,9 @@ contract RWAAssetWrapperTest is Test {
         uint256 yieldValueAfter = wrapper.getYieldValue();
         uint256 totalValueAfter = wrapper.getValueInBaseAsset();
         
-        // Calculate allocation percentages after rebalance
-        uint256 rwaPercentAfter = (rwaValueAfter * BASIS_POINTS) / totalValueAfter;
-        uint256 yieldPercentAfter = (yieldValueAfter * BASIS_POINTS) / totalValueAfter;
+        // Calculate allocation percentages after rebalance - commented out as these are not used
+        // uint256 rwaPercentAfter = (rwaValueAfter * BASIS_POINTS) / totalValueAfter;
+        // uint256 yieldPercentAfter = (yieldValueAfter * BASIS_POINTS) / totalValueAfter;
         
         // Instead of checking exact percentages, just verify the direction of rebalancing
         // After price increase, RWA should decrease and yield should increase
@@ -287,18 +288,18 @@ contract RWAAssetWrapperTest is Test {
         vm.stopPrank();
     }
 
-    function test_GetUnderlyingTokens() public {
+    function test_GetUnderlyingTokens() public view {
         address[] memory tokens = wrapper.getUnderlyingTokens();
         assertEq(tokens.length, 2);
         assertEq(tokens[0], address(rwaToken));
         assertEq(tokens[1], address(yieldStrategy));
     }
 
-    function test_GetName() public {
+    function test_GetName() public view {
         assertEq(wrapper.getName(), "S&P 500 Wrapper");
     }
 
-    function test_GetBaseAsset() public {
+    function test_GetBaseAsset() public view {
         assertEq(wrapper.getBaseAsset(), address(usdc));
     }
 
@@ -408,7 +409,7 @@ contract RWAAssetWrapperTest is Test {
         assertGe(usdc.balanceOf(user1), expectedMinBalance);
     }
 
-    function test_ReentrancyProtection() public {
+    function test_ReentrancyProtection() public pure {
         // This test would require a malicious contract that attempts reentrancy
         // For simplicity, we'll just verify that the nonReentrant modifier is applied to key functions
         

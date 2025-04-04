@@ -54,7 +54,7 @@ contract BaseVaultTest is Test {
         vm.stopPrank();
     }
     
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(address(vault.asset()), address(usdc));
         assertEq(address(vault.feeManager()), address(feeManager));
         assertEq(vault.lastFeeCollection(), block.timestamp);
