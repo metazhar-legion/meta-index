@@ -34,7 +34,7 @@ contract IndexRegistryTest is Test {
     }
     
     // Test initialization
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(registry.owner(), owner);
         assertEq(registry.isGovernanceEnabled(), false);
         assertEq(registry.daoGovernance(), address(0));

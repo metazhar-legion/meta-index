@@ -23,7 +23,7 @@ contract FeeManagerTest is Test {
     }
     
     // Test initialization
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(feeManager.managementFeePercentage(), INITIAL_MANAGEMENT_FEE);
         assertEq(feeManager.performanceFeePercentage(), INITIAL_PERFORMANCE_FEE);
         assertEq(feeManager.owner(), owner);

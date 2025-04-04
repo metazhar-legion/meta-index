@@ -48,7 +48,7 @@ contract MockYieldStrategy is IYieldStrategy, IERC20 {
         return totalValue;
     }
     
-    function getCurrentAPY() external view override returns (uint256 apy) {
+    function getCurrentAPY() external pure override returns (uint256 apy) {
         return 500; // 5% APY
     }
     
@@ -65,7 +65,7 @@ contract MockYieldStrategy is IYieldStrategy, IERC20 {
         });
     }
     
-    function harvestYield() external override returns (uint256 harvested) {
+    function harvestYield() external pure override returns (uint256 harvested) {
         // Mock implementation - no yield harvesting
         return 0;
     }
@@ -176,7 +176,7 @@ contract MockRWASyntheticToken is IRWASyntheticToken {
         });
     }
     
-    function updatePrice() external override returns (bool success) {
+    function updatePrice() external pure override returns (bool success) {
         // Mock implementation - price doesn't change
         return true;
     }
@@ -303,7 +303,7 @@ contract CapitalAllocationManagerTest is Test {
     }
     
     // Test initialization
-    function test_Initialization() public {
+    function test_Initialization() public view {
         // Check default allocation
         ICapitalAllocationManager.Allocation memory allocation = manager.getAllocation();
         assertEq(allocation.rwaPercentage, 2000);
