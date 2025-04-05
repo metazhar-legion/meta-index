@@ -5,108 +5,116 @@ import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {SushiSwapAdapter, ISushiSwapRouter, ISushiSwapFactory} from "../src/adapters/SushiSwapAdapter.sol";
+import {UniswapV3Adapter, IUniswapV3SwapRouter, IUniswapV3QuoterV2, IUniswapV3Factory} from "../src/adapters/UniswapV3Adapter.sol";
 import {IDEXAdapter} from "../src/interfaces/IDEXAdapter.sol";
 import {MockToken} from "../src/mocks/MockToken.sol";
 
-// Mock implementation of the SushiSwap factory for testing
-contract MockSushiSwapFactory is ISushiSwapFactory {
-    mapping(address => mapping(address => address)) public pairs;
+// Mock implementation of the Uniswap V3 Factory
+contract MockUniswapV3Factory is IUniswapV3Factory {
+    mapping(address => mapping(address => mapping(uint24 => address))) public pools;
     
-    function createPair(address tokenA, address tokenB, address pair) external {
-        pairs[tokenA][tokenB] = pair;
-        pairs[tokenB][tokenA] = pair;
+    function createPool(address tokenA, address tokenB, uint24 fee, address pool) external {
+        pools[tokenA][tokenB][fee] = pool;
+        pools[tokenB][tokenA][fee] = pool;
     }
     
-    function getPair(address tokenA, address tokenB) external view override returns (address pair) {
-        return pairs[tokenA][tokenB];
+    function getPool(address tokenA, address tokenB, uint24 fee) external view override returns (address pool) {
+        return pools[tokenA][tokenB][fee];
     }
 }
 
-// Mock implementation of the SushiSwap router for testing
-contract MockSushiSwapRouter is ISushiSwapRouter {
-    MockSushiSwapFactory public immutable factoryContract;
-    
+// Mock implementation of the Uniswap V3 Quoter
+contract MockUniswapV3QuoterV2 is IUniswapV3QuoterV2 {
     // Price ratios for token pairs (token => price in base units)
     mapping(address => uint256) public tokenPrices;
     
+    // Mapping to track if a pool exists
+    MockUniswapV3Factory public factory;
+    
     constructor(address _factory) {
-        factoryContract = MockSushiSwapFactory(_factory);
+        factory = MockUniswapV3Factory(_factory);
     }
     
     function setTokenPrice(address token, uint256 price) external {
         tokenPrices[token] = price;
     }
     
-    function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external override returns (uint[] memory amounts) {
-        require(path.length >= 2, "Invalid path");
-        require(block.timestamp <= deadline, "Deadline expired");
+    function quoteExactInputSingle(
+        address tokenIn,
+        address tokenOut,
+        uint24 fee,
+        uint256 amountIn,
+        uint160 sqrtPriceLimitX96
+    ) external view override returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate) {
+        // Check if the pool exists
+        address pool = factory.getPool(tokenIn, tokenOut, fee);
+        require(pool != address(0), "Pool does not exist");
         
-        // Check if the pair exists
-        address pair = factoryContract.getPair(path[0], path[1]);
-        require(pair != address(0), "Pair not found");
-        
-        // Calculate the amount out
-        amounts = getAmountsOut(amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, "Insufficient output amount");
-        
-        // Transfer tokens
-        IERC20(path[0]).transferFrom(msg.sender, address(this), amountIn);
-        
-        // For each token in the path, transfer the calculated amount
-        for (uint i = 1; i < path.length; i++) {
-            // In a real router, this would come from the pair's reserves
-            // Here we just mint the tokens to simulate the swap
-            MockToken(path[i]).mint(to, amounts[i]);
+        // Calculate the amount out based on token prices
+        if (tokenPrices[tokenIn] == 0 || tokenPrices[tokenOut] == 0) {
+            return (0, 0, 0, 0);
         }
         
-        return amounts;
-    }
-    
-    function getAmountsOut(uint amountIn, address[] calldata path) public view override returns (uint[] memory amounts) {
-        require(path.length >= 2, "Invalid path");
+        // Simple price calculation for testing
+        amountOut = amountIn * tokenPrices[tokenOut] / tokenPrices[tokenIn];
         
-        amounts = new uint[](path.length);
-        amounts[0] = amountIn;
+        // Apply a fee based on the fee tier
+        uint256 feeAmount = (amountOut * fee) / 1000000; // fee is in millionths (e.g., 3000 = 0.3%)
+        amountOut = amountOut - feeAmount;
         
-        for (uint i = 0; i < path.length - 1; i++) {
-            // Check if the pair exists
-            address pair = factoryContract.getPair(path[i], path[i + 1]);
-            if (pair == address(0)) {
-                // If pair doesn't exist, return zeros
-                for (uint j = 1; j < amounts.length; j++) {
-                    amounts[j] = 0;
-                }
-                return amounts;
-            }
-            
-            // Calculate based on token prices
-            // This is a simplified calculation for testing
-            if (tokenPrices[path[i]] == 0 || tokenPrices[path[i + 1]] == 0) {
-                amounts[i + 1] = 0;
-            } else {
-                amounts[i + 1] = amounts[i] * tokenPrices[path[i + 1]] / tokenPrices[path[i]];
-            }
-        }
+        // Mock values for the other return parameters
+        sqrtPriceX96After = 0;
+        initializedTicksCrossed = 0;
+        gasEstimate = 150000;
         
-        return amounts;
-    }
-    
-    function factory() external view override returns (address) {
-        return address(factoryContract);
+        return (amountOut, sqrtPriceX96After, initializedTicksCrossed, gasEstimate);
     }
 }
 
-contract SushiSwapAdapterTest is Test {
-    SushiSwapAdapter public adapter;
-    MockSushiSwapFactory public factory;
-    MockSushiSwapRouter public router;
+// Mock implementation of the Uniswap V3 Router
+contract MockUniswapV3SwapRouter is IUniswapV3SwapRouter {
+    MockUniswapV3Factory public factory;
+    MockUniswapV3QuoterV2 public quoter;
+    
+    constructor(address _factory, address _quoter) {
+        factory = MockUniswapV3Factory(_factory);
+        quoter = MockUniswapV3QuoterV2(_quoter);
+    }
+    
+    function exactInputSingle(ExactInputSingleParams calldata params) external payable override returns (uint256 amountOut) {
+        require(block.timestamp <= params.deadline, "Transaction too old");
+        require(params.amountIn > 0, "Amount in must be greater than 0");
+        
+        // Check if the pool exists
+        address pool = factory.getPool(params.tokenIn, params.tokenOut, params.fee);
+        require(pool != address(0), "Pool does not exist");
+        
+        // Get the amount out from the quoter
+        (uint256 expectedAmountOut, , , ) = quoter.quoteExactInputSingle(
+            params.tokenIn,
+            params.tokenOut,
+            params.fee,
+            params.amountIn,
+            params.sqrtPriceLimitX96
+        );
+        
+        require(expectedAmountOut >= params.amountOutMinimum, "Insufficient output amount");
+        
+        // Transfer tokens
+        IERC20(params.tokenIn).transferFrom(msg.sender, address(this), params.amountIn);
+        
+        // Mint the output tokens to simulate the swap
+        MockToken(params.tokenOut).mint(params.recipient, expectedAmountOut);
+        
+        return expectedAmountOut;
+    }
+}
+
+contract UniswapV3AdapterTest is Test {
+    UniswapV3Adapter public adapter;
+    MockUniswapV3Factory public factory;
+    MockUniswapV3QuoterV2 public quoter;
+    MockUniswapV3SwapRouter public router;
     
     MockToken public usdc;
     MockToken public weth;
@@ -124,7 +132,12 @@ contract SushiSwapAdapterTest is Test {
     uint256 public constant WETH_PRICE = 3000e6;    // $3,000
     uint256 public constant WBTC_PRICE = 50000e6;   // $50,000
     
-    event Swapped(address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut);
+    // Fee tiers
+    uint24 public constant FEE_LOW = 500;      // 0.05%
+    uint24 public constant FEE_MEDIUM = 3000;  // 0.3%
+    uint24 public constant FEE_HIGH = 10000;   // 1%
+    
+    event Swapped(address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut, uint24 fee);
     
     function setUp() public {
         vm.startPrank(owner);
@@ -135,22 +148,28 @@ contract SushiSwapAdapterTest is Test {
         wbtc = new MockToken("Wrapped Bitcoin", "WBTC", 8);
         unsupportedToken = new MockToken("Unsupported Token", "UNSUP", 18);
         
-        // Create SushiSwap contracts
-        factory = new MockSushiSwapFactory();
-        router = new MockSushiSwapRouter(address(factory));
+        // Create Uniswap V3 contracts
+        factory = new MockUniswapV3Factory();
+        quoter = new MockUniswapV3QuoterV2(address(factory));
+        router = new MockUniswapV3SwapRouter(address(factory), address(quoter));
         
-        // Set up token pairs
-        factory.createPair(address(usdc), address(weth), address(100)); // Dummy pair address
-        factory.createPair(address(usdc), address(wbtc), address(101)); // Dummy pair address
-        factory.createPair(address(weth), address(wbtc), address(102)); // Dummy pair address
+        // Set up token pairs with different fee tiers
+        // USDC-WETH pair with 0.05% fee
+        factory.createPool(address(usdc), address(weth), FEE_LOW, address(100));
+        
+        // USDC-WBTC pair with 0.3% fee
+        factory.createPool(address(usdc), address(wbtc), FEE_MEDIUM, address(101));
+        
+        // WETH-WBTC pair with 1% fee
+        factory.createPool(address(weth), address(wbtc), FEE_HIGH, address(102));
         
         // Set token prices
-        router.setTokenPrice(address(usdc), USDC_PRICE);
-        router.setTokenPrice(address(weth), WETH_PRICE);
-        router.setTokenPrice(address(wbtc), WBTC_PRICE);
+        quoter.setTokenPrice(address(usdc), USDC_PRICE);
+        quoter.setTokenPrice(address(weth), WETH_PRICE);
+        quoter.setTokenPrice(address(wbtc), WBTC_PRICE);
         
         // Create the adapter
-        adapter = new SushiSwapAdapter(address(router));
+        adapter = new UniswapV3Adapter(address(router), address(quoter), address(factory));
         
         // Mint tokens to users
         usdc.mint(user1, INITIAL_BALANCE);
@@ -165,9 +184,16 @@ contract SushiSwapAdapterTest is Test {
     }
     
     function test_Initialization() public view {
-        assertEq(address(adapter.router()), address(router));
+        assertEq(address(adapter.swapRouter()), address(router));
+        assertEq(address(adapter.quoter()), address(quoter));
         assertEq(address(adapter.factory()), address(factory));
         assertEq(adapter.owner(), owner);
+        
+        // Check fee tiers
+        assertEq(adapter.feeTiers(0), 100);
+        assertEq(adapter.feeTiers(1), 500);
+        assertEq(adapter.feeTiers(2), 3000);
+        assertEq(adapter.feeTiers(3), 10000);
     }
     
     function test_Swap_USDC_to_WETH() public {
@@ -185,7 +211,7 @@ contract SushiSwapAdapterTest is Test {
         
         // Expect the Swapped event
         vm.expectEmit(true, true, false, false);
-        emit Swapped(address(usdc), address(weth), amountIn, expectedAmountOut);
+        emit Swapped(address(usdc), address(weth), amountIn, expectedAmountOut, FEE_LOW);
         
         // Execute the swap
         uint256 amountOut = adapter.swap(
@@ -202,6 +228,40 @@ contract SushiSwapAdapterTest is Test {
         assertEq(amountOut, expectedAmountOut);
         assertEq(usdc.balanceOf(user1), INITIAL_BALANCE - amountIn);
         assertEq(weth.balanceOf(user1), 100e18 + amountOut);
+    }
+    
+    function test_Swap_USDC_to_WBTC() public {
+        uint256 amountIn = 50000e6; // 50,000 USDC
+        uint256 minAmountOut = 0.9e8; // 0.9 BTC (expecting ~1 BTC)
+        
+        vm.startPrank(user1);
+        
+        // Approve the adapter to spend USDC
+        usdc.approve(address(adapter), amountIn);
+        
+        // Get expected amount out
+        uint256 expectedAmountOut = adapter.getExpectedAmountOut(address(usdc), address(wbtc), amountIn);
+        assertGt(expectedAmountOut, 0);
+        
+        // Expect the Swapped event
+        vm.expectEmit(true, true, false, false);
+        emit Swapped(address(usdc), address(wbtc), amountIn, expectedAmountOut, FEE_MEDIUM);
+        
+        // Execute the swap
+        uint256 amountOut = adapter.swap(
+            address(usdc),
+            address(wbtc),
+            amountIn,
+            minAmountOut,
+            user1
+        );
+        
+        vm.stopPrank();
+        
+        // Verify the swap results
+        assertEq(amountOut, expectedAmountOut);
+        assertEq(usdc.balanceOf(user1), INITIAL_BALANCE - amountIn);
+        assertEq(wbtc.balanceOf(user1), 10e8 + amountOut);
     }
     
     function test_Swap_WETH_to_WBTC() public {
@@ -337,13 +397,19 @@ contract SushiSwapAdapterTest is Test {
     }
     
     function test_GetExpectedAmountOut() public view {
-        // USDC to WETH (3,000 USDC should get ~1 WETH)
+        // USDC to WETH (3,000 USDC should get ~1 WETH with 0.05% fee)
         uint256 usdcToWethAmount = adapter.getExpectedAmountOut(address(usdc), address(weth), 3000e6);
-        assertEq(usdcToWethAmount, 1e18);
+        // Expected: 3000 * 3000 / 1 = 9,000,000, minus 0.05% fee
+        uint256 expectedWethAmount = 3000e6 * WETH_PRICE / USDC_PRICE;
+        expectedWethAmount = expectedWethAmount - (expectedWethAmount * FEE_LOW / 1000000);
+        assertEq(usdcToWethAmount, expectedWethAmount);
         
-        // WETH to WBTC (10 WETH should get ~0.6 WBTC)
+        // WETH to WBTC (10 WETH should get ~0.6 WBTC with 1% fee)
         uint256 wethToWbtcAmount = adapter.getExpectedAmountOut(address(weth), address(wbtc), 10e18);
-        assertEq(wethToWbtcAmount, 0.6e8);
+        // Expected: 10 * 50000 / 3000 = 166.67, minus 1% fee
+        uint256 expectedWbtcAmount = 10e18 * WBTC_PRICE / WETH_PRICE;
+        expectedWbtcAmount = expectedWbtcAmount - (expectedWbtcAmount * FEE_HIGH / 1000000);
+        assertEq(wethToWbtcAmount, expectedWbtcAmount);
         
         // Same token (should return the same amount)
         uint256 sameTokenAmount = adapter.getExpectedAmountOut(address(usdc), address(usdc), 1000e6);
@@ -373,12 +439,12 @@ contract SushiSwapAdapterTest is Test {
     }
     
     function test_GetDexName() public view {
-        assertEq(adapter.getDexName(), "SushiSwap");
+        assertEq(adapter.getDexName(), "Uniswap V3");
     }
     
     function test_ReentrancyProtection() public pure {
         // This test would require a malicious contract that attempts reentrancy
         // For simplicity, we'll just verify that the nonReentrant modifier is applied to key functions
-        // in the SushiSwapAdapter contract
+        // in the UniswapV3Adapter contract
     }
 }
