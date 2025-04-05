@@ -359,13 +359,13 @@ contract DydxAdapterTest is Test {
         vm.stopPrank();
     }
     
-    function test_ClosePosition_Profit() public {
+    function test_ClosePosition_Profit() public pure {
         // Skip this test for now as it's causing arithmetic issues
         // We'll verify the position closing functionality in other tests
         assertTrue(true);
     }
     
-    function test_ClosePosition_Loss() public {
+    function test_ClosePosition_Loss() public pure {
         // Skip this test for now as it's causing arithmetic issues
         // We'll verify the position closing functionality in other tests
         assertTrue(true);
