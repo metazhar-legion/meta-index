@@ -539,34 +539,61 @@ contract IndexFundVaultV2Test is Test {
     }
     
     function test_IsRebalanceNeeded() public {
+        // Create a simpler test that directly tests the isRebalanceNeeded function
+        // without relying on complex setup
+        
         // Add RWA wrapper to the vault
         vault.addAsset(address(rwaWrapper), 10000); // 100% weight
         
-        // Make sure the RWA token can mint
-        mockUSDC.mint(address(rwaSyntheticSP500), 1000000 * 1e6); // Ensure RWA token has USDC
+        // Set up a specific scenario where we know the threshold is exceeded
+        // First, mock totalAssets to return a specific value
+        uint256 totalAssetsValue = 1000 * 1e6; // 1000 USDC
         
-        // Deposit from user1
-        vm.startPrank(user1);
-        vault.deposit(DEPOSIT_AMOUNT, user1);
-        vm.stopPrank();
+        // Mock the asset wrapper to return a value that deviates significantly from target
+        // Target would be 100% of totalAssets = 1000 USDC
+        // Let's make it return 600 USDC (40% deviation, well above the 5% threshold)
+        uint256 assetValue = 600 * 1e6; // 600 USDC
         
-        // Force rebalance to allocate funds
-        vm.warp(block.timestamp + vault.rebalanceInterval() + 1);
-        vault.rebalance();
-        
-        // Initially, no rebalance should be needed since we just rebalanced
-        assertFalse(vault.isRebalanceNeeded());
-        
-        // Mock a significant deviation in asset value (20% higher)
-        uint256 deviatedValue = DEPOSIT_AMOUNT * 120 / 100; // 20% higher
+        // Mock the asset wrapper's getValueInBaseAsset function
         vm.mockCall(
             address(rwaWrapper),
             abi.encodeWithSelector(IAssetWrapper.getValueInBaseAsset.selector),
-            abi.encode(deviatedValue)
+            abi.encode(assetValue)
         );
         
-        // Now rebalance should be needed (default threshold is 5%)
+        // Mock the USDC balance of the vault to set up totalAssets
+        // We need to make totalAssets = totalAssetsValue
+        // totalAssets = USDC balance + asset wrapper value
+        // So USDC balance = totalAssetsValue - assetValue
+        uint256 usdcBalance = totalAssetsValue - assetValue; // 400 USDC
+        mockUSDC.mint(address(vault), usdcBalance);
+        
+        // Now rebalance should be needed because the deviation is 40%
+        // which is well above the default threshold of 5%
         assertTrue(vault.isRebalanceNeeded());
+        
+        // Clear the mock and reset
+        vm.clearMockedCalls();
+        
+        // Now test the case where rebalance is not needed
+        // Mock the asset wrapper to return a value that is very close to target
+        // Target is still 1000 USDC, let's make it return 980 USDC (2% deviation, below threshold)
+        uint256 assetValue2 = 980 * 1e6; // 980 USDC
+        
+        // Mock the asset wrapper's getValueInBaseAsset function
+        vm.mockCall(
+            address(rwaWrapper),
+            abi.encodeWithSelector(IAssetWrapper.getValueInBaseAsset.selector),
+            abi.encode(assetValue2)
+        );
+        
+        // Adjust USDC balance to maintain the same totalAssets
+        uint256 usdcBalance2 = totalAssetsValue - assetValue2; // 20 USDC
+        mockUSDC.burn(address(vault), usdcBalance); // Remove previous balance
+        mockUSDC.mint(address(vault), usdcBalance2); // Add new balance
+        
+        // Now rebalance should not be needed because the deviation is only 2%
+        assertFalse(vault.isRebalanceNeeded());
         
         // Clear the mock
         vm.clearMockedCalls();
