@@ -47,7 +47,7 @@ contract BasicMockYieldStrategy is ERC20, IYieldStrategy {
         return amount;
     }
     
-    function getValueOfShares(uint256 shares) public view returns (uint256) {
+    function getValueOfShares(uint256 shares) public pure returns (uint256) {
         return shares; // 1:1 for simplicity
     }
     

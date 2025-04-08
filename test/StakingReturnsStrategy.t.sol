@@ -137,7 +137,7 @@ contract StakingReturnsStrategyTest is Test {
     }
     
     // Test initialization parameters
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(stakingStrategy.name(), "Staking Returns Shares", "Strategy name should be set correctly");
         assertEq(stakingStrategy.symbol(), "sStaking Returns", "Strategy symbol should be set correctly");
         assertEq(address(stakingStrategy.baseAsset()), address(usdc), "Base asset should be set correctly");
@@ -640,7 +640,7 @@ contract StakingReturnsStrategyTest is Test {
     }
     
     // Test reentrancy protection
-    function test_ReentrancyProtection() public {
+    function test_ReentrancyProtection() public view {
         // Create a malicious contract that would try to reenter
         // For simplicity, we'll just verify that the nonReentrant modifier is applied
         // to the key functions by checking the function selectors in the bytecode
