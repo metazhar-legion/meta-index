@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {CapitalAllocationManager} from "../src/CapitalAllocationManager.sol";
+import {TestableCapitalAllocationManager} from "./mocks/TestableCapitalAllocationManager.sol";
 import {ICapitalAllocationManager} from "../src/interfaces/ICapitalAllocationManager.sol";
 import {IYieldStrategy} from "../src/interfaces/IYieldStrategy.sol";
 import {IRWASyntheticToken} from "../src/interfaces/IRWASyntheticToken.sol";
@@ -225,6 +226,7 @@ contract ReentrantRWAToken is ERC20 {
 
 contract CapitalAllocationManagerSecurityTest is Test {
     CapitalAllocationManager public manager;
+    TestableCapitalAllocationManager public testableManager;
     FailingERC20 public baseAsset;
     ReentrantYieldStrategy public yieldStrategy1;
     ReentrantYieldStrategy public yieldStrategy2;
@@ -277,16 +279,98 @@ contract CapitalAllocationManagerSecurityTest is Test {
     
     // Test reentrancy protection with malicious yield strategy
     function test_ReentrancyProtectionYieldStrategy() public {
-        // Skip this test as we already have comprehensive security tests in the basic security test file
-        // and we're having issues with the reentrancy simulation in this specific test
-        vm.skip(true);
+        // Create a testable manager that doesn't have the onlyOwner restriction
+        testableManager = new TestableCapitalAllocationManager(address(baseAsset));
+        
+        // Transfer ownership to the owner
+        testableManager.transferOwnership(owner);
+        
+        // Mint base asset to the testable manager
+        baseAsset.mint(address(testableManager), 1_000_000 * 10**18);
+        
+        vm.startPrank(owner);
+        
+        // Configure the yield strategy to target the testable manager
+        yieldStrategy1.setTarget(address(testableManager));
+        
+        // Add the yield strategy to the testable manager
+        testableManager.addYieldStrategy(address(yieldStrategy1), 10000);
+        
+        // Set allocation to 0% RWA, 90% yield, 10% buffer
+        testableManager.setAllocation(0, 9000, 1000);
+        
+        // Approve the base asset for the strategy
+        vm.stopPrank();
+        vm.startPrank(address(testableManager));
+        baseAsset.approve(address(yieldStrategy1), type(uint256).max);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        
+        // Enable reentrancy in the yield strategy
+        yieldStrategy1.setShouldReenter(true);
+        
+        // Initial balance of the strategy
+        uint256 initialStrategyBalance = baseAsset.balanceOf(address(yieldStrategy1));
+        
+        // Perform rebalance - this should trigger the reentrancy attempt
+        testableManager.rebalance();
+        
+        // Final balance of the strategy
+        uint256 finalStrategyBalance = baseAsset.balanceOf(address(yieldStrategy1));
+        
+        // The rebalance should have succeeded despite the reentrancy attempt
+        // and the strategy should have received funds only once
+        assertGt(finalStrategyBalance, initialStrategyBalance, "Strategy should have received funds");
+        
+        vm.stopPrank();
     }
     
     // Test reentrancy protection with malicious RWA token
     function test_ReentrancyProtectionRWAToken() public {
-        // Skip this test as we already have comprehensive security tests in the basic security test file
-        // and we're having issues with the reentrancy simulation in this specific test
-        vm.skip(true);
+        // Create a testable manager that doesn't have the onlyOwner restriction
+        testableManager = new TestableCapitalAllocationManager(address(baseAsset));
+        
+        // Transfer ownership to the owner
+        testableManager.transferOwnership(owner);
+        
+        // Mint base asset to the testable manager
+        baseAsset.mint(address(testableManager), 1_000_000 * 10**18);
+        
+        vm.startPrank(owner);
+        
+        // Configure the RWA token to target the testable manager
+        rwaToken1.setTarget(address(testableManager));
+        
+        // Add the RWA token to the testable manager
+        testableManager.addRWAToken(address(rwaToken1), 10000);
+        
+        // Set allocation to 90% RWA, 0% yield, 10% buffer
+        testableManager.setAllocation(9000, 0, 1000);
+        
+        // Approve the base asset for the RWA token
+        vm.stopPrank();
+        vm.startPrank(address(testableManager));
+        baseAsset.approve(address(rwaToken1), type(uint256).max);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        
+        // Enable reentrancy in the RWA token
+        rwaToken1.setShouldReenter(true);
+        
+        // Initial balance of the RWA token
+        uint256 initialRWABalance = baseAsset.balanceOf(address(rwaToken1));
+        
+        // Perform rebalance - this should trigger the reentrancy attempt
+        testableManager.rebalance();
+        
+        // Final balance of the RWA token
+        uint256 finalRWABalance = baseAsset.balanceOf(address(rwaToken1));
+        
+        // The rebalance should have succeeded despite the reentrancy attempt
+        // and the RWA token should have received funds only once
+        assertGt(finalRWABalance, initialRWABalance, "RWA token should have received funds");
+        
+        vm.stopPrank();
     }
     
     // Test handling of failed token transfers
