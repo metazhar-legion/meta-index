@@ -150,7 +150,7 @@ contract TestableCapitalAllocationManager is ICapitalAllocationManager, Ownable,
         require(percentage > 0, "Percentage must be positive");
         
         uint256 index = yieldStrategyIndexes[strategy];
-        uint256 oldPercentage = yieldStrategies[index].percentage;
+        // No need to store the old percentage for testing purposes
         yieldStrategies[index].percentage = percentage;
         
         emit YieldStrategyUpdated(strategy, percentage);
@@ -168,7 +168,7 @@ contract TestableCapitalAllocationManager is ICapitalAllocationManager, Ownable,
         require(percentage > 0, "Percentage must be positive");
         
         uint256 index = rwaTokenIndexes[rwaToken];
-        uint256 oldPercentage = rwaTokens[index].percentage;
+        // No need to store the old percentage for testing purposes
         rwaTokens[index].percentage = percentage;
         
         emit RWATokenUpdated(rwaToken, percentage);
