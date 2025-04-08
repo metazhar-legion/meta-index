@@ -279,7 +279,10 @@ contract CapitalAllocationManagerSecurityTest is Test {
         manager.setAllocation(0, 9000, 1000);
         
         // Enable reentrancy attack
+        vm.stopPrank();
+        vm.prank(address(this));
         yieldStrategy1.setShouldReenter(true);
+        vm.startPrank(owner);
         
         // Attempt rebalance - should not be vulnerable to reentrancy
         manager.rebalance();
@@ -312,7 +315,10 @@ contract CapitalAllocationManagerSecurityTest is Test {
         manager.setAllocation(9000, 0, 1000);
         
         // Enable reentrancy attack
+        vm.stopPrank();
+        vm.prank(address(this));
         rwaToken1.setShouldReenter(true);
+        vm.startPrank(owner);
         
         // Attempt rebalance - should not be vulnerable to reentrancy
         manager.rebalance();
