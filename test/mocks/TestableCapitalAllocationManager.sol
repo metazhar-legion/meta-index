@@ -394,8 +394,10 @@ contract TestableCapitalAllocationManager is ICapitalAllocationManager, Ownable,
         
         for (uint256 i = 0; i < rwaTokens.length; i++) {
             if (rwaTokens[i].active) {
+                // For testing purposes, we'll use the token's total supply as a proxy for value
+                // In a real implementation, we would use the token's getTotalValue method
                 IRWASyntheticToken token = IRWASyntheticToken(rwaTokens[i].rwaToken);
-                totalRWAValue += token.getTotalValue();
+                totalRWAValue += token.totalSupply();
             }
         }
         
@@ -490,13 +492,15 @@ contract TestableCapitalAllocationManager is ICapitalAllocationManager, Ownable,
         for (uint256 i = 0; i < rwaTokens.length; i++) {
             if (rwaTokens[i].active) {
                 IRWASyntheticToken token = IRWASyntheticToken(rwaTokens[i].rwaToken);
-                uint256 tokenValue = token.getTotalValue();
+                // For testing purposes, we'll use the token's total supply as a proxy for value
+                uint256 tokenValue = token.totalSupply();
                 
                 if (tokenValue > 0) {
                     uint256 withdrawAmount = (amount * tokenValue) / totalRWAValue;
                     if (withdrawAmount > 0) {
-                        // Calculate how many tokens to burn
-                        uint256 tokensToBurn = token.getTokensForValue(withdrawAmount);
+                        // For testing purposes, we'll burn a proportional amount of tokens
+                        // In a real implementation, we would use the token's getTokensForValue method
+                        uint256 tokensToBurn = (withdrawAmount * token.balanceOf(address(this))) / tokenValue;
                         if (tokensToBurn > 0) {
                             token.burn(address(this), tokensToBurn);
                         }
