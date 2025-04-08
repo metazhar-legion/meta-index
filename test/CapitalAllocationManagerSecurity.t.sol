@@ -82,6 +82,9 @@ contract ReentrantYieldStrategy is ERC20 {
         
         // Attempt reentrancy attack
         if (shouldReenter && address(target) != address(0)) {
+            // Call rebalance as the owner to avoid authorization issues
+            address owner = target.owner();
+            vm.prank(owner);
             target.rebalance();
         }
         
@@ -98,6 +101,9 @@ contract ReentrantYieldStrategy is ERC20 {
         
         // Attempt reentrancy attack
         if (shouldReenter && address(target) != address(0)) {
+            // Call rebalance as the owner to avoid authorization issues
+            address owner = target.owner();
+            vm.prank(owner);
             target.rebalance();
         }
         
@@ -167,6 +173,9 @@ contract ReentrantRWAToken is ERC20 {
         
         // Attempt reentrancy attack
         if (shouldReenter && address(target) != address(0)) {
+            // Call rebalance as the owner to avoid authorization issues
+            address owner = target.owner();
+            vm.prank(owner);
             target.rebalance();
         }
         
@@ -180,6 +189,9 @@ contract ReentrantRWAToken is ERC20 {
         
         // Attempt reentrancy attack
         if (shouldReenter && address(target) != address(0)) {
+            // Call rebalance as the owner to avoid authorization issues
+            address owner = target.owner();
+            vm.prank(owner);
             target.rebalance();
         }
         
