@@ -270,6 +270,7 @@ contract CapitalAllocationManagerSecurityTest is Test {
         baseAsset.approve(address(yieldStrategy1), type(uint256).max);
         vm.stopPrank();
         
+        // Set up the manager with the strategy
         vm.startPrank(owner);
         
         // Add the reentrant strategy
@@ -277,14 +278,13 @@ contract CapitalAllocationManagerSecurityTest is Test {
         
         // Set allocation to 0% RWA, 90% yield, 10% buffer
         manager.setAllocation(0, 9000, 1000);
-        
-        // Enable reentrancy attack
         vm.stopPrank();
-        vm.prank(address(this));
-        yieldStrategy1.setShouldReenter(true);
-        vm.startPrank(owner);
         
-        // Attempt rebalance - should not be vulnerable to reentrancy
+        // Enable reentrancy attack - this is called by the test contract, not the owner
+        yieldStrategy1.setShouldReenter(true);
+        
+        // Rebalance as owner
+        vm.prank(owner);
         manager.rebalance();
         
         // Verify state is consistent
@@ -295,8 +295,6 @@ contract CapitalAllocationManagerSecurityTest is Test {
         // Allow for small rounding errors
         assertApproxEqRel(yieldValue, totalValue * 9000 / BASIS_POINTS, 0.01e18);
         assertApproxEqRel(bufferValue, totalValue * 1000 / BASIS_POINTS, 0.01e18);
-        
-        vm.stopPrank();
     }
     
     // Test reentrancy protection with malicious RWA token
@@ -306,6 +304,7 @@ contract CapitalAllocationManagerSecurityTest is Test {
         baseAsset.approve(address(rwaToken1), type(uint256).max);
         vm.stopPrank();
         
+        // Set up the manager with the RWA token
         vm.startPrank(owner);
         
         // Add the reentrant token
@@ -313,14 +312,13 @@ contract CapitalAllocationManagerSecurityTest is Test {
         
         // Set allocation to 90% RWA, 0% yield, 10% buffer
         manager.setAllocation(9000, 0, 1000);
-        
-        // Enable reentrancy attack
         vm.stopPrank();
-        vm.prank(address(this));
-        rwaToken1.setShouldReenter(true);
-        vm.startPrank(owner);
         
-        // Attempt rebalance - should not be vulnerable to reentrancy
+        // Enable reentrancy attack - this is called by the test contract, not the owner
+        rwaToken1.setShouldReenter(true);
+        
+        // Rebalance as owner
+        vm.prank(owner);
         manager.rebalance();
         
         // Verify state is consistent
@@ -331,8 +329,6 @@ contract CapitalAllocationManagerSecurityTest is Test {
         // Allow for small rounding errors
         assertApproxEqRel(rwaValue, totalValue * 9000 / BASIS_POINTS, 0.01e18);
         assertApproxEqRel(bufferValue, totalValue * 1000 / BASIS_POINTS, 0.01e18);
-        
-        vm.stopPrank();
     }
     
     // Test handling of failed token transfers
