@@ -530,7 +530,14 @@ contract TestableCapitalAllocationManager is ICapitalAllocationManager, Ownable,
                     uint256 withdrawAmount = (amount * strategyValue) / totalYieldValue;
                     if (withdrawAmount > 0) {
                         // Calculate how many shares to withdraw
-                        uint256 sharesToWithdraw = strategy.getSharesForValue(withdrawAmount);
+                        // Calculate shares based on the value using the available interface methods
+                        // For simplicity in testing, we'll use a direct proportion calculation
+                        uint256 totalValue = strategy.getTotalValue();
+                        uint256 sharesToWithdraw = 0;
+                        if (totalValue > 0) {
+                            // Calculate shares proportionally to the withdraw amount
+                            sharesToWithdraw = (withdrawAmount * 1e18) / totalValue;
+                        }
                         if (sharesToWithdraw > 0) {
                             strategy.withdraw(sharesToWithdraw);
                         }
