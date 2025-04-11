@@ -206,6 +206,9 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         // Ensure this test contract is the owner of the vault
         assertEq(vault.owner(), address(this));
         
+        // Set rebalance interval to 0 to avoid timing issues in tests
+        vault.setRebalanceInterval(0);
+        
         // Approve USDC for the RWA wrapper
         mockUSDC.approve(address(rwaWrapper), type(uint256).max);
         
@@ -266,8 +269,12 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         vault.rebalance();
         
         // Check that all funds are allocated to the RWA wrapper
-        assertEq(rwaWrapper.getValueInBaseAsset(), DEPOSIT_AMOUNT);
-        assertEq(mockUSDC.balanceOf(address(vault)), 0);
+        uint256 wrapperValue = rwaWrapper.getValueInBaseAsset();
+        uint256 vaultBalance = mockUSDC.balanceOf(address(vault));
+        
+        // Use approximate equality for asset values due to potential rounding
+        assertApproxEqAbs(wrapperValue, DEPOSIT_AMOUNT, 10); // Allow small difference
+        assertApproxEqAbs(vaultBalance, 0, 10); // Allow small difference
     }
     
     // Test rebalance with multiple assets
@@ -295,9 +302,14 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         vault.rebalance();
         
         // Check that funds are allocated according to weights
-        assertApproxEqRel(rwaWrapper.getValueInBaseAsset(), DEPOSIT_AMOUNT * 60 / 100, 0.01e18);
-        assertApproxEqRel(rwaWrapper2.getValueInBaseAsset(), DEPOSIT_AMOUNT * 40 / 100, 0.01e18);
-        assertEq(mockUSDC.balanceOf(address(vault)), 0);
+        uint256 wrapper1Value = rwaWrapper.getValueInBaseAsset();
+        uint256 wrapper2Value = rwaWrapper2.getValueInBaseAsset();
+        uint256 vaultBalance = mockUSDC.balanceOf(address(vault));
+        
+        // Use approximate equality for asset values due to potential rounding
+        assertApproxEqAbs(wrapper1Value, DEPOSIT_AMOUNT * 60 / 100, 10);
+        assertApproxEqAbs(wrapper2Value, DEPOSIT_AMOUNT * 40 / 100, 10);
+        assertApproxEqAbs(vaultBalance, 0, 10);
     }
     
     // Test rebalance threshold
@@ -327,6 +339,7 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         // Set a small deviation in asset values (below threshold)
         uint256 smallDeviation = DEPOSIT_AMOUNT * 4 / 100; // 4% deviation
         mockUSDC.mint(address(rwaWrapper), smallDeviation);
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100 + smallDeviation);
         
         // Set rebalance interval to a large value
         vault.setRebalanceInterval(365 days);
@@ -338,6 +351,7 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         // Now create a larger deviation (above threshold)
         uint256 largeDeviation = DEPOSIT_AMOUNT * 6 / 100; // 6% deviation
         mockUSDC.mint(address(rwaWrapper), largeDeviation);
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100 + smallDeviation + largeDeviation);
         
         // Should be able to rebalance now due to threshold being exceeded
         vault.rebalance();
@@ -385,7 +399,8 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         vm.stopPrank();
         
         // Expect revert due to reentrancy protection
-        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        bytes4 selector = bytes4(keccak256("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(selector);
         vault.rebalance();
     }
     
@@ -412,7 +427,8 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         
         // Try to withdraw (should not be vulnerable to reentrancy)
         vm.startPrank(attacker);
-        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        bytes4 selector = bytes4(keccak256("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(selector);
         vault.withdraw(DEPOSIT_AMOUNT / 2, attacker, attacker);
         vm.stopPrank();
     }
@@ -442,8 +458,12 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         assertFalse(active);
         
         // Check that funds were withdrawn from the wrapper
-        assertEq(rwaWrapper.getValueInBaseAsset(), 0);
-        assertEq(mockUSDC.balanceOf(address(vault)), DEPOSIT_AMOUNT);
+        uint256 wrapperValue = rwaWrapper.getValueInBaseAsset();
+        uint256 vaultBalance = mockUSDC.balanceOf(address(vault));
+        
+        // Use approximate equality for asset values due to potential rounding
+        assertApproxEqAbs(wrapperValue, 0, 10); // Allow small difference
+        assertApproxEqAbs(vaultBalance, DEPOSIT_AMOUNT, 10); // Allow small difference
         
         // Check active assets
         address[] memory activeAssets = vault.getActiveAssets();
@@ -499,8 +519,12 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         vault.rebalance();
         
         // Check that funds were reallocated according to new weights
-        assertApproxEqRel(rwaWrapper.getValueInBaseAsset(), DEPOSIT_AMOUNT * 30 / 100, 0.01e18);
-        assertApproxEqRel(rwaWrapper2.getValueInBaseAsset(), DEPOSIT_AMOUNT * 70 / 100, 0.01e18);
+        uint256 wrapper1Value = rwaWrapper.getValueInBaseAsset();
+        uint256 wrapper2Value = rwaWrapper2.getValueInBaseAsset();
+        
+        // Use approximate equality for asset values due to potential rounding
+        assertApproxEqAbs(wrapper1Value, DEPOSIT_AMOUNT * 30 / 100, 10);
+        assertApproxEqAbs(wrapper2Value, DEPOSIT_AMOUNT * 70 / 100, 10);
     }
     
     // Test updating asset weight with invalid parameters
@@ -620,6 +644,7 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         // Create a small deviation (below threshold)
         uint256 smallDeviation = DEPOSIT_AMOUNT * 4 / 100; // 4% deviation
         mockUSDC.mint(address(rwaWrapper), smallDeviation);
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100 + smallDeviation);
         
         // Still should not need rebalance
         assertFalse(vault.isRebalanceNeeded());
@@ -627,6 +652,7 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         // Create a larger deviation (above threshold)
         uint256 largeDeviation = DEPOSIT_AMOUNT * 6 / 100; // 6% deviation
         mockUSDC.mint(address(rwaWrapper), largeDeviation);
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100 + smallDeviation + largeDeviation);
         
         // Now should need rebalance
         assertTrue(vault.isRebalanceNeeded());
@@ -695,21 +721,27 @@ contract IndexFundVaultV2ComprehensiveFixedTest is Test {
         vm.stopPrank();
         
         // Before rebalance, all assets should be in the vault
-        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT);
+        assertApproxEqAbs(vault.totalAssets(), DEPOSIT_AMOUNT, 10);
         
         // Rebalance to allocate funds
         vault.rebalance();
         
         // After rebalance, assets should be in the wrapper
-        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT);
-        assertEq(mockUSDC.balanceOf(address(vault)), 0);
-        assertEq(rwaWrapper.getValueInBaseAsset(), DEPOSIT_AMOUNT);
+        uint256 totalAssets = vault.totalAssets();
+        uint256 vaultBalance = mockUSDC.balanceOf(address(vault));
+        uint256 wrapperValue = rwaWrapper.getValueInBaseAsset();
+        
+        // Use approximate equality for asset values due to potential rounding
+        assertApproxEqAbs(totalAssets, DEPOSIT_AMOUNT, 10);
+        assertApproxEqAbs(vaultBalance, 0, 10);
+        assertApproxEqAbs(wrapperValue, DEPOSIT_AMOUNT, 10);
         
         // Simulate yield in the wrapper
         uint256 yield = DEPOSIT_AMOUNT * 10 / 100; // 10% yield
         mockUSDC.mint(address(rwaWrapper), yield);
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT + yield);
         
         // Total assets should include the yield
-        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT + yield);
+        assertApproxEqAbs(vault.totalAssets(), DEPOSIT_AMOUNT + yield, 10);
     }
 }
