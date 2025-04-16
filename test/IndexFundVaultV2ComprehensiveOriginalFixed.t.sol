@@ -605,3 +605,179 @@ contract IndexFundVaultV2ComprehensiveOriginalFixedTest is Test {
         // Check that the DEX was updated
         assertEq(address(vault.dex()), address(newDEX));
     }
+    
+    // Test setting rebalance threshold
+    function test_SetRebalanceThreshold_Comprehensive() public {
+        uint256 oldThreshold = vault.rebalanceThreshold();
+        uint256 newThreshold = 1000; // 10%
+        
+        vm.expectEmit(true, true, true, true);
+        emit RebalanceThresholdUpdated(oldThreshold, newThreshold);
+        vault.setRebalanceThreshold(newThreshold);
+        
+        // Check that the threshold was updated
+        assertEq(vault.rebalanceThreshold(), newThreshold);
+    }
+    
+    // Test setting rebalance threshold with invalid value
+    function test_SetRebalanceThreshold_InvalidValue() public {
+        // Test exceeding 100%
+        vm.expectRevert(CommonErrors.ValueTooHigh.selector);
+        vault.setRebalanceThreshold(10001);
+    }
+    
+    // Test setting rebalance interval
+    function test_SetRebalanceInterval_Comprehensive() public {
+        uint256 oldInterval = vault.rebalanceInterval();
+        uint256 newInterval = 7 days;
+        
+        vm.expectEmit(true, true, true, true);
+        emit RebalanceIntervalUpdated(oldInterval, newInterval);
+        vault.setRebalanceInterval(newInterval);
+        
+        // Check that the interval was updated
+        assertEq(vault.rebalanceInterval(), newInterval);
+    }
+    
+    // Test setting rebalance interval with invalid value
+    function test_SetRebalanceInterval_InvalidValue() public {
+        // Test exceeding uint32 max
+        vm.expectRevert(CommonErrors.ValueTooHigh.selector);
+        vault.setRebalanceInterval(uint256(type(uint32).max) + 1);
+    }
+    
+    // Test isRebalanceNeeded function
+    function test_IsRebalanceNeeded() public {
+        // Add RWA wrapper to the vault with 60% weight
+        vault.addAsset(address(rwaWrapper), 6000);
+        
+        // Create and add a second asset wrapper with 40% weight
+        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
+            "Second RWA",
+            address(mockUSDC)
+        );
+        mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
+        vault.addAsset(address(rwaWrapper2), 4000);
+        
+        // Deposit from user1
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Initially set the wrapper values to 0 (no funds allocated yet)
+        rwaWrapper.setValueInBaseAsset(0);
+        rwaWrapper2.setValueInBaseAsset(0);
+        
+        // Rebalance
+        vault.rebalance();
+        
+        // After rebalance, set the wrapper values to match the expected allocation
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100);
+        rwaWrapper2.setValueInBaseAsset(DEPOSIT_AMOUNT * 40 / 100);
+        
+        // Set rebalance threshold to 5%
+        vault.setRebalanceThreshold(500);
+        
+        // Initially, no rebalance should be needed
+        assertFalse(vault.isRebalanceNeeded());
+        
+        // Create a small deviation (below threshold)
+        uint256 smallDeviation = DEPOSIT_AMOUNT * 4 / 100; // 4% deviation
+        // Simulate value change by updating the mock wrapper value
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100 + smallDeviation);
+        
+        // Still should not need rebalance
+        assertFalse(vault.isRebalanceNeeded());
+        
+        // Create a larger deviation (above threshold)
+        uint256 largeDeviation = DEPOSIT_AMOUNT * 6 / 100; // 6% deviation
+        // Simulate value change by updating the mock wrapper value
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100 + smallDeviation + largeDeviation);
+        
+        // Now should need rebalance
+        assertTrue(vault.isRebalanceNeeded());
+    }
+    
+    // Test vault with zero total weight
+    function test_ZeroTotalWeight() public {
+        // No assets added, total weight should be 0
+        assertEq(vault.getTotalWeight(), 0);
+        
+        // Deposit should still work
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Rebalance should not revert
+        vault.rebalance();
+        
+        // All funds should remain in the vault
+        assertEq(mockUSDC.balanceOf(address(vault)), DEPOSIT_AMOUNT);
+    }
+    
+    // Test vault with paused state
+    function test_PausedVault() public {
+        // Add RWA wrapper to the vault
+        vault.addAsset(address(rwaWrapper), 10000); // 100% weight
+        
+        // Pause the vault
+        vault.pause();
+        
+        // Deposit should revert
+        vm.startPrank(user1);
+        vm.expectRevert(CommonErrors.OperationPaused.selector);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Rebalance should revert
+        vm.expectRevert(CommonErrors.OperationPaused.selector);
+        vault.rebalance();
+        
+        // Unpause the vault
+        vault.unpause();
+        
+        // Now operations should work
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        vault.rebalance();
+    }
+    
+    // Test totalAssets calculation
+    function test_TotalAssets_Comprehensive() public {
+        // Add RWA wrapper to the vault
+        vault.addAsset(address(rwaWrapper), 10000); // 100% weight
+        
+        // Initial total assets should be 0
+        assertEq(vault.totalAssets(), 0);
+        
+        // Deposit from user1
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Before rebalance, all assets should be in the vault
+        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT);
+        
+        // Initially set the wrapper value to 0 (no funds allocated yet)
+        rwaWrapper.setValueInBaseAsset(0);
+        
+        // Rebalance to allocate funds
+        vault.rebalance();
+        
+        // After rebalance, set the wrapper value to match the expected allocation
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT);
+        
+        // After rebalance, assets should be in the wrapper
+        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT);
+        assertEq(mockUSDC.balanceOf(address(vault)), 0);
+        assertEq(rwaWrapper.getValueInBaseAsset(), DEPOSIT_AMOUNT);
+        
+        // Simulate yield in the wrapper
+        uint256 yield = DEPOSIT_AMOUNT * 10 / 100; // 10% yield
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT + yield);
+        
+        // Total assets should include the yield
+        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT + yield);
+    }
