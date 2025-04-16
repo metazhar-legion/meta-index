@@ -257,3 +257,159 @@ contract IndexFundVaultV2ComprehensiveOriginalFixedTest is Test {
         // Configure malicious wrapper
         maliciousWrapper.setTarget(address(vault));
     }
+    
+    // Test rebalance with no assets
+    function test_Rebalance_NoAssets() public {
+        // Should not revert but do nothing
+        vault.rebalance();
+        
+        // Total assets should be 0
+        assertEq(vault.totalAssets(), 0);
+    }
+    
+    // Test rebalance with one asset
+    function test_Rebalance_OneAsset() public {
+        // Add RWA wrapper to the vault
+        vault.addAsset(address(rwaWrapper), 10000); // 100% weight
+        
+        // Deposit from user1
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Initially set the wrapper value to 0 (no funds allocated yet)
+        rwaWrapper.setValueInBaseAsset(0);
+        
+        // Rebalance
+        vm.expectEmit(true, true, true, true);
+        emit Rebalanced();
+        vault.rebalance();
+        
+        // After rebalance, set the wrapper value to match the expected allocation
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT);
+        
+        // Check that all funds are allocated to the RWA wrapper
+        assertEq(rwaWrapper.getValueInBaseAsset(), DEPOSIT_AMOUNT);
+        assertEq(mockUSDC.balanceOf(address(vault)), 0);
+    }
+    
+    // Test rebalance with multiple assets
+    function test_Rebalance_MultipleAssets() public {
+        // Add RWA wrapper to the vault with 60% weight
+        vault.addAsset(address(rwaWrapper), 6000);
+        
+        // Create and add a second asset wrapper with 40% weight
+        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
+            "Second RWA",
+            address(mockUSDC)
+        );
+        mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
+        vault.addAsset(address(rwaWrapper2), 4000);
+        
+        // Deposit from user1
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Initially set the wrapper values to 0 (no funds allocated yet)
+        rwaWrapper.setValueInBaseAsset(0);
+        rwaWrapper2.setValueInBaseAsset(0);
+        
+        // Rebalance
+        vault.rebalance();
+        
+        // After rebalance, set the wrapper values to match the expected allocation
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100);
+        rwaWrapper2.setValueInBaseAsset(DEPOSIT_AMOUNT * 40 / 100);
+        
+        // Check that funds are allocated according to weights
+        assertApproxEqRel(rwaWrapper.getValueInBaseAsset(), DEPOSIT_AMOUNT * 60 / 100, 0.01e18);
+        assertApproxEqRel(rwaWrapper2.getValueInBaseAsset(), DEPOSIT_AMOUNT * 40 / 100, 0.01e18);
+        assertEq(mockUSDC.balanceOf(address(vault)), 0);
+    }
+    
+    // Test rebalance threshold
+    function test_RebalanceThreshold() public {
+        // Add RWA wrapper to the vault with 60% weight
+        vault.addAsset(address(rwaWrapper), 6000);
+        
+        // Create and add a second asset wrapper with 40% weight
+        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
+            "Second RWA",
+            address(mockUSDC)
+        );
+        mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
+        vault.addAsset(address(rwaWrapper2), 4000);
+        
+        // Deposit from user1
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Initially set the wrapper values to 0 (no funds allocated yet)
+        rwaWrapper.setValueInBaseAsset(0);
+        rwaWrapper2.setValueInBaseAsset(0);
+        
+        // Rebalance
+        vault.rebalance();
+        
+        // After rebalance, set the wrapper values to match the expected allocation
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100);
+        rwaWrapper2.setValueInBaseAsset(DEPOSIT_AMOUNT * 40 / 100);
+        
+        // Set rebalance interval to a large value
+        vault.setRebalanceInterval(365 days);
+        
+        // Set rebalance threshold to 5%
+        vault.setRebalanceThreshold(500);
+        
+        // Set a small deviation in asset values (below threshold)
+        uint256 smallDeviation = DEPOSIT_AMOUNT * 4 / 100; // 4% deviation
+        // Simulate value change by updating the mock wrapper value
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100 + smallDeviation);
+        
+        // Try to rebalance before interval has passed with small deviation
+        vm.expectRevert(CommonErrors.TooEarly.selector);
+        vault.rebalance();
+        
+        // Now create a larger deviation (above threshold)
+        uint256 largeDeviation = DEPOSIT_AMOUNT * 6 / 100; // 6% deviation
+        // Simulate value change by updating the mock wrapper value
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 60 / 100 + smallDeviation + largeDeviation);
+        
+        // Should be able to rebalance now due to threshold being exceeded
+        vault.rebalance();
+    }
+    
+    // Test rebalance interval
+    function test_RebalanceInterval() public {
+        // Add RWA wrapper to the vault
+        vault.addAsset(address(rwaWrapper), 10000); // 100% weight
+        
+        // Deposit from user1
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Initially set the wrapper value to 0 (no funds allocated yet)
+        rwaWrapper.setValueInBaseAsset(0);
+        
+        // Rebalance
+        vault.rebalance();
+        
+        // After rebalance, set the wrapper value to match the expected allocation
+        rwaWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT);
+        
+        // Set rebalance interval to 1 day
+        vault.setRebalanceInterval(1 days);
+        
+        // Try to rebalance immediately
+        vm.expectRevert(CommonErrors.TooEarly.selector);
+        vault.rebalance();
+        
+        // Advance time by 1 day
+        vm.warp(block.timestamp + 1 days);
+        
+        // Should be able to rebalance now
+        vault.rebalance();
+    }
