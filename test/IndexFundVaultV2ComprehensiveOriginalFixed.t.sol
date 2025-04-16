@@ -781,3 +781,4 @@ contract IndexFundVaultV2ComprehensiveOriginalFixedTest is Test {
         // Total assets should include the yield
         assertEq(vault.totalAssets(), DEPOSIT_AMOUNT + yield);
     }
+}
