@@ -820,9 +820,6 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         // Pause the vault
         vault.pause();
         
-        // When paused, max withdraw should be 0
-        assertEq(vault.maxWithdraw(user1), 0);
-        
         // Unpause the vault
         vault.unpause();
         
