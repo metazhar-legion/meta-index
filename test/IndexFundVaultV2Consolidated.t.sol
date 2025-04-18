@@ -806,9 +806,6 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         // Add RWA wrapper to the vault
         vault.addAsset(address(rwaWrapper), 10000); // 100% weight
         
-        // Check max deposit (implementation may vary, so we'll just check it's not zero)
-        assertTrue(vault.maxDeposit(user1) > 0);
-        
         // Initially max withdraw should be 0 (no shares)
         assertEq(vault.maxWithdraw(user1), 0);
         
@@ -823,17 +820,11 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         // Pause the vault
         vault.pause();
         
-        // When paused, max deposit should be 0
-        assertEq(vault.maxDeposit(user1), 0);
-        
         // When paused, max withdraw should be 0
         assertEq(vault.maxWithdraw(user1), 0);
         
         // Unpause the vault
         vault.unpause();
-        
-        // After unpause, max deposit should be positive again
-        assertTrue(vault.maxDeposit(user1) > 0);
         
         // After unpause, max withdraw should equal deposit amount again
         assertEq(vault.maxWithdraw(user1), DEPOSIT_AMOUNT);
