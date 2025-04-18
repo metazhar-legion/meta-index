@@ -838,3 +838,4 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         // After unpause, max withdraw should equal deposit amount again
         assertEq(vault.maxWithdraw(user1), DEPOSIT_AMOUNT);
     }
+}
