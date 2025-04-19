@@ -62,7 +62,7 @@ contract MockYieldStrategyAdvanced is IYieldStrategy {
     }
     
     function setName(string memory tokenName) external {
-        _tokenName = tokenName;
+        name = tokenName;
     }
     
     function deposit(uint256 amount) external override returns (uint256 shares) {
@@ -160,7 +160,7 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
     }
     
     function setName(string memory tokenName) external {
-        _tokenName = tokenName;
+        name = tokenName;
     }
     
     function mint(address to, uint256 amount) external returns (bool) {
