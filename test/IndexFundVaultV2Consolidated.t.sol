@@ -284,9 +284,9 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         
         // Deploy mock contracts
         mockUSDC = new MockERC20("USD Coin", "USDC", 6);
-        mockPriceOracle = new MockPriceOracle();
-        mockDEX = new MockDEX();
-        mockFeeManager = new MockFeeManager(address(mockUSDC));
+        mockPriceOracle = new MockPriceOracle(address(mockUSDC));
+        mockDEX = new MockDEX(address(mockPriceOracle));
+        mockFeeManager = new MockFeeManager();
         
         // Deploy the vault
         vault = new IndexFundVaultV2(
@@ -301,13 +301,8 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         rwaWrapper2 = new MockRWAAssetWrapper("Mock RWA 2", address(mockUSDC));
         rwaWrapper3 = new MockRWAAssetWrapper("Mock RWA 3", address(mockUSDC));
         
-        // Deploy vault (owned by this test contract)
-        vault = new IndexFundVaultV2(
-            IERC20(address(mockUSDC)),
-            mockFeeManager,
-            mockPriceOracle,
-            mockDEX
-        );
+        // Deploy malicious wrapper for reentrancy tests
+        maliciousWrapper = new MaliciousAssetWrapper(address(mockUSDC));
         
         // Set rebalance interval to 0 to avoid timing issues in tests
         vault.setRebalanceInterval(0);
@@ -407,10 +402,6 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         vault.addAsset(address(rwaWrapper), 6000);
         
         // Create and add a second asset wrapper with 40% weight
-        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
-            "Second RWA",
-            address(mockUSDC)
-        );
         mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
         vault.addAsset(address(rwaWrapper2), 4000);
         
@@ -442,10 +433,6 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         vault.addAsset(address(rwaWrapper), 6000);
         
         // Create and add a second asset wrapper with 40% weight
-        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
-            "Second RWA",
-            address(mockUSDC)
-        );
         mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
         vault.addAsset(address(rwaWrapper2), 4000);
         
@@ -624,10 +611,6 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         vault.addAsset(address(rwaWrapper), 6000);
         
         // Create and add a second asset wrapper with 40% weight
-        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
-            "Second RWA",
-            address(mockUSDC)
-        );
         mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
         vault.addAsset(address(rwaWrapper2), 4000);
         
@@ -691,7 +674,7 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
     // Test updating price oracle
     function test_UpdatePriceOracle() public {
         // Create a new price oracle
-        MockPriceOracle newOracle = new MockPriceOracle();
+        MockPriceOracle newOracle = new MockPriceOracle(address(mockUSDC));
         
         // Update the price oracle
         address oldOracle = address(mockPriceOracle);
@@ -706,7 +689,7 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
     // Test updating DEX
     function test_UpdateDEX() public {
         // Create a new DEX
-        MockDEX newDEX = new MockDEX();
+        MockDEX newDEX = new MockDEX(address(mockPriceOracle));
         
         // Update the DEX
         address oldDEX = address(mockDEX);
@@ -764,10 +747,6 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         vault.addAsset(address(rwaWrapper), 6000);
         
         // Create and add a second asset wrapper with 40% weight
-        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
-            "Second RWA",
-            address(mockUSDC)
-        );
         mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
         vault.addAsset(address(rwaWrapper2), 4000);
         
@@ -844,10 +823,6 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         vault.addAsset(address(rwaWrapper), 6000);
         
         // Create and add a second asset wrapper with 40% weight
-        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
-            "Second RWA",
-            address(mockUSDC)
-        );
         mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
         vault.addAsset(address(rwaWrapper2), 4000);
         
@@ -1036,8 +1011,7 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         vault.addAsset(address(rwaWrapper), 3000);
         vault.addAsset(address(rwaWrapper2), 3000);
         
-        // Create a third wrapper
-        MockRWAAssetWrapper rwaWrapper3 = new MockRWAAssetWrapper("Mock RWA 3", address(mockUSDC));
+        // Use the existing third wrapper
         vault.addAsset(address(rwaWrapper3), 4000);
         
         // Check active assets
