@@ -75,6 +75,76 @@ contract MockRWAAssetWrapper is IAssetWrapper {
 }
 
 /**
+ * @title YieldGeneratingWrapper
+ * @dev Mock implementation of IAssetWrapper that generates yield
+ * Used for testing yield harvesting
+ */
+contract YieldGeneratingWrapper is IAssetWrapper {
+    string public name;
+    IERC20 public baseAsset;
+    uint256 private _valueInBaseAsset;
+    uint256 private _yieldAmount;
+    address public owner;
+    
+    constructor(string memory _name, address _baseAsset) {
+        name = _name;
+        baseAsset = IERC20(_baseAsset);
+        owner = msg.sender;
+    }
+    
+    function setValueInBaseAsset(uint256 value) external {
+        _valueInBaseAsset = value;
+    }
+    
+    function setYieldAmount(uint256 amount) external {
+        _yieldAmount = amount;
+    }
+    
+    function allocateCapital(uint256 amount) external override returns (bool) {
+        // Transfer the base asset to this contract
+        baseAsset.transferFrom(msg.sender, address(this), amount);
+        _valueInBaseAsset += amount;
+        return true;
+    }
+    
+    function withdrawCapital(uint256 amount) external override returns (uint256 actualAmount) {
+        require(amount <= _valueInBaseAsset, "Insufficient balance");
+        _valueInBaseAsset -= amount;
+        
+        // Transfer the base asset back
+        baseAsset.transfer(msg.sender, amount);
+        return amount;
+    }
+    
+    function getValueInBaseAsset() external view override returns (uint256) {
+        return _valueInBaseAsset;
+    }
+    
+    function getBaseAsset() external view override returns (address) {
+        return address(baseAsset);
+    }
+    
+    function getName() external view override returns (string memory) {
+        return name;
+    }
+    
+    function getUnderlyingTokens() external pure override returns (address[] memory tokens) {
+        // Return an empty array for simplicity
+        return new address[](0);
+    }
+    
+    function harvestYield() external override returns (uint256 harvestedAmount) {
+        // Transfer yield to caller
+        if (_yieldAmount > 0) {
+            baseAsset.transfer(msg.sender, _yieldAmount);
+            harvestedAmount = _yieldAmount;
+            _yieldAmount = 0;
+        }
+        return harvestedAmount;
+    }
+}
+
+/**
  * @title MaliciousAssetWrapper
  * @dev Mock implementation of IAssetWrapper that attempts reentrancy attacks
  * Used for testing reentrancy protection
@@ -170,6 +240,8 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
     IndexFundVaultV2 public vault;
     MockRWAAssetWrapper public rwaWrapper;
     MockERC20 public mockUSDC;
+    MockRWAAssetWrapper public rwaWrapper2;
+    MockRWAAssetWrapper public rwaWrapper3;
     MockPriceOracle public mockPriceOracle;
     MockDEX public mockDEX;
     MockFeeManager public mockFeeManager;
@@ -212,18 +284,22 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         
         // Deploy mock contracts
         mockUSDC = new MockERC20("USD Coin", "USDC", 6);
-        mockPriceOracle = new MockPriceOracle(address(mockUSDC));
-        mockDEX = new MockDEX(address(mockPriceOracle));
-        mockFeeManager = new MockFeeManager();
+        mockPriceOracle = new MockPriceOracle();
+        mockDEX = new MockDEX();
+        mockFeeManager = new MockFeeManager(address(mockUSDC));
         
-        // Deploy RWA wrapper (owned by this test contract)
-        rwaWrapper = new MockRWAAssetWrapper(
-            "S&P 500 RWA",
-            address(mockUSDC)
+        // Deploy the vault
+        vault = new IndexFundVaultV2(
+            IERC20(address(mockUSDC)),
+            mockFeeManager,
+            mockPriceOracle,
+            mockDEX
         );
         
-        // Deploy malicious wrapper for reentrancy tests
-        maliciousWrapper = new MaliciousAssetWrapper(address(mockUSDC));
+        // Deploy the RWA wrappers
+        rwaWrapper = new MockRWAAssetWrapper("Mock RWA 1", address(mockUSDC));
+        rwaWrapper2 = new MockRWAAssetWrapper("Mock RWA 2", address(mockUSDC));
+        rwaWrapper3 = new MockRWAAssetWrapper("Mock RWA 3", address(mockUSDC));
         
         // Deploy vault (owned by this test contract)
         vault = new IndexFundVaultV2(
@@ -615,7 +691,7 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
     // Test updating price oracle
     function test_UpdatePriceOracle() public {
         // Create a new price oracle
-        MockPriceOracle newOracle = new MockPriceOracle(address(mockUSDC));
+        MockPriceOracle newOracle = new MockPriceOracle();
         
         // Update the price oracle
         address oldOracle = address(mockPriceOracle);
@@ -630,7 +706,7 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
     // Test updating DEX
     function test_UpdateDEX() public {
         // Create a new DEX
-        MockDEX newDEX = new MockDEX(address(mockPriceOracle));
+        MockDEX newDEX = new MockDEX();
         
         // Update the DEX
         address oldDEX = address(mockDEX);
@@ -905,5 +981,149 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         
         // Clear the mock
         vm.clearMockedCalls();
+    }
+    
+    // Test harvesting yield with multiple assets
+    function test_HarvestYield_MultipleAssets() public {
+        // Create yield-generating wrappers
+        YieldGeneratingWrapper yieldWrapper1 = new YieldGeneratingWrapper("Yield Wrapper 1", address(mockUSDC));
+        YieldGeneratingWrapper yieldWrapper2 = new YieldGeneratingWrapper("Yield Wrapper 2", address(mockUSDC));
+        
+        // Add wrappers to the vault
+        vault.addAsset(address(yieldWrapper1), 5000); // 50% weight
+        vault.addAsset(address(yieldWrapper2), 5000); // 50% weight
+        
+        // Set yield amounts
+        yieldWrapper1.setYieldAmount(50 * 1e6); // 50 USDC
+        yieldWrapper2.setYieldAmount(75 * 1e6); // 75 USDC
+        
+        // Mint USDC to the wrappers to simulate yield generation
+        mockUSDC.mint(address(yieldWrapper1), 50 * 1e6);
+        mockUSDC.mint(address(yieldWrapper2), 75 * 1e6);
+        
+        // Harvest yield
+        uint256 harvestedAmount = vault.harvestYield();
+        
+        // Verify harvested amount
+        assertEq(harvestedAmount, 125 * 1e6, "Harvested amount should be 125 USDC");
+        assertEq(mockUSDC.balanceOf(address(vault)), 125 * 1e6, "Vault should have received 125 USDC");
+    }
+    
+    // Test harvesting yield when paused
+    function test_HarvestYield_WhenPaused() public {
+        // Add RWA wrapper to the vault
+        vault.addAsset(address(rwaWrapper), 10000); // 100% weight
+        
+        // Pause the vault
+        vault.pause();
+        
+        // Attempt to harvest yield
+        vm.expectRevert(CommonErrors.OperationPaused.selector);
+        vault.harvestYield();
+        
+        // Unpause and verify it works
+        vault.unpause();
+        vault.harvestYield();
+    }
+    
+    // Test the getActiveAssets function
+    function test_GetActiveAssets() public {
+        // Initially there should be no active assets
+        address[] memory initialAssets = vault.getActiveAssets();
+        assertEq(initialAssets.length, 0, "Should have no active assets initially");
+        
+        // Add three assets
+        vault.addAsset(address(rwaWrapper), 3000);
+        vault.addAsset(address(rwaWrapper2), 3000);
+        
+        // Create a third wrapper
+        MockRWAAssetWrapper rwaWrapper3 = new MockRWAAssetWrapper("Mock RWA 3", address(mockUSDC));
+        vault.addAsset(address(rwaWrapper3), 4000);
+        
+        // Check active assets
+        address[] memory activeAssets = vault.getActiveAssets();
+        assertEq(activeAssets.length, 3, "Should have three active assets");
+        
+        // Remove one asset
+        vault.removeAsset(address(rwaWrapper2));
+        
+        // Check active assets again
+        activeAssets = vault.getActiveAssets();
+        assertEq(activeAssets.length, 2, "Should have two active assets after removal");
+        
+        // Verify the remaining assets are correct
+        bool foundWrapper1 = false;
+        bool foundWrapper3 = false;
+        
+        for (uint i = 0; i < activeAssets.length; i++) {
+            if (activeAssets[i] == address(rwaWrapper)) {
+                foundWrapper1 = true;
+            } else if (activeAssets[i] == address(rwaWrapper3)) {
+                foundWrapper3 = true;
+            }
+        }
+        
+        assertTrue(foundWrapper1, "rwaWrapper should be in active assets");
+        assertTrue(foundWrapper3, "rwaWrapper3 should be in active assets");
+    }
+    
+    // Test the getAssetInfo function
+    function test_GetAssetInfo() public {
+        // Add an asset
+        vault.addAsset(address(rwaWrapper), 7500);
+        
+        // Get asset info
+        (address wrapper, uint256 weight, bool active) = vault.getAssetInfo(address(rwaWrapper));
+        
+        // Verify info
+        assertEq(wrapper, address(rwaWrapper), "Wrapper address should match");
+        assertEq(weight, 7500, "Weight should be 7500");
+        assertTrue(active, "Asset should be active");
+        
+        // Get info for non-existent asset
+        (wrapper, weight, active) = vault.getAssetInfo(address(0x123));
+        assertEq(wrapper, address(0), "Non-existent asset should have zero address");
+        assertEq(weight, 0, "Non-existent asset should have zero weight");
+        assertFalse(active, "Non-existent asset should be inactive");
+        
+        // Remove the asset and check info again
+        vault.removeAsset(address(rwaWrapper));
+        (wrapper, weight, active) = vault.getAssetInfo(address(rwaWrapper));
+        assertEq(wrapper, address(rwaWrapper), "Wrapper address should still match");
+        assertEq(weight, 0, "Weight should be 0 after removal");
+        assertFalse(active, "Asset should be inactive after removal");
+    }
+    
+    // Test edge case: withdrawing from other assets when there are no other assets
+    function test_WithdrawFromOtherAssets_NoOtherAssets() public {
+        // Add only one asset
+        vault.addAsset(address(rwaWrapper), 10000); // 100% weight
+        
+        // Deposit from user1
+        vm.startPrank(user1);
+        mockUSDC.mint(user1, DEPOSIT_AMOUNT);
+        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Force rebalance interval to pass
+        vm.warp(block.timestamp + vault.rebalanceInterval() + 1);
+        
+        // Rebalance - this should not revert even though there are no "other" assets
+        vault.rebalance();
+        
+        // Verify the asset has the full allocation
+        assertEq(rwaWrapper.getValueInBaseAsset(), DEPOSIT_AMOUNT, "Asset should have full allocation");
+    }
+    
+    // Test adding an asset with invalid base asset
+    function test_AddAsset_InvalidBaseAsset() public {
+        // Create a wrapper with a different base asset
+        MockERC20 differentBaseAsset = new MockERC20("Different Token", "DIFF", 18);
+        MockRWAAssetWrapper invalidWrapper = new MockRWAAssetWrapper("Invalid RWA", address(differentBaseAsset));
+        
+        // Attempt to add the invalid wrapper
+        vm.expectRevert(CommonErrors.InvalidValue.selector);
+        vault.addAsset(address(invalidWrapper), 5000);
     }
 }
