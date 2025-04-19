@@ -139,8 +139,10 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
     uint256 public price = 1e18; // 1:1 initially
     bool public active = true;
     string public name = "Mock RWA Token";
+    string public symbol = "MRWA";
     uint256 public totalSupply;
     mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowances;
     
     constructor(address _baseAsset) {
         baseAsset = IERC20(_baseAsset);
@@ -188,23 +190,51 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
         return baseAmount;
     }
     
-    function getPrice() external view override returns (uint256) {
+    function getCurrentPrice() external view override returns (uint256) {
         return price;
     }
     
-    function getTokenInfo() external view override returns (TokenInfo memory info) {
-        return TokenInfo({
+    function getAssetInfo() external view override returns (IRWASyntheticToken.AssetInfo memory info) {
+        return IRWASyntheticToken.AssetInfo({
             name: name,
-            baseAsset: address(baseAsset),
-            price: price,
-            totalSupply: totalSupply,
+            symbol: symbol,
+            assetType: IRWASyntheticToken.AssetType.EQUITY_INDEX,
+            oracle: address(0),
+            lastPrice: price,
             lastUpdated: block.timestamp,
-            active: active
+            marketId: bytes32(0),
+            isActive: active
         });
     }
     
-    function balanceOf(address account) external view returns (uint256) {
+    function balanceOf(address account) external view override returns (uint256) {
         return _balances[account];
+    }
+    
+    function transfer(address to, uint256 amount) external override returns (bool) {
+        _balances[msg.sender] -= amount;
+        _balances[to] += amount;
+        return true;
+    }
+    
+    function allowance(address owner, address spender) external view override returns (uint256) {
+        return _allowances[owner][spender];
+    }
+    
+    function approve(address spender, uint256 amount) external override returns (bool) {
+        _allowances[msg.sender][spender] = amount;
+        return true;
+    }
+    
+    function transferFrom(address from, address to, uint256 amount) external override returns (bool) {
+        _allowances[from][msg.sender] -= amount;
+        _balances[from] -= amount;
+        _balances[to] += amount;
+        return true;
+    }
+    
+    function decimals() external pure override returns (uint8) {
+        return 18;
     }
 }
 
@@ -341,5 +371,370 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
         assertEq(manager.getRWAAllocation(), 4000);
         assertEq(manager.getYieldAllocation(), 5000);
         assertEq(manager.getLiquidityBuffer(), 1000);
+    }
+    
+    // Test allocating capital with mixed allocation
+    function test_Allocate_MixedAllocation() public {
+        // Set allocation to 40% RWA, 50% yield, 10% liquidity buffer
+        manager.setAllocation(4000, 5000, 1000);
+        
+        // Add yield strategies
+        manager.addYieldStrategy(address(yieldStrategy1), 6000); // 60%
+        manager.addYieldStrategy(address(yieldStrategy2), 4000); // 40%
+        
+        // Add RWA tokens
+        manager.addRWAToken(address(rwaToken1), 7000); // 70%
+        manager.addRWAToken(address(rwaToken2), 3000); // 30%
+        
+        // Allocate capital
+        manager.allocate(ALLOCATION_AMOUNT);
+        
+        // Calculate expected allocations
+        uint256 expectedRWAAllocation = ALLOCATION_AMOUNT * 4000 / 10000; // 40%
+        uint256 expectedYieldAllocation = ALLOCATION_AMOUNT * 5000 / 10000; // 50%
+        uint256 expectedLiquidityBuffer = ALLOCATION_AMOUNT * 1000 / 10000; // 10%
+        
+        // Calculate expected RWA token allocations
+        uint256 expectedRWA1Allocation = expectedRWAAllocation * 7000 / 10000; // 70% of RWA allocation
+        uint256 expectedRWA2Allocation = expectedRWAAllocation * 3000 / 10000; // 30% of RWA allocation
+        
+        // Calculate expected yield strategy allocations
+        uint256 expectedYield1Allocation = expectedYieldAllocation * 6000 / 10000; // 60% of yield allocation
+        uint256 expectedYield2Allocation = expectedYieldAllocation * 4000 / 10000; // 40% of yield allocation
+        
+        // Check RWA token allocations
+        assertApproxEqRel(rwaToken1.totalSupply(), expectedRWA1Allocation, 0.01e18);
+        assertApproxEqRel(rwaToken2.totalSupply(), expectedRWA2Allocation, 0.01e18);
+        
+        // Check yield strategy allocations
+        assertApproxEqRel(yieldStrategy1.getTotalValue(), expectedYield1Allocation, 0.01e18);
+        assertApproxEqRel(yieldStrategy2.getTotalValue(), expectedYield2Allocation, 0.01e18);
+        
+        // Check liquidity buffer
+        assertApproxEqRel(baseAsset.balanceOf(address(manager)), expectedLiquidityBuffer, 0.01e18);
+    }
+    
+    // Test rebalancing with price changes
+    function test_RebalanceWithPriceChanges() public {
+        // Set allocation to 40% RWA, 50% yield, 10% liquidity buffer
+        manager.setAllocation(4000, 5000, 1000);
+        
+        // Add yield strategy and RWA token
+        manager.addYieldStrategy(address(yieldStrategy1), 10000); // 100%
+        manager.addRWAToken(address(rwaToken1), 10000); // 100%
+        
+        // Allocate capital
+        manager.allocate(ALLOCATION_AMOUNT);
+        
+        // Simulate price increase for RWA token (50% increase)
+        rwaToken1.setPrice(1.5e18);
+        
+        // Rebalance
+        manager.rebalance();
+        
+        // Calculate expected allocations after rebalance
+        uint256 expectedRWAAllocation = ALLOCATION_AMOUNT * 4000 / 10000; // 40%
+        uint256 expectedYieldAllocation = ALLOCATION_AMOUNT * 5000 / 10000; // 50%
+        uint256 expectedLiquidityBuffer = ALLOCATION_AMOUNT * 1000 / 10000; // 10%
+        
+        // Due to price increase, the RWA value is now 1.5x the original allocation
+        // So we expect some RWA tokens to be sold to bring it back to 40%
+        uint256 expectedRWAValue = expectedRWAAllocation;
+        
+        // Check RWA value after rebalance
+        uint256 rwaValue = manager.getRWAValue();
+        assertApproxEqRel(rwaValue, expectedRWAValue, 0.01e18);
+        
+        // Check yield strategy allocation after rebalance
+        assertApproxEqRel(yieldStrategy1.getTotalValue(), expectedYieldAllocation, 0.01e18);
+        
+        // Check liquidity buffer after rebalance
+        assertApproxEqRel(baseAsset.balanceOf(address(manager)), expectedLiquidityBuffer, 0.01e18);
+    }
+    
+    // Test rebalancing with multiple assets and strategies
+    function test_RebalanceMultipleAssetsAndStrategies() public {
+        // Set allocation to 40% RWA, 50% yield, 10% liquidity buffer
+        manager.setAllocation(4000, 5000, 1000);
+        
+        // Add yield strategies
+        manager.addYieldStrategy(address(yieldStrategy1), 6000); // 60%
+        manager.addYieldStrategy(address(yieldStrategy2), 4000); // 40%
+        
+        // Add RWA tokens
+        manager.addRWAToken(address(rwaToken1), 7000); // 70%
+        manager.addRWAToken(address(rwaToken2), 3000); // 30%
+        
+        // Allocate capital
+        manager.allocate(ALLOCATION_AMOUNT);
+        
+        // Simulate price changes
+        rwaToken1.setPrice(1.3e18); // 30% increase
+        rwaToken2.setPrice(0.8e18); // 20% decrease
+        
+        // Rebalance
+        manager.rebalance();
+        
+        // Calculate expected allocations after rebalance
+        uint256 expectedRWAAllocation = ALLOCATION_AMOUNT * 4000 / 10000; // 40%
+        uint256 expectedYieldAllocation = ALLOCATION_AMOUNT * 5000 / 10000; // 50%
+        uint256 expectedLiquidityBuffer = ALLOCATION_AMOUNT * 1000 / 10000; // 10%
+        
+        // Calculate expected RWA token allocations
+        uint256 expectedRWA1Value = expectedRWAAllocation * 7000 / 10000; // 70% of RWA allocation
+        uint256 expectedRWA2Value = expectedRWAAllocation * 3000 / 10000; // 30% of RWA allocation
+        
+        // Calculate expected yield strategy allocations
+        uint256 expectedYield1Value = expectedYieldAllocation * 6000 / 10000; // 60% of yield allocation
+        uint256 expectedYield2Value = expectedYieldAllocation * 4000 / 10000; // 40% of yield allocation
+        
+        // Check RWA token values after rebalance
+        uint256 rwa1Value = rwaToken1.totalSupply() * rwaToken1.getPrice() / 1e18;
+        uint256 rwa2Value = rwaToken2.totalSupply() * rwaToken2.getPrice() / 1e18;
+        assertApproxEqRel(rwa1Value, expectedRWA1Value, 0.01e18);
+        assertApproxEqRel(rwa2Value, expectedRWA2Value, 0.01e18);
+        
+        // Check yield strategy values after rebalance
+        assertApproxEqRel(yieldStrategy1.getTotalValue(), expectedYield1Value, 0.01e18);
+        assertApproxEqRel(yieldStrategy2.getTotalValue(), expectedYield2Value, 0.01e18);
+        
+        // Check liquidity buffer after rebalance
+        assertApproxEqRel(baseAsset.balanceOf(address(manager)), expectedLiquidityBuffer, 0.01e18);
+    }
+    
+    // Test removing a yield strategy
+    function test_RemoveYieldStrategy() public {
+        // Add yield strategies
+        manager.addYieldStrategy(address(yieldStrategy1), 6000); // 60%
+        manager.addYieldStrategy(address(yieldStrategy2), 4000); // 40%
+        
+        // Allocate capital
+        manager.allocate(ALLOCATION_AMOUNT);
+        
+        // Remove the first yield strategy
+        vm.expectEmit(true, true, true, true);
+        emit YieldStrategyRemoved(address(yieldStrategy1));
+        
+        manager.removeYieldStrategy(address(yieldStrategy1));
+        
+        // Check strategy was removed correctly
+        (,, bool active) = manager.getYieldStrategyInfo(address(yieldStrategy1));
+        assertFalse(active);
+        
+        // Check total weight
+        assertEq(manager.getTotalYieldWeight(), 4000);
+        
+        // Check active yield strategies
+        address[] memory activeStrategies = manager.getActiveYieldStrategies();
+        assertEq(activeStrategies.length, 1);
+        assertEq(activeStrategies[0], address(yieldStrategy2));
+    }
+    
+    // Test removing an RWA token
+    function test_RemoveRWAToken() public {
+        // Add RWA tokens
+        manager.addRWAToken(address(rwaToken1), 7000); // 70%
+        manager.addRWAToken(address(rwaToken2), 3000); // 30%
+        
+        // Allocate capital
+        manager.allocate(ALLOCATION_AMOUNT);
+        
+        // Remove the first RWA token
+        vm.expectEmit(true, true, true, true);
+        emit RWATokenRemoved(address(rwaToken1));
+        
+        manager.removeRWAToken(address(rwaToken1));
+        
+        // Check token was removed correctly
+        (,, bool active) = manager.getRWATokenInfo(address(rwaToken1));
+        assertFalse(active);
+        
+        // Check total weight
+        assertEq(manager.getTotalRWAWeight(), 3000);
+        
+        // Check active RWA tokens
+        address[] memory activeTokens = manager.getActiveRWATokens();
+        assertEq(activeTokens.length, 1);
+        assertEq(activeTokens[0], address(rwaToken2));
+    }
+    
+    // Test updating yield strategy weight
+    function test_UpdateYieldStrategyWeight() public {
+        // Add yield strategies
+        manager.addYieldStrategy(address(yieldStrategy1), 6000); // 60%
+        manager.addYieldStrategy(address(yieldStrategy2), 4000); // 40%
+        
+        // Update weight of first strategy to 8000 (80%)
+        vm.expectEmit(true, true, true, true);
+        emit YieldStrategyWeightUpdated(address(yieldStrategy1), 6000, 8000);
+        
+        manager.updateYieldStrategyWeight(address(yieldStrategy1), 8000);
+        
+        // Check weight was updated
+        (,uint256 weight,) = manager.getYieldStrategyInfo(address(yieldStrategy1));
+        assertEq(weight, 8000);
+        
+        // Check total weight
+        assertEq(manager.getTotalYieldWeight(), 12000);
+    }
+    
+    // Test updating RWA token weight
+    function test_UpdateRWATokenWeight() public {
+        // Add RWA tokens
+        manager.addRWAToken(address(rwaToken1), 7000); // 70%
+        manager.addRWAToken(address(rwaToken2), 3000); // 30%
+        
+        // Update weight of first token to 5000 (50%)
+        vm.expectEmit(true, true, true, true);
+        emit RWATokenWeightUpdated(address(rwaToken1), 7000, 5000);
+        
+        manager.updateRWATokenWeight(address(rwaToken1), 5000);
+        
+        // Check weight was updated
+        (,uint256 weight,) = manager.getRWATokenInfo(address(rwaToken1));
+        assertEq(weight, 5000);
+        
+        // Check total weight
+        assertEq(manager.getTotalRWAWeight(), 8000);
+    }
+    
+    // Test reentrancy protection on rebalance
+    function test_Rebalance_ReentrancyProtection() public {
+        // Set allocation to 40% RWA, 50% yield, 10% liquidity buffer
+        manager.setAllocation(4000, 5000, 1000);
+        
+        // Configure malicious yield strategy for attack
+        yieldStrategy1.setAttackMode(true, false); // Attack on deposit
+        yieldStrategy1.activateAttack(true);
+        
+        // Add malicious yield strategy
+        manager.addYieldStrategy(address(yieldStrategy1), 10000); // 100%
+        
+        // Add RWA token
+        manager.addRWAToken(address(rwaToken1), 10000); // 100%
+        
+        // Allocate capital
+        manager.allocate(ALLOCATION_AMOUNT);
+        
+        // Simulate price change to trigger rebalance
+        rwaToken1.setPrice(1.5e18);
+        
+        // Try to rebalance (should revert with ReentrancyGuardReentrantCall)
+        vm.expectRevert();
+        manager.rebalance();
+    }
+    
+    // Test reentrancy protection on allocate
+    function test_Allocate_ReentrancyProtection() public {
+        // Set allocation to 40% RWA, 50% yield, 10% liquidity buffer
+        manager.setAllocation(4000, 5000, 1000);
+        
+        // Configure malicious yield strategy for attack
+        yieldStrategy1.setAttackMode(true, false); // Attack on deposit
+        yieldStrategy1.activateAttack(true);
+        
+        // Add malicious yield strategy
+        manager.addYieldStrategy(address(yieldStrategy1), 10000); // 100%
+        
+        // Add RWA token
+        manager.addRWAToken(address(rwaToken1), 10000); // 100%
+        
+        // Try to allocate capital (should revert with ReentrancyGuardReentrantCall)
+        vm.expectRevert();
+        manager.allocate(ALLOCATION_AMOUNT);
+    }
+    
+    // Test invalid allocation parameters
+    function test_SetAllocation_InvalidParams() public {
+        // Test total exceeding 100%
+        vm.expectRevert(CommonErrors.TotalExceeds100Percent.selector);
+        manager.setAllocation(5000, 5001, 0);
+        
+        // Test zero RWA allocation
+        vm.expectRevert(CommonErrors.ValueTooLow.selector);
+        manager.setAllocation(0, 9000, 1000);
+        
+        // Test zero yield allocation
+        vm.expectRevert(CommonErrors.ValueTooLow.selector);
+        manager.setAllocation(9000, 0, 1000);
+    }
+    
+    // Test adding yield strategy with invalid parameters
+    function test_AddYieldStrategy_InvalidParams() public {
+        // Test zero address
+        vm.expectRevert(CommonErrors.ZeroAddress.selector);
+        manager.addYieldStrategy(address(0), 5000);
+        
+        // Test zero weight
+        vm.expectRevert(CommonErrors.ValueTooLow.selector);
+        manager.addYieldStrategy(address(yieldStrategy1), 0);
+        
+        // Test adding same strategy twice
+        manager.addYieldStrategy(address(yieldStrategy1), 5000);
+        vm.expectRevert(CommonErrors.AlreadyExists.selector);
+        manager.addYieldStrategy(address(yieldStrategy1), 5000);
+    }
+    
+    // Test adding RWA token with invalid parameters
+    function test_AddRWAToken_InvalidParams() public {
+        // Test zero address
+        vm.expectRevert(CommonErrors.ZeroAddress.selector);
+        manager.addRWAToken(address(0), 5000);
+        
+        // Test zero weight
+        vm.expectRevert(CommonErrors.ValueTooLow.selector);
+        manager.addRWAToken(address(rwaToken1), 0);
+        
+        // Test adding same token twice
+        manager.addRWAToken(address(rwaToken1), 5000);
+        vm.expectRevert(CommonErrors.AlreadyExists.selector);
+        manager.addRWAToken(address(rwaToken1), 5000);
+    }
+    
+    // Test getting RWA value
+    function test_GetRWAValue() public {
+        // Add RWA tokens
+        manager.addRWAToken(address(rwaToken1), 7000); // 70%
+        manager.addRWAToken(address(rwaToken2), 3000); // 30%
+        
+        // Allocate capital
+        manager.allocate(ALLOCATION_AMOUNT);
+        
+        // Calculate expected RWA allocation
+        uint256 expectedRWAAllocation = ALLOCATION_AMOUNT * 3000 / 10000; // 30% default allocation
+        
+        // Check RWA value
+        uint256 rwaValue = manager.getRWAValue();
+        assertApproxEqRel(rwaValue, expectedRWAAllocation, 0.01e18);
+        
+        // Simulate price changes
+        rwaToken1.setPrice(1.2e18); // 20% increase
+        rwaToken2.setPrice(0.9e18); // 10% decrease
+        
+        // Calculate expected RWA value after price changes
+        uint256 expectedRWA1Value = expectedRWAAllocation * 7000 / 10000 * 12 / 10; // 70% of RWA allocation with 20% price increase
+        uint256 expectedRWA2Value = expectedRWAAllocation * 3000 / 10000 * 9 / 10; // 30% of RWA allocation with 10% price decrease
+        uint256 expectedTotalRWAValue = expectedRWA1Value + expectedRWA2Value;
+        
+        // Check updated RWA value
+        rwaValue = manager.getRWAValue();
+        assertApproxEqRel(rwaValue, expectedTotalRWAValue, 0.01e18);
+    }
+    
+    // Test getting yield value
+    function test_GetYieldValue() public {
+        // Add yield strategies
+        manager.addYieldStrategy(address(yieldStrategy1), 6000); // 60%
+        manager.addYieldStrategy(address(yieldStrategy2), 4000); // 40%
+        
+        // Allocate capital
+        manager.allocate(ALLOCATION_AMOUNT);
+        
+        // Calculate expected yield allocation
+        uint256 expectedYieldAllocation = ALLOCATION_AMOUNT * 6000 / 10000; // 60% default allocation
+        
+        // Check yield value
+        uint256 yieldValue = manager.getYieldValue();
+        assertApproxEqRel(yieldValue, expectedYieldAllocation, 0.01e18);
     }
 }
