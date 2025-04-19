@@ -10,6 +10,53 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {CommonErrors} from "../src/errors/CommonErrors.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+/**
+ * @title FailingERC20
+ * @dev Mock ERC20 that can fail transfers for testing error handling
+ */
+contract FailingERC20 is MockERC20 {
+    bool public shouldFailTransfers;
+    bool public shouldFailApprovals;
+    bool public shouldFailTransferFroms;
+    
+    constructor(string memory name, string memory symbol, uint8 decimals) 
+        MockERC20(name, symbol, decimals) {}
+    
+    function setShouldFailTransfers(bool _shouldFail) external {
+        shouldFailTransfers = _shouldFail;
+    }
+    
+    function setShouldFailApprovals(bool _shouldFail) external {
+        shouldFailApprovals = _shouldFail;
+    }
+    
+    function setShouldFailTransferFroms(bool _shouldFail) external {
+        shouldFailTransferFroms = _shouldFail;
+    }
+    
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        if (shouldFailTransfers) {
+            return false;
+        }
+        return super.transfer(to, amount);
+    }
+    
+    function approve(address spender, uint256 amount) public override returns (bool) {
+        if (shouldFailApprovals) {
+            return false;
+        }
+        return super.approve(spender, amount);
+    }
+    
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+        if (shouldFailTransferFroms) {
+            return false;
+        }
+        return super.transferFrom(from, to, amount);
+    }
+}
 
 /**
  * @title MockYieldStrategyAdvanced
@@ -268,6 +315,7 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
     // Contracts
     CapitalAllocationManager public manager;
     MockERC20 public baseAsset;
+    FailingERC20 public failingAsset;
     MockYieldStrategyAdvanced public yieldStrategy1;
     MockYieldStrategyAdvanced public yieldStrategy2;
     MockRWASyntheticTokenAdvanced public rwaToken1;
@@ -297,6 +345,7 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
         
         // Deploy mock contracts
         baseAsset = new MockERC20("Mock USDC", "USDC", 6);
+        failingAsset = new FailingERC20("Failing USDC", "fUSDC", 6);
         
         // Deploy yield strategies
         yieldStrategy1 = new MockYieldStrategyAdvanced(address(baseAsset));
@@ -598,11 +647,140 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
         vm.expectRevert();
         manager.setAllocation(4000, 5000, 1000);
         
+        vm.expectRevert();
+        manager.addYieldStrategy(address(yieldStrategy1), 10000);
+        
+        vm.expectRevert();
+        manager.addRWAToken(address(rwaToken1), 10000);
+        
+        vm.expectRevert();
+        manager.rebalance();
+        
         vm.stopPrank();
         
         // Verify that the owner can call these functions
         manager.setAllocation(4000, 5000, 1000);
         manager.addYieldStrategy(address(yieldStrategy1), 10000);
         manager.addRWAToken(address(rwaToken1), 10000);
+    }
+    
+    // Test with failing ERC20 transfers
+    function test_FailingERC20Transfers() public {
+        // Deploy a new manager with the failing asset
+        CapitalAllocationManager failingManager = new CapitalAllocationManager(address(failingAsset));
+        
+        // Mint tokens to this contract
+        failingAsset.mint(address(this), INITIAL_CAPITAL);
+        failingAsset.approve(address(failingManager), INITIAL_CAPITAL);
+        
+        // Set up failing transfers
+        failingAsset.setShouldFailTransfers(true);
+        
+        // Try to allocate capital
+        vm.expectRevert();
+        failingAsset.transfer(address(failingManager), ALLOCATION_AMOUNT);
+        
+        // Reset failing transfers
+        failingAsset.setShouldFailTransfers(false);
+        
+        // Transfer should now succeed
+        failingAsset.transfer(address(failingManager), ALLOCATION_AMOUNT);
+        assertEq(failingAsset.balanceOf(address(failingManager)), ALLOCATION_AMOUNT);
+    }
+    
+    // Test with extreme values
+    function test_ExtremeValues() public {
+        // Test with extreme allocation (99% to one category)
+        manager.setAllocation(9900, 50, 50); // 99% + 0.5% + 0.5% = 100%
+        
+        // Add yield strategy and RWA token
+        manager.addYieldStrategy(address(yieldStrategy1), 10000);
+        manager.addRWAToken(address(rwaToken1), 10000);
+        
+        // Allocate capital
+        baseAsset.mint(address(this), ALLOCATION_AMOUNT);
+        baseAsset.approve(address(manager), ALLOCATION_AMOUNT);
+        baseAsset.transfer(address(manager), ALLOCATION_AMOUNT);
+        
+        // Rebalance
+        manager.rebalance();
+        
+        // Check that allocation was successful despite extreme values
+        (, , , uint256 lastRebalanced) = manager.allocation();
+        assertEq(lastRebalanced, block.timestamp);
+    }
+    
+    // Fuzz test for allocation percentages
+    function testFuzz_AllocationPercentages(uint256 rwaPercentage, uint256 yieldPercentage) public {
+        // Bound values to reasonable ranges
+        rwaPercentage = bound(rwaPercentage, 0, 10000);
+        yieldPercentage = bound(yieldPercentage, 0, 10000 - rwaPercentage);
+        uint256 liquidityBufferPercentage = 10000 - rwaPercentage - yieldPercentage;
+        
+        // Set allocation
+        manager.setAllocation(rwaPercentage, yieldPercentage, liquidityBufferPercentage);
+        
+        // Verify allocation was set correctly
+        (uint256 actualRwa, uint256 actualYield, uint256 actualBuffer, ) = manager.allocation();
+        assertEq(actualRwa, rwaPercentage);
+        assertEq(actualYield, yieldPercentage);
+        assertEq(actualBuffer, liquidityBufferPercentage);
+    }
+    
+    // Test with multiple yield strategies and RWA tokens with different weights
+    function test_MultipleStrategiesAndTokensWithDifferentWeights() public {
+        // Set allocation
+        manager.setAllocation(4000, 5000, 1000); // 40% RWA, 50% yield, 10% buffer
+        
+        // Add yield strategies with different weights
+        manager.addYieldStrategy(address(yieldStrategy1), 7000); // 70%
+        manager.addYieldStrategy(address(yieldStrategy2), 3000); // 30%
+        
+        // Add RWA tokens with different weights
+        manager.addRWAToken(address(rwaToken1), 6000); // 60%
+        manager.addRWAToken(address(rwaToken2), 4000); // 40%
+        
+        // Allocate capital
+        baseAsset.mint(address(this), ALLOCATION_AMOUNT);
+        baseAsset.approve(address(manager), ALLOCATION_AMOUNT);
+        baseAsset.transfer(address(manager), ALLOCATION_AMOUNT);
+        
+        // Rebalance
+        manager.rebalance();
+        
+        // Verify weights are respected
+        ICapitalAllocationManager.StrategyAllocation[] memory strategies = manager.getYieldStrategies();
+        ICapitalAllocationManager.RWAAllocation[] memory tokens = manager.getRWATokens();
+        
+        bool foundStrategy1 = false;
+        bool foundStrategy2 = false;
+        bool foundToken1 = false;
+        bool foundToken2 = false;
+        
+        for (uint i = 0; i < strategies.length; i++) {
+            if (strategies[i].active) {
+                if (strategies[i].strategy == address(yieldStrategy1)) {
+                    foundStrategy1 = true;
+                    assertEq(strategies[i].percentage, 7000);
+                } else if (strategies[i].strategy == address(yieldStrategy2)) {
+                    foundStrategy2 = true;
+                    assertEq(strategies[i].percentage, 3000);
+                }
+            }
+        }
+        
+        for (uint i = 0; i < tokens.length; i++) {
+            if (tokens[i].active) {
+                if (tokens[i].rwaToken == address(rwaToken1)) {
+                    foundToken1 = true;
+                    assertEq(tokens[i].percentage, 6000);
+                } else if (tokens[i].rwaToken == address(rwaToken2)) {
+                    foundToken2 = true;
+                    assertEq(tokens[i].percentage, 4000);
+                }
+            }
+        }
+        
+        assertTrue(foundStrategy1 && foundStrategy2 && foundToken1 && foundToken2, "Not all strategies and tokens were found");
     }
 }
