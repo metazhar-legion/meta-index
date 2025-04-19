@@ -676,16 +676,18 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
         // Set up failing transfers
         failingAsset.setShouldFailTransfers(true);
         
-        // Try to allocate capital
-        vm.expectRevert();
-        failingAsset.transfer(address(failingManager), ALLOCATION_AMOUNT);
+        // Try to transfer tokens - this should fail but not revert
+        bool success = failingAsset.transfer(address(failingManager), ALLOCATION_AMOUNT);
+        assertEq(success, false, "Transfer should have failed");
+        assertEq(failingAsset.balanceOf(address(failingManager)), 0, "No tokens should have been transferred");
         
         // Reset failing transfers
         failingAsset.setShouldFailTransfers(false);
         
         // Transfer should now succeed
-        failingAsset.transfer(address(failingManager), ALLOCATION_AMOUNT);
-        assertEq(failingAsset.balanceOf(address(failingManager)), ALLOCATION_AMOUNT);
+        success = failingAsset.transfer(address(failingManager), ALLOCATION_AMOUNT);
+        assertEq(success, true, "Transfer should have succeeded");
+        assertEq(failingAsset.balanceOf(address(failingManager)), ALLOCATION_AMOUNT, "Tokens should have been transferred");
     }
     
     // Test with extreme values
