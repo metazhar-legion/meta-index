@@ -61,8 +61,8 @@ contract MockYieldStrategyAdvanced is IYieldStrategy {
         risk = _risk;
     }
     
-    function setName(string memory _name) external {
-        name = _name;
+    function setName(string memory tokenName) external {
+        _tokenName = tokenName;
     }
     
     function deposit(uint256 amount) external override returns (uint256 shares) {
@@ -138,11 +138,14 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
     IERC20 public baseAsset;
     uint256 public price = 1e18; // 1:1 initially
     bool public active = true;
-    string public name = "Mock RWA Token";
-    string public symbol = "MRWA";
-    uint256 public totalSupply;
+    string private _tokenName = "Mock RWA Token";
+    string private _tokenSymbol = "MRWA";
+    uint256 private _tokenTotalSupply;
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
+    
+    // Asset info
+    AssetType public assetType = AssetType.EQUITY_INDEX;
     
     constructor(address _baseAsset) {
         baseAsset = IERC20(_baseAsset);
@@ -156,11 +159,11 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
         active = _active;
     }
     
-    function setName(string memory _name) external {
-        name = _name;
+    function setName(string memory tokenName) external {
+        _tokenName = tokenName;
     }
     
-    function mint(address to, uint256 amount) external override returns (bool) {
+    function mint(address to, uint256 amount) external returns (bool) {
         // Calculate how much base asset is needed
         uint256 baseAmount = (amount * 1e18) / price;
         
@@ -169,42 +172,49 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
         
         // Mint RWA tokens to recipient
         _balances[to] += amount;
-        totalSupply += amount;
+        _tokenTotalSupply += amount;
         
         return true;
     }
     
-    function burn(uint256 amount) external override returns (uint256 baseAmount) {
-        require(_balances[msg.sender] >= amount, "Insufficient balance");
+    // Implement the burn function from the interface
+    function burn(address from, uint256 amount) external returns (bool) {
+        require(_balances[from] >= amount, "Insufficient balance");
         
         // Calculate how much base asset to return
-        baseAmount = (amount * price) / 1e18;
+        uint256 baseAmount = (amount * price) / 1e18;
         
         // Burn RWA tokens
-        _balances[msg.sender] -= amount;
-        totalSupply -= amount;
+        _balances[from] -= amount;
+        _tokenTotalSupply -= amount;
         
         // Transfer base asset back to sender
         baseAsset.transfer(msg.sender, baseAmount);
         
-        return baseAmount;
+        return true;
     }
     
     function getCurrentPrice() external view override returns (uint256) {
         return price;
     }
     
-    function getAssetInfo() external view override returns (IRWASyntheticToken.AssetInfo memory info) {
-        return IRWASyntheticToken.AssetInfo({
-            name: name,
-            symbol: symbol,
-            assetType: IRWASyntheticToken.AssetType.EQUITY_INDEX,
+    function getAssetInfo() external view override returns (AssetInfo memory info) {
+        return AssetInfo({
+            name: _tokenName,
+            symbol: _tokenSymbol,
+            assetType: assetType,
             oracle: address(0),
             lastPrice: price,
             lastUpdated: block.timestamp,
             marketId: bytes32(0),
             isActive: active
         });
+    }
+    
+    // Implement updatePrice function from the interface
+    function updatePrice() external returns (bool) {
+        // Mock implementation - does nothing
+        return true;
     }
     
     function balanceOf(address account) external view override returns (uint256) {
@@ -235,6 +245,18 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
     
     function decimals() external pure override returns (uint8) {
         return 18;
+    }
+    
+    function name() external view override returns (string memory) {
+        return _tokenName;
+    }
+    
+    function symbol() external view override returns (string memory) {
+        return _tokenSymbol;
+    }
+    
+    function totalSupply() external view override returns (uint256) {
+        return _tokenTotalSupply;
     }
 }
 
@@ -278,7 +300,7 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
         attacker = makeAddr("attacker");
         
         // Deploy mock contracts
-        baseAsset = new MockERC20();
+        baseAsset = new MockERC20("Mock USDC", "USDC", 6);
         
         // Deploy yield strategies
         yieldStrategy1 = new MockYieldStrategyAdvanced(address(baseAsset));
@@ -293,7 +315,7 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
         rwaToken2.setName("RWA Token 2");
         
         // Deploy capital allocation manager
-        manager = new CapitalAllocationManager(IERC20(address(baseAsset)));
+        manager = new CapitalAllocationManager(address(baseAsset));
         
         // Mint base asset to this contract for allocation
         baseAsset.mint(address(this), INITIAL_CAPITAL);
@@ -318,9 +340,12 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
     function test_Initialization() public view {
         assertEq(address(manager.baseAsset()), address(baseAsset));
         assertEq(manager.owner(), address(this));
-        assertEq(manager.getRWAAllocation(), 3000); // Default 30%
-        assertEq(manager.getYieldAllocation(), 6000); // Default 60%
-        assertEq(manager.getLiquidityBuffer(), 1000); // Default 10%
+        
+        // Get allocation info
+        ICapitalAllocationManager.Allocation memory alloc = manager.allocation();
+        assertEq(alloc.rwaPercentage, 3000); // Default 30%
+        assertEq(alloc.yieldPercentage, 6000); // Default 60%
+        assertEq(alloc.liquidityBufferPercentage, 1000); // Default 10%
     }
     
     // Test adding a yield strategy
