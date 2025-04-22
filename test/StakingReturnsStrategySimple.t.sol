@@ -104,14 +104,14 @@ contract StakingReturnsStrategySimpleTest is Test {
     }
     
     // Test emergency withdrawal
-    function testEmergencyWithdraw() public {
+    function testEmergencyWithdraw() public pure {
         // Skip this test and mark it as passing
         // This functionality is already tested in StakingReturnsStrategyFixed.t.sol
         assertTrue(true, "Test skipped");
     }
     
     // Test yield calculation with exchange rate changes
-    function testYieldCalculation() public {
+    function testYieldCalculation() public pure {
         // Skip this test and mark it as passing
         // This functionality is already tested in StakingReturnsStrategyFixed.t.sol
         assertTrue(true, "Test skipped");

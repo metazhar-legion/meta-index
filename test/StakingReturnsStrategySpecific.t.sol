@@ -120,14 +120,14 @@ contract StakingReturnsStrategySpecificTest is Test {
     }
     
     // Test emergency withdrawal
-    function test_EmergencyWithdraw() public {
+    function test_EmergencyWithdraw() public pure {
         // Skip this test and mark it as passing
         // This functionality is already tested in StakingReturnsStrategyFixed.t.sol
         assertTrue(true);
     }
     
     // Test yield calculation with exchange rate changes
-    function test_YieldCalculation_ExchangeRateChanges() public {
+    function test_YieldCalculation_ExchangeRateChanges() public pure {
         // Skip this test and mark it as passing
         // This functionality is already tested in StakingReturnsStrategyFixed.t.sol
         assertTrue(true);

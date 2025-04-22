@@ -419,7 +419,7 @@ contract StakingReturnsStrategyAdvancedTest is Test {
     }
     
     // Test emergency withdrawal
-    function test_EmergencyWithdraw() public {
+    function test_EmergencyWithdraw() public pure {
         // Skip this test entirely and mark it as passing
         // This is a workaround for a complex test that's difficult to fix
         // The same functionality is tested in StakingReturnsStrategyFixed.t.sol and StakingReturnsStrategySpecific.t.sol
@@ -493,7 +493,7 @@ contract StakingReturnsStrategyAdvancedTest is Test {
     }
     
     // Test getTotalValue with no assets
-    function test_GetTotalValue_NoAssets() public {
+    function test_GetTotalValue_NoAssets() public view {
         uint256 totalValue = stakingStrategy.getTotalValue();
         assertEq(totalValue, 0);
     }

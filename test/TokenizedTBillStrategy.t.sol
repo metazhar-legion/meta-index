@@ -260,7 +260,7 @@ contract TokenizedTBillStrategyTest is Test {
     }
     
     // Test getCurrentAPY
-    function test_GetCurrentAPY() public {
+    function test_GetCurrentAPY() public view {
         // Initially, APY should match the default
         uint256 initialAPY = tBillStrategy.getCurrentAPY();
         assertEq(initialAPY, 400, "Initial APY should be 4%");
