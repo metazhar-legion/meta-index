@@ -283,7 +283,7 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
     }
     
     // Implement updatePrice function from the interface
-    function updatePrice() external returns (bool) {
+    function updatePrice() external pure returns (bool) {
         // Mock implementation - does nothing
         return true;
     }
@@ -1006,7 +1006,7 @@ contract CapitalAllocationManagerConsolidatedTest is Test {
     }
     
     // Test getTotalValue with no assets
-    function test_GetTotalValueWithNoAssets() public {
+    function test_GetTotalValueWithNoAssets() public view {
         // Verify total value is zero when no assets are present
         assertEq(manager.getTotalValue(), 0, "Total value should be zero with no assets");
     }

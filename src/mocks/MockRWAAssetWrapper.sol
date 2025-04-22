@@ -60,7 +60,7 @@ contract MockRWAAssetWrapper is IAssetWrapper, Ownable {
         return tokens;
     }
     
-    function harvestYield() external override returns (uint256) {
+    function harvestYield() external pure override returns (uint256) {
         return 0;
     }
 }

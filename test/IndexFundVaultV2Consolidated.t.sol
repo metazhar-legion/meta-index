@@ -884,11 +884,13 @@ contract IndexFundVaultV2ConsolidatedTest is Test {
         vault.addAsset(address(rwaWrapper), 4000);
         
         // Create and add a second asset wrapper with 60% weight
-        MockRWAAssetWrapper rwaWrapper2 = new MockRWAAssetWrapper(
+        MockRWAAssetWrapper localRwaWrapper2 = new MockRWAAssetWrapper(
             "Second RWA",
             address(mockUSDC)
         );
-        mockUSDC.approve(address(rwaWrapper2), type(uint256).max);
+        // Assign to the class variable to avoid shadowing
+        rwaWrapper2 = localRwaWrapper2;
+        mockUSDC.approve(address(localRwaWrapper2), type(uint256).max);
         vault.addAsset(address(rwaWrapper2), 6000);
         
         // Deposit from user1

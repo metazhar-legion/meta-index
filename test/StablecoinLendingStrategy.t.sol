@@ -264,7 +264,7 @@ contract StablecoinLendingStrategyTest is Test {
     }
     
     // Test getCurrentAPY
-    function test_GetCurrentAPY() public {
+    function test_GetCurrentAPY() public view {
         // Initially, APY should match the default
         uint256 initialAPY = lendingStrategy.getCurrentAPY();
         assertEq(initialAPY, 500, "Initial APY should be 5%");
