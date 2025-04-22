@@ -9,6 +9,90 @@ import {ILiquidStaking} from "../src/interfaces/ILiquidStaking.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {CommonErrors} from "../src/errors/CommonErrors.sol";
 
+// Configurable mock for ILiquidStaking
+contract ConfigurableMockLiquidStaking is ILiquidStaking {
+    MockERC20 public baseAsset;
+    MockERC20 public stakingToken;
+    uint256 public exchangeRate = 1e6; // 1:1 initially (in 6 decimals)
+    uint256 public currentAPY = 450; // 4.5%
+    bool public shouldRevertStake = false;
+    bool public shouldRevertUnstake = false;
+    bool public reentryAttempted = false;
+    address public reentryTarget;
+    bool public enableReentrancy = false;
+
+    constructor(address _baseAsset, address _stakingToken) {
+        baseAsset = MockERC20(_baseAsset);
+        stakingToken = MockERC20(_stakingToken);
+    }
+
+    function getTotalStaked() external view returns (uint256 totalStaked) {
+        return stakingToken.totalSupply();
+    }
+
+    function stake(uint256 amount) external override returns (uint256) {
+        if (shouldRevertStake) revert("Staking failed");
+        baseAsset.transferFrom(msg.sender, address(this), amount);
+        uint256 stakingTokenAmount = (amount * 1e6) / exchangeRate;
+        stakingToken.mint(msg.sender, stakingTokenAmount);
+        // Optional reentrancy
+        if (enableReentrancy && reentryTarget != address(0) && !reentryAttempted) {
+            reentryAttempted = true;
+            StakingReturnsStrategy(reentryTarget).deposit(amount);
+        }
+        return stakingTokenAmount;
+    }
+
+    function unstake(uint256 stakingTokenAmount) external override returns (uint256) {
+        if (shouldRevertUnstake) revert("Unstaking failed");
+        stakingToken.transferFrom(msg.sender, address(this), stakingTokenAmount);
+        uint256 baseAssetAmount = (stakingTokenAmount * exchangeRate) / 1e6;
+        baseAsset.transfer(msg.sender, baseAssetAmount);
+        // Optional reentrancy
+        if (enableReentrancy && reentryTarget != address(0) && !reentryAttempted) {
+            reentryAttempted = true;
+            StakingReturnsStrategy(reentryTarget).withdraw(stakingTokenAmount);
+        }
+        return baseAssetAmount;
+    }
+
+    function getBaseAssetValue(uint256 stakingTokenAmount) external view override returns (uint256) {
+        return (stakingTokenAmount * exchangeRate) / 1e6;
+    }
+
+    function getStakingTokensForBaseAsset(uint256 baseAssetAmount) external view override returns (uint256) {
+        return (baseAssetAmount * 1e6) / exchangeRate;
+    }
+
+    function getCurrentAPY() external view override returns (uint256) {
+        return currentAPY;
+    }
+
+    // Config functions
+    function setExchangeRate(uint256 _exchangeRate) external {
+        exchangeRate = _exchangeRate;
+    }
+    function setAPY(uint256 _apy) external {
+        currentAPY = _apy;
+    }
+    function setShouldRevertStake(bool _shouldRevert) external {
+        shouldRevertStake = _shouldRevert;
+    }
+    function setShouldRevertUnstake(bool _shouldRevert) external {
+        shouldRevertUnstake = _shouldRevert;
+    }
+    function enableReentrancyAttack(address target) external {
+        enableReentrancy = true;
+        reentryTarget = target;
+        reentryAttempted = false;
+    }
+    function disableReentrancyAttack() external {
+        enableReentrancy = false;
+        reentryTarget = address(0);
+        reentryAttempted = false;
+    }
+}
+
 contract StakingReturnsStrategyTest is Test {
     // Mock tokens
     MockERC20 public usdc;
