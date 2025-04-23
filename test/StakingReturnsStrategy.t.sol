@@ -140,6 +140,14 @@ contract StakingReturnsStrategyTest is Test {
         usdc.approve(address(stakingStrategy), type(uint256).max);
         vm.stopPrank();
 
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), type(uint256).max);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        usdc.approve(address(stakingStrategy), type(uint256).max);
+        vm.stopPrank();
+
         // Deploy strategy
         stakingStrategy = new StakingReturnsStrategy(
             "Staking Returns",
@@ -278,10 +286,6 @@ contract StakingReturnsStrategyTest is Test {
         assertEq(totalValue, 0);
     }
 
-        vm.startPrank(user2);
-        usdc.approve(address(stakingStrategy), type(uint256).max);
-        vm.stopPrank();
-        
         // Set up mock calls for the staking protocol
         // Mock stake function
         vm.mockCall(
