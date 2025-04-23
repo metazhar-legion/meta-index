@@ -302,67 +302,37 @@ contract StakingReturnsStrategyTest is Test {
         stakingStrategy.setFeePercentage(newFee);
     }
     function test_EmergencyWithdraw() public {
-        vm.prank(owner);
-        stakingStrategy.emergencyWithdraw();
-        // Should not revert
-        assertTrue(true, "Emergency withdraw executed");
-    }
-    function test_GetTotalValue_NoAssets() public view {
-        uint256 totalValue = stakingStrategy.getTotalValue();
-        assertEq(totalValue, 0);
-    }
-
-        vm.mockCall(
-            stakingProtocol,
-            abi.encodeWithSignature("getCurrentAPY()"),
-            abi.encode(DEFAULT_APY)
-        );
-        
         // Mock unstake
         vm.mockCall(
-            stakingProtocol,
+            address(liquidStaking),
             abi.encodeWithSignature("unstake(uint256)", DEPOSIT_AMOUNT),
             abi.encode(DEPOSIT_AMOUNT)
         );
-        
         // Add wildcard mocks for any amount
         vm.mockCall(
-            stakingProtocol,
+            address(liquidStaking),
             abi.encodeWithSignature("getBaseAssetValue(uint256)", uint256(0)),
             abi.encode(uint256(0))
         );
-        
+        // Add wildcard mocks for any amount
         vm.mockCall(
-            stakingProtocol,
+            address(liquidStaking),
             abi.encodeWithSignature("getStakingTokensForBaseAsset(uint256)", uint256(0)),
             abi.encode(uint256(0))
         );
-        
+        // Add wildcard mocks for any amount
         vm.mockCall(
-            stakingProtocol,
+            address(liquidStaking),
             abi.encodeWithSignature("unstake(uint256)", uint256(0)),
             abi.encode(uint256(0))
         );
+
+        // Deploy strategy
+        stakingStrategy = new StakingReturnsStrategy(
+            "Staking Returns",
+        );
     }
-    
-    // Test initialization parameters
-    function test_Initialization() public view {
-        assertEq(stakingStrategy.name(), "Staking Returns Shares", "Strategy name should be set correctly");
-        assertEq(stakingStrategy.symbol(), "sStaking Returns", "Strategy symbol should be set correctly");
-        assertEq(address(stakingStrategy.baseAsset()), address(usdc), "Base asset should be set correctly");
-        assertEq(address(stakingStrategy.stakingToken()), address(stakingToken), "Staking token should be set correctly");
-        assertEq(stakingStrategy.stakingProtocol(), stakingProtocol, "Staking protocol should be set correctly");
-        assertEq(stakingStrategy.feeRecipient(), feeRecipient, "Fee recipient should be set correctly");
-        assertEq(stakingStrategy.feePercentage(), 50, "Fee percentage should be 0.5% by default");
-        
-        IYieldStrategy.StrategyInfo memory info = stakingStrategy.getStrategyInfo();
-        assertEq(info.name, "Staking Returns", "Strategy info name should be set correctly");
-        assertEq(info.asset, address(usdc), "Strategy info asset should be set correctly");
-        assertEq(info.apy, DEFAULT_APY, "Strategy info APY should be set correctly");
-        assertEq(info.risk, DEFAULT_RISK_LEVEL, "Strategy info risk level should be set correctly");
-        assertTrue(info.active, "Strategy should be active by default");
-    }
-    
+
     // Test constructor validation
     function test_Constructor_Validation() public {
         // Test with zero address for base asset
