@@ -97,26 +97,22 @@ contract StakingReturnsStrategyTest is Test {
     // Mock tokens
     MockERC20 public usdc;
     MockERC20 public stakingToken;
-    
-    // Yield strategy
+    ConfigurableMockLiquidStaking public liquidStaking;
     StakingReturnsStrategy public stakingStrategy;
-    
-    // Mock protocol address
-    address public stakingProtocol;
-    
+
     // Test addresses
     address public owner;
     address public feeRecipient;
     address public user1;
     address public user2;
     address public nonOwner;
-    
+
     // Test amounts
     uint256 public constant INITIAL_SUPPLY = 1_000_000e6; // 1M USDC
     uint256 public constant DEPOSIT_AMOUNT = 100_000e6; // 100k USDC
     uint256 public constant DEFAULT_APY = 450; // 4.5%
     uint256 public constant DEFAULT_RISK_LEVEL = 2; // Low risk
-    
+
     function setUp() public {
         // Set up test addresses
         owner = address(this);
@@ -124,42 +120,158 @@ contract StakingReturnsStrategyTest is Test {
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
         nonOwner = makeAddr("nonOwner");
-        
+
         // Deploy mock tokens
         usdc = new MockERC20("USD Coin", "USDC", 6);
         stakingToken = new MockERC20("Staking Token", "stUSDC", 6);
-        
-        // Create mock protocol address
-        stakingProtocol = makeAddr("stakingProtocol");
-        
+
+        // Deploy configurable mock liquid staking protocol
+        liquidStaking = new ConfigurableMockLiquidStaking(address(usdc), address(stakingToken));
+
         // Mint initial tokens to users and protocol
         usdc.mint(user1, INITIAL_SUPPLY);
         usdc.mint(user2, INITIAL_SUPPLY);
-        usdc.mint(stakingProtocol, INITIAL_SUPPLY);
-        stakingToken.mint(stakingProtocol, INITIAL_SUPPLY);
-        
+        usdc.mint(address(liquidStaking), INITIAL_SUPPLY);
+        stakingToken.mint(address(liquidStaking), INITIAL_SUPPLY);
+
         // Deploy strategy
         stakingStrategy = new StakingReturnsStrategy(
             "Staking Returns",
             address(usdc),
             address(stakingToken),
-            stakingProtocol,
+            address(liquidStaking),
             feeRecipient,
             DEFAULT_APY,
             DEFAULT_RISK_LEVEL
         );
-        
-        // Set up mock protocol to handle deposits and withdrawals
-        vm.startPrank(stakingProtocol);
-        stakingToken.approve(address(stakingStrategy), type(uint256).max);
-        usdc.approve(address(stakingStrategy), type(uint256).max);
-        vm.stopPrank();
-        
-        // Approve strategy to spend user tokens
+    }
+
+    // --- Core Functionality Tests ---
+
+    function test_Initialization() public {
+        assertEq(stakingStrategy.name(), "Staking Returns Shares", "Strategy name should be set correctly");
+        assertEq(stakingStrategy.symbol(), "sStaking Returns", "Strategy symbol should be set correctly");
+        assertEq(address(stakingStrategy.baseAsset()), address(usdc), "Base asset should be set correctly");
+        assertEq(address(stakingStrategy.stakingToken()), address(stakingToken), "Staking token should be set correctly");
+        // Access risk level via getStrategyInfo() struct
+        IYieldStrategy.StrategyInfo memory info = stakingStrategy.getStrategyInfo();
+        assertEq(info.risk, DEFAULT_RISK_LEVEL, "Risk level should be set correctly");
+        assertEq(stakingStrategy.getCurrentAPY(), DEFAULT_APY, "APY should be set correctly");
+    }
+
+    function test_Deposit() public {
         vm.startPrank(user1);
-        usdc.approve(address(stakingStrategy), type(uint256).max);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        uint256 initialUserBalance = usdc.balanceOf(user1);
+        uint256 initialStrategyBalance = usdc.balanceOf(address(stakingStrategy));
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        uint256 finalUserBalance = usdc.balanceOf(user1);
+        uint256 finalStrategyBalance = usdc.balanceOf(address(stakingStrategy));
+        assertEq(finalUserBalance, initialUserBalance - DEPOSIT_AMOUNT, "User balance should decrease");
+        assertEq(finalStrategyBalance, initialStrategyBalance + DEPOSIT_AMOUNT, "Strategy balance should increase");
         vm.stopPrank();
-        
+    }
+
+    function test_Withdraw() public {
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        stakingStrategy.withdraw(DEPOSIT_AMOUNT);
+        // User should get funds back (minus any fee if applicable)
+        assertGt(usdc.balanceOf(user1), 0, "User should receive funds after withdrawal");
+        vm.stopPrank();
+    }
+
+    // --- Edge Case and Error Tests ---
+
+    function test_Deposit_RevertOnStake() public {
+        liquidStaking.setShouldRevertStake(true);
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        vm.expectRevert(bytes("Staking failed"));
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        liquidStaking.setShouldRevertStake(false);
+    }
+
+    function test_Withdraw_RevertOnUnstake() public {
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        liquidStaking.setShouldRevertUnstake(true);
+        vm.expectRevert(bytes("Unstaking failed"));
+        stakingStrategy.withdraw(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        liquidStaking.setShouldRevertUnstake(false);
+    }
+
+    function test_Deposit_ReentrancyProtection() public {
+        // Enable reentrancy attack
+        liquidStaking.enableReentrancyAttack(address(stakingStrategy));
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        vm.expectRevert(); // Should revert due to nonReentrant
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        liquidStaking.disableReentrancyAttack();
+    }
+
+    function test_Withdraw_ReentrancyProtection() public {
+        // Deposit first
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        // Enable reentrancy attack
+        liquidStaking.enableReentrancyAttack(address(stakingStrategy));
+        vm.startPrank(user1);
+        vm.expectRevert(); // Should revert due to nonReentrant
+        stakingStrategy.withdraw(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        liquidStaking.disableReentrancyAttack();
+    }
+
+    function test_APY_And_ExchangeRate_Change() public {
+        // Change APY and exchange rate
+        liquidStaking.setAPY(600);
+        liquidStaking.setExchangeRate(1_100_000); // 1.1:1
+        assertEq(stakingStrategy.getCurrentAPY(), 600, "APY should update");
+        // Deposit and check value
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        // Simulate yield by increasing exchange rate
+        liquidStaking.setExchangeRate(1_200_000); // 1.2:1
+        uint256 totalValue = stakingStrategy.getTotalValue();
+        assertGt(totalValue, DEPOSIT_AMOUNT, "Total value should increase with yield");
+    }
+
+    // --- Access Control and Fee Tests ---
+
+    function test_SetFeePercentage_Owner() public {
+        uint256 newFee = 100; // 1%
+        vm.prank(owner);
+        stakingStrategy.setFeePercentage(newFee);
+        assertEq(stakingStrategy.feePercentage(), newFee, "Fee should update");
+    }
+    function test_SetFeePercentage_NonOwner() public {
+        uint256 newFee = 100; // 1%
+        vm.prank(user1);
+        vm.expectRevert();
+        stakingStrategy.setFeePercentage(newFee);
+    }
+    function test_EmergencyWithdraw() public {
+        vm.prank(owner);
+        stakingStrategy.emergencyWithdraw();
+        // Should not revert
+        assertTrue(true, "Emergency withdraw executed");
+    }
+    function test_GetTotalValue_NoAssets() public view {
+        uint256 totalValue = stakingStrategy.getTotalValue();
+        assertEq(totalValue, 0);
+    }
+
         vm.startPrank(user2);
         usdc.approve(address(stakingStrategy), type(uint256).max);
         vm.stopPrank();
