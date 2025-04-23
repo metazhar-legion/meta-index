@@ -148,6 +148,32 @@ contract StakingReturnsStrategyTest is Test {
         usdc.approve(address(stakingStrategy), type(uint256).max);
         vm.stopPrank();
 
+        // Set up mock calls for the staking protocol
+        // Mock stake function
+        vm.mockCall(
+            address(liquidStaking),
+            abi.encodeWithSignature("stake(uint256)", DEPOSIT_AMOUNT),
+            abi.encode(DEPOSIT_AMOUNT)
+        );
+        // Mock getBaseAssetValue
+        vm.mockCall(
+            address(liquidStaking),
+            abi.encodeWithSignature("getBaseAssetValue(uint256)", DEPOSIT_AMOUNT),
+            abi.encode(DEPOSIT_AMOUNT)
+        );
+        // Mock getStakingTokensForBaseAsset
+        vm.mockCall(
+            address(liquidStaking),
+            abi.encodeWithSignature("getStakingTokensForBaseAsset(uint256)", DEPOSIT_AMOUNT),
+            abi.encode(DEPOSIT_AMOUNT)
+        );
+        // Mock getCurrentAPY
+        vm.mockCall(
+            address(liquidStaking),
+            abi.encodeWithSignature("getCurrentAPY()"),
+            abi.encode(DEFAULT_APY)
+        );
+
         // Deploy strategy
         stakingStrategy = new StakingReturnsStrategy(
             "Staking Returns",
