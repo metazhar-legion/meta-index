@@ -134,6 +134,12 @@ contract StakingReturnsStrategyTest is Test {
         usdc.mint(address(liquidStaking), INITIAL_SUPPLY);
         stakingToken.mint(address(liquidStaking), INITIAL_SUPPLY);
 
+        // Set up mock protocol to handle deposits and withdrawals
+        vm.startPrank(address(liquidStaking));
+        stakingToken.approve(address(stakingStrategy), type(uint256).max);
+        usdc.approve(address(stakingStrategy), type(uint256).max);
+        vm.stopPrank();
+
         // Deploy strategy
         stakingStrategy = new StakingReturnsStrategy(
             "Staking Returns",
