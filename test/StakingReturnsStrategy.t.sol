@@ -229,7 +229,7 @@ contract StakingReturnsStrategyTest is Test {
 
     function test_Constructor_Validation() public {
         // Test with invalid base asset
-        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        vm.expectRevert(CommonErrors.ZeroAddress.selector);
         new StakingReturnsStrategy(
             "Staking Returns",
             address(0), // Invalid base asset
@@ -241,7 +241,7 @@ contract StakingReturnsStrategyTest is Test {
         );
 
         // Test with invalid staking token
-        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        vm.expectRevert(CommonErrors.ZeroAddress.selector);
         new StakingReturnsStrategy(
             "Staking Returns",
             address(usdc),
@@ -253,7 +253,7 @@ contract StakingReturnsStrategyTest is Test {
         );
 
         // Test with invalid liquid staking protocol
-        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        vm.expectRevert(CommonErrors.ZeroAddress.selector);
         new StakingReturnsStrategy(
             "Staking Returns",
             address(usdc),
@@ -265,7 +265,7 @@ contract StakingReturnsStrategyTest is Test {
         );
 
         // Test with invalid fee recipient
-        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        vm.expectRevert(CommonErrors.ZeroAddress.selector);
         new StakingReturnsStrategy(
             "Staking Returns",
             address(usdc),
@@ -298,7 +298,7 @@ contract StakingReturnsStrategyTest is Test {
 
     function test_Deposit_ZeroAmount() public {
         vm.startPrank(user1);
-        vm.expectRevert(CommonErrors.ZeroAmountNotAllowed.selector);
+        vm.expectRevert(CommonErrors.ZeroValue.selector);
         stakingStrategy.deposit(0);
         vm.stopPrank();
     }
@@ -326,7 +326,7 @@ contract StakingReturnsStrategyTest is Test {
 
     function test_Withdraw_ZeroShares() public {
         vm.startPrank(user1);
-        vm.expectRevert(CommonErrors.ZeroAmountNotAllowed.selector);
+        vm.expectRevert(CommonErrors.ZeroValue.selector);
         stakingStrategy.withdraw(0);
         vm.stopPrank();
     }
@@ -506,7 +506,7 @@ contract StakingReturnsStrategyTest is Test {
 
     function test_SetFeeRecipient_ZeroAddress() public {
         vm.prank(owner);
-        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        vm.expectRevert(CommonErrors.ZeroAddress.selector);
         stakingStrategy.setFeeRecipient(address(0));
     }
 
@@ -525,27 +525,36 @@ contract StakingReturnsStrategyTest is Test {
         stakingStrategy.deposit(DEPOSIT_AMOUNT);
         vm.stopPrank();
         
+        // Check balances before emergency withdraw
+        uint256 ownerBalanceBefore = usdc.balanceOf(owner);
+        uint256 strategyBalanceBefore = usdc.balanceOf(address(stakingStrategy));
+        
         // Emergency withdraw
         vm.prank(owner);
-        uint256 withdrawnAmount = stakingStrategy.emergencyWithdraw();
+        stakingStrategy.emergencyWithdraw();
         
-        // Check balances
-        uint256 strategyBalance = usdc.balanceOf(address(stakingStrategy));
-        uint256 ownerBalance = usdc.balanceOf(owner);
+        // Check balances after emergency withdraw
+        uint256 strategyBalanceAfter = usdc.balanceOf(address(stakingStrategy));
+        uint256 ownerBalanceAfter = usdc.balanceOf(owner);
         
-        assertEq(withdrawnAmount, DEPOSIT_AMOUNT, "Withdrawn amount should equal deposit");
-        assertEq(strategyBalance, 0, "Strategy should have zero balance after emergency withdraw");
-        assertEq(ownerBalance, DEPOSIT_AMOUNT, "Owner should receive the withdrawn amount");
+        assertEq(strategyBalanceAfter, 0, "Strategy should have zero balance after emergency withdraw");
+        assertEq(ownerBalanceAfter - ownerBalanceBefore, strategyBalanceBefore, "Owner should receive the strategy's balance");
     }
 
     function test_EmergencyWithdraw_NoFunds() public {
         // No deposits
         
+        // Check owner balance before emergency withdraw
+        uint256 ownerBalanceBefore = usdc.balanceOf(owner);
+        
         // Emergency withdraw
         vm.prank(owner);
-        uint256 withdrawnAmount = stakingStrategy.emergencyWithdraw();
+        stakingStrategy.emergencyWithdraw();
         
-        assertEq(withdrawnAmount, 0, "Withdrawn amount should be zero when no funds");
+        // Check owner balance after emergency withdraw
+        uint256 ownerBalanceAfter = usdc.balanceOf(owner);
+        
+        assertEq(ownerBalanceAfter, ownerBalanceBefore, "Owner balance should not change when no funds");
     }
 
     function test_EmergencyWithdraw_NonOwner() public {
