@@ -186,8 +186,65 @@ contract StakingReturnsStrategyTest is Test {
         vm.stopPrank();
     }
 
-    // Simple test function to verify the file structure
+    // --- Core Functionality Tests ---
+
     function test_Initialization() public {
         assertEq(stakingStrategy.name(), "Staking Returns Shares", "Strategy name should be set correctly");
+        assertEq(stakingStrategy.symbol(), "sStaking Returns", "Strategy symbol should be set correctly");
+        assertEq(address(stakingStrategy.baseAsset()), address(usdc), "Base asset should be set correctly");
+        assertEq(address(stakingStrategy.stakingToken()), address(stakingToken), "Staking token should be set correctly");
+        // Access risk level via getStrategyInfo() struct
+        IYieldStrategy.StrategyInfo memory info = stakingStrategy.getStrategyInfo();
+        assertEq(info.risk, DEFAULT_RISK_LEVEL, "Risk level should be set correctly");
+        assertEq(stakingStrategy.getCurrentAPY(), DEFAULT_APY, "APY should be set correctly");
+    }
+
+    // --- Edge Case and Error Tests ---
+
+    function test_Deposit_RevertOnStake() public {
+        liquidStaking.setShouldRevertStake(true);
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        vm.expectRevert(bytes("Staking failed"));
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        liquidStaking.setShouldRevertStake(false);
+    }
+
+    function test_Withdraw_RevertOnUnstake() public {
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        liquidStaking.setShouldRevertUnstake(true);
+        vm.expectRevert(bytes("Unstaking failed"));
+        stakingStrategy.withdraw(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        liquidStaking.setShouldRevertUnstake(false);
+    }
+
+    function test_Deposit_ReentrancyProtection() public {
+        // Enable reentrancy attack
+        liquidStaking.enableReentrancyAttack(address(stakingStrategy));
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        vm.expectRevert(); // Should revert due to nonReentrant
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        liquidStaking.disableReentrancyAttack();
+    }
+
+    function test_Withdraw_ReentrancyProtection() public {
+        // Deposit first
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        // Enable reentrancy attack
+        liquidStaking.enableReentrancyAttack(address(stakingStrategy));
+        vm.startPrank(user1);
+        vm.expectRevert(); // Should revert due to nonReentrant
+        stakingStrategy.withdraw(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        liquidStaking.disableReentrancyAttack();
     }
 }
