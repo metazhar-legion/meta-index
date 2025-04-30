@@ -170,6 +170,20 @@ contract StakingReturnsStrategyTest is Test {
             DEFAULT_APY,
             DEFAULT_RISK_LEVEL
         );
+        
+        // Set up mock protocol to handle deposits and withdrawals
+        vm.startPrank(address(liquidStaking));
+        stakingToken.approve(address(stakingStrategy), type(uint256).max);
+        usdc.approve(address(stakingStrategy), type(uint256).max);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), type(uint256).max);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        usdc.approve(address(stakingStrategy), type(uint256).max);
+        vm.stopPrank();
     }
 
     // Simple test function to verify the file structure
