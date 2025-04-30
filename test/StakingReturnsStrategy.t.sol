@@ -224,4 +224,333 @@ contract StakingReturnsStrategyTest is Test {
         vm.stopPrank();
         liquidStaking.disableReentrancyAttack();
     }
+
+    // --- Constructor Validation Tests ---
+
+    function test_Constructor_Validation() public {
+        // Test with invalid base asset
+        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        new StakingReturnsStrategy(
+            "Staking Returns",
+            address(0), // Invalid base asset
+            address(stakingToken),
+            address(liquidStaking),
+            feeRecipient,
+            DEFAULT_APY,
+            DEFAULT_RISK_LEVEL
+        );
+
+        // Test with invalid staking token
+        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        new StakingReturnsStrategy(
+            "Staking Returns",
+            address(usdc),
+            address(0), // Invalid staking token
+            address(liquidStaking),
+            feeRecipient,
+            DEFAULT_APY,
+            DEFAULT_RISK_LEVEL
+        );
+
+        // Test with invalid liquid staking protocol
+        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        new StakingReturnsStrategy(
+            "Staking Returns",
+            address(usdc),
+            address(stakingToken),
+            address(0), // Invalid liquid staking protocol
+            feeRecipient,
+            DEFAULT_APY,
+            DEFAULT_RISK_LEVEL
+        );
+
+        // Test with invalid fee recipient
+        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        new StakingReturnsStrategy(
+            "Staking Returns",
+            address(usdc),
+            address(stakingToken),
+            address(liquidStaking),
+            address(0), // Invalid fee recipient
+            DEFAULT_APY,
+            DEFAULT_RISK_LEVEL
+        );
+    }
+
+    // --- Deposit and Withdraw Tests ---
+
+    function test_Deposit() public {
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        uint256 sharesBefore = stakingStrategy.balanceOf(user1);
+        uint256 usdcBefore = usdc.balanceOf(user1);
+        
+        uint256 sharesReceived = stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        
+        uint256 sharesAfter = stakingStrategy.balanceOf(user1);
+        uint256 usdcAfter = usdc.balanceOf(user1);
+        
+        assertEq(sharesAfter - sharesBefore, sharesReceived, "Shares balance should increase by shares received");
+        assertEq(usdcBefore - usdcAfter, DEPOSIT_AMOUNT, "USDC balance should decrease by deposit amount");
+        assertEq(sharesReceived, DEPOSIT_AMOUNT, "Shares received should equal deposit amount for 1:1 exchange rate");
+        vm.stopPrank();
+    }
+
+    function test_Deposit_ZeroAmount() public {
+        vm.startPrank(user1);
+        vm.expectRevert(CommonErrors.ZeroAmountNotAllowed.selector);
+        stakingStrategy.deposit(0);
+        vm.stopPrank();
+    }
+
+    function test_Withdraw() public {
+        // First deposit
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        uint256 sharesReceived = stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        
+        // Then withdraw
+        uint256 usdcBefore = usdc.balanceOf(user1);
+        uint256 sharesBefore = stakingStrategy.balanceOf(user1);
+        
+        uint256 amountWithdrawn = stakingStrategy.withdraw(sharesReceived);
+        
+        uint256 usdcAfter = usdc.balanceOf(user1);
+        uint256 sharesAfter = stakingStrategy.balanceOf(user1);
+        
+        assertEq(usdcAfter - usdcBefore, amountWithdrawn, "USDC balance should increase by withdrawn amount");
+        assertEq(sharesBefore - sharesAfter, sharesReceived, "Shares balance should decrease by shares withdrawn");
+        assertEq(amountWithdrawn, DEPOSIT_AMOUNT, "Amount withdrawn should equal deposit amount for 1:1 exchange rate");
+        vm.stopPrank();
+    }
+
+    function test_Withdraw_ZeroShares() public {
+        vm.startPrank(user1);
+        vm.expectRevert(CommonErrors.ZeroAmountNotAllowed.selector);
+        stakingStrategy.withdraw(0);
+        vm.stopPrank();
+    }
+
+    function test_Withdraw_InsufficientBalance() public {
+        vm.startPrank(user1);
+        vm.expectRevert("ERC20: burn amount exceeds balance");
+        stakingStrategy.withdraw(1000);
+        vm.stopPrank();
+    }
+
+    // --- Value Calculation Tests ---
+
+    function test_GetValueOfShares() public {
+        // First deposit
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        uint256 sharesReceived = stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
+        // Test value calculation
+        uint256 value = stakingStrategy.getValueOfShares(sharesReceived);
+        assertEq(value, DEPOSIT_AMOUNT, "Value should equal deposit amount for 1:1 exchange rate");
+        
+        // Change exchange rate and test again
+        liquidStaking.setExchangeRate(1.1e6); // 1.1:1 exchange rate
+        value = stakingStrategy.getValueOfShares(sharesReceived);
+        assertEq(value, DEPOSIT_AMOUNT * 11 / 10, "Value should reflect updated exchange rate");
+    }
+
+    function test_GetTotalValue() public {
+        // First deposit from user1
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
+        // Then deposit from user2
+        vm.startPrank(user2);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
+        // Test total value
+        uint256 totalValue = stakingStrategy.getTotalValue();
+        assertEq(totalValue, DEPOSIT_AMOUNT * 2, "Total value should equal sum of deposits for 1:1 exchange rate");
+        
+        // Change exchange rate and test again
+        liquidStaking.setExchangeRate(1.1e6); // 1.1:1 exchange rate
+        totalValue = stakingStrategy.getTotalValue();
+        assertEq(totalValue, DEPOSIT_AMOUNT * 2 * 11 / 10, "Total value should reflect updated exchange rate");
+    }
+
+    // --- APY Tests ---
+
+    function test_APY_And_ExchangeRate_Change() public {
+        // First deposit
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
+        // Initial APY and value
+        uint256 initialAPY = stakingStrategy.getCurrentAPY();
+        uint256 initialValue = stakingStrategy.getTotalValue();
+        
+        // Change APY and exchange rate to simulate yield
+        liquidStaking.setAPY(500); // 5%
+        liquidStaking.setExchangeRate(1.05e6); // 1.05:1 exchange rate
+        
+        // Test updated APY and value
+        uint256 newAPY = stakingStrategy.getCurrentAPY();
+        uint256 newValue = stakingStrategy.getTotalValue();
+        
+        assertEq(newAPY, 500, "APY should be updated to 5%");
+        assertEq(newValue, initialValue * 105 / 100, "Value should reflect updated exchange rate");
+        assertGt(newValue, initialValue, "Value should increase with positive yield");
+    }
+
+    function test_GetCurrentAPY() public {
+        // Test initial APY
+        uint256 apy = stakingStrategy.getCurrentAPY();
+        assertEq(apy, DEFAULT_APY, "Initial APY should match default");
+        
+        // Change APY and test again
+        liquidStaking.setAPY(500); // 5%
+        apy = stakingStrategy.getCurrentAPY();
+        assertEq(apy, 500, "APY should be updated to 5%");
+    }
+
+    // --- Yield Harvesting Tests ---
+
+    function test_HarvestYield() public {
+        // First deposit
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
+        // Simulate yield by changing exchange rate
+        liquidStaking.setExchangeRate(1.1e6); // 1.1:1 exchange rate
+        
+        // Check fee recipient balance before harvest
+        uint256 feeRecipientBalanceBefore = usdc.balanceOf(feeRecipient);
+        
+        // Harvest yield
+        vm.prank(owner);
+        uint256 harvestedAmount = stakingStrategy.harvestYield();
+        
+        // Check fee recipient balance after harvest
+        uint256 feeRecipientBalanceAfter = usdc.balanceOf(feeRecipient);
+        uint256 feeAmount = feeRecipientBalanceAfter - feeRecipientBalanceBefore;
+        
+        // Calculate expected values
+        uint256 expectedYield = DEPOSIT_AMOUNT * 10 / 100; // 10% yield on deposit
+        uint256 expectedFee = expectedYield * stakingStrategy.feePercentage() / 10000; // Fee is in basis points
+        
+        assertEq(harvestedAmount, expectedYield, "Harvested amount should equal yield");
+        assertEq(feeAmount, expectedFee, "Fee amount should be correct percentage of yield");
+    }
+
+    function test_HarvestYield_NoYield() public {
+        // First deposit
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
+        // No change in exchange rate means no yield
+        
+        // Harvest yield
+        vm.prank(owner);
+        uint256 harvestedAmount = stakingStrategy.harvestYield();
+        
+        assertEq(harvestedAmount, 0, "Harvested amount should be zero when no yield");
+    }
+
+    function test_HarvestYield_NonOwner() public {
+        vm.prank(nonOwner);
+        vm.expectRevert("Ownable: caller is not the owner");
+        stakingStrategy.harvestYield();
+    }
+
+    // --- Fee Management Tests ---
+
+    function test_SetFeePercentage() public {
+        uint256 newFeePercentage = 2000; // 20%
+        
+        vm.prank(owner);
+        stakingStrategy.setFeePercentage(newFeePercentage);
+        
+        assertEq(stakingStrategy.feePercentage(), newFeePercentage, "Fee percentage should be updated");
+    }
+
+    function test_SetFeePercentage_TooHigh() public {
+        uint256 tooHighFeePercentage = 5001; // 50.01%
+        
+        vm.prank(owner);
+        vm.expectRevert("Fee percentage too high");
+        stakingStrategy.setFeePercentage(tooHighFeePercentage);
+    }
+
+    function test_SetFeePercentage_NonOwner() public {
+        vm.prank(nonOwner);
+        vm.expectRevert("Ownable: caller is not the owner");
+        stakingStrategy.setFeePercentage(2000);
+    }
+
+    function test_SetFeeRecipient() public {
+        address newFeeRecipient = makeAddr("newFeeRecipient");
+        
+        vm.prank(owner);
+        stakingStrategy.setFeeRecipient(newFeeRecipient);
+        
+        assertEq(stakingStrategy.feeRecipient(), newFeeRecipient, "Fee recipient should be updated");
+    }
+
+    function test_SetFeeRecipient_ZeroAddress() public {
+        vm.prank(owner);
+        vm.expectRevert(CommonErrors.ZeroAddressNotAllowed.selector);
+        stakingStrategy.setFeeRecipient(address(0));
+    }
+
+    function test_SetFeeRecipient_NonOwner() public {
+        vm.prank(nonOwner);
+        vm.expectRevert("Ownable: caller is not the owner");
+        stakingStrategy.setFeeRecipient(makeAddr("newFeeRecipient"));
+    }
+
+    // --- Emergency Withdrawal Tests ---
+
+    function test_EmergencyWithdraw() public {
+        // First deposit
+        vm.startPrank(user1);
+        usdc.approve(address(stakingStrategy), DEPOSIT_AMOUNT);
+        stakingStrategy.deposit(DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
+        // Emergency withdraw
+        vm.prank(owner);
+        uint256 withdrawnAmount = stakingStrategy.emergencyWithdraw();
+        
+        // Check balances
+        uint256 strategyBalance = usdc.balanceOf(address(stakingStrategy));
+        uint256 ownerBalance = usdc.balanceOf(owner);
+        
+        assertEq(withdrawnAmount, DEPOSIT_AMOUNT, "Withdrawn amount should equal deposit");
+        assertEq(strategyBalance, 0, "Strategy should have zero balance after emergency withdraw");
+        assertEq(ownerBalance, DEPOSIT_AMOUNT, "Owner should receive the withdrawn amount");
+    }
+
+    function test_EmergencyWithdraw_NoFunds() public {
+        // No deposits
+        
+        // Emergency withdraw
+        vm.prank(owner);
+        uint256 withdrawnAmount = stakingStrategy.emergencyWithdraw();
+        
+        assertEq(withdrawnAmount, 0, "Withdrawn amount should be zero when no funds");
+    }
+
+    function test_EmergencyWithdraw_NonOwner() public {
+        vm.prank(nonOwner);
+        vm.expectRevert("Ownable: caller is not the owner");
+        stakingStrategy.emergencyWithdraw();
+    }
 }
