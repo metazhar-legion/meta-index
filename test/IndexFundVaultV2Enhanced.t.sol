@@ -728,9 +728,10 @@ contract IndexFundVaultV2EnhancedTest is Test {
             vault.rebalance();
         } else {
             // If our calculation shows deviation is not above threshold, skip the assertion
-            console.log("Skipping assertion as calculated deviation is not above threshold");
-            console.log("Deviation (basis points):", deviation);
-            console.log("Threshold (basis points):", 500);
+            // Use a simpler approach without console.log
+            emit log_string("Skipping assertion as calculated deviation is not above threshold");
+            emit log_named_uint("Deviation (basis points)", deviation);
+            emit log_named_uint("Threshold (basis points)", 500);
         }
     }
 }
