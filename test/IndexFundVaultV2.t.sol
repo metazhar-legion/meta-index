@@ -366,8 +366,8 @@ contract IndexFundVaultV2Test is Test {
         vault.addAsset(address(wrapper1), 5000);
         
         // Verify the asset was added correctly
-        (address wrapperAddr, uint256 weight, bool isActive) = vault.getAssetInfo(address(wrapper1));
-        assertEq(wrapperAddr, address(wrapper1));
+        (address wrapper, uint256 weight, bool isActive) = vault.getAssetInfo(address(wrapper1));
+        assertEq(wrapper, address(wrapper1));
         assertEq(weight, 5000);
         assertTrue(isActive);
         
