@@ -165,7 +165,7 @@ contract StakingReturnsStrategyTest is Test {
 
     // --- Core Functionality Tests ---
 
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(stakingStrategy.name(), "Staking Returns Shares", "Strategy name should be set correctly");
         assertEq(stakingStrategy.symbol(), "sStaking Returns", "Strategy symbol should be set correctly");
         assertEq(address(stakingStrategy.baseAsset()), address(usdc), "Base asset should be set correctly");
