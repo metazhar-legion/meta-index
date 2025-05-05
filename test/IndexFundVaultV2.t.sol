@@ -136,7 +136,7 @@ contract FailingAssetWrapper is MockAssetWrapper {
         return amount;
     }
     
-    function harvestYield() external override returns (uint256) {
+    function harvestYield() external view override returns (uint256) {
         if (failOnHarvest) {
             revert("Harvest failed");
         }
@@ -1019,8 +1019,11 @@ contract IndexFundVaultV2Test is Test {
         // Advance time by less than the interval
         vm.warp(block.timestamp + 12 hours);
         
-        // Check if time affects rebalance needed
+        // Check if time affects rebalance needed - store for logging if needed
         bool midwayNeedsRebalance = vault.isRebalanceNeeded();
+        if (midwayNeedsRebalance != initialNeedsRebalance) {
+            console.log("Rebalance needed changed after half interval");
+        }
         
         // Advance time to just past the interval
         vm.warp(block.timestamp + 12 hours + 1);
