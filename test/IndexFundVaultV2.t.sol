@@ -438,7 +438,7 @@ contract IndexFundVaultV2Test is Test {
         vault.removeAsset(address(wrapper1));
         
         // Verify the asset was removed
-        (address wrapperAddr, uint256 weight, bool isActive) = vault.getAssetInfo(address(wrapper1));
+        (/* address wrapperAddr */, uint256 weight, bool isActive) = vault.getAssetInfo(address(wrapper1));
         // The contract might not set the wrapper address to zero, just mark it as inactive
         assertEq(weight, 0);
         assertFalse(isActive);
