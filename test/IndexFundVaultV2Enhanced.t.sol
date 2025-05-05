@@ -523,39 +523,50 @@ contract IndexFundVaultV2EnhancedTest is Test {
         vault.deposit(DEPOSIT_AMOUNT, user1);
         vm.stopPrank();
         
+        // Mock allocateCapital to avoid actual transfers
+        vm.mockCall(
+            address(wrapper1),
+            abi.encodeWithSelector(IAssetWrapper.allocateCapital.selector),
+            abi.encode(true)
+        );
+        
         // Rebalance to allocate funds
         vault.rebalance();
         
-        // Set value to simulate allocation
-        wrapper1.setValueInBaseAsset(DEPOSIT_AMOUNT);
-        
         // Simulate value increase (20% gain)
         uint256 valueIncrease = DEPOSIT_AMOUNT * 20 / 100;
+        uint256 totalValue = DEPOSIT_AMOUNT + valueIncrease;
         
         // Mock the getValueInBaseAsset function to return the increased value
         vm.mockCall(
             address(wrapper1),
             abi.encodeWithSelector(IAssetWrapper.getValueInBaseAsset.selector),
-            abi.encode(DEPOSIT_AMOUNT + valueIncrease)
+            abi.encode(totalValue)
         );
         
+        // Calculate shares for user1
+        uint256 user1Shares = vault.balanceOf(user1);
+        uint256 halfShares = user1Shares / 2;
+        
+        // Calculate expected withdrawal amount
+        uint256 expectedWithdrawAmount = (totalValue * halfShares) / user1Shares;
+        
         // Mock the withdrawCapital function to return the expected amount
-        uint256 expectedWithdrawAmount = (DEPOSIT_AMOUNT + valueIncrease) / 2;
         vm.mockCall(
             address(wrapper1),
             abi.encodeWithSelector(IAssetWrapper.withdrawCapital.selector),
             abi.encode(expectedWithdrawAmount)
         );
         
-        // Calculate shares for user1
-        uint256 user1Shares = vault.balanceOf(user1);
-        
-        // Mint USDC to the vault to simulate the withdrawal
-        mockUSDC.mint(address(vault), expectedWithdrawAmount);
+        // Mock the transfer function to avoid actual transfers
+        vm.mockCall(
+            address(mockUSDC),
+            abi.encodeWithSelector(IERC20.transfer.selector, user1, expectedWithdrawAmount),
+            abi.encode(true)
+        );
         
         // User1 withdraws half their shares
         vm.startPrank(user1);
-        uint256 halfShares = user1Shares / 2;
         uint256 withdrawnAmount = vault.redeem(halfShares, user1, user1);
         vm.stopPrank();
         
@@ -577,14 +588,34 @@ contract IndexFundVaultV2EnhancedTest is Test {
         vault.deposit(DEPOSIT_AMOUNT / 2, user1);
         vm.stopPrank();
         
+        // Mock allocateCapital for the first rebalance
+        vm.mockCall(
+            address(wrapper1),
+            abi.encodeWithSelector(IAssetWrapper.allocateCapital.selector),
+            abi.encode(true)
+        );
+        
         // Rebalance to allocate funds
         vault.rebalance();
-        wrapper1.setValueInBaseAsset(DEPOSIT_AMOUNT / 2);
+        
+        // Mock getValueInBaseAsset after first allocation
+        vm.mockCall(
+            address(wrapper1),
+            abi.encodeWithSelector(IAssetWrapper.getValueInBaseAsset.selector),
+            abi.encode(DEPOSIT_AMOUNT / 2)
+        );
         
         // Second deposit from user2
         vm.startPrank(user2);
         vault.deposit(DEPOSIT_AMOUNT / 2, user2);
         vm.stopPrank();
+        
+        // Mock allocateCapital for the second rebalance
+        vm.mockCall(
+            address(wrapper1),
+            abi.encodeWithSelector(IAssetWrapper.allocateCapital.selector),
+            abi.encode(true)
+        );
         
         // Rebalance again
         vault.rebalance();
@@ -614,8 +645,12 @@ contract IndexFundVaultV2EnhancedTest is Test {
             abi.encode(expectedUser1Amount)
         );
         
-        // Mint USDC to the vault to simulate the withdrawal for user1
-        mockUSDC.mint(address(vault), expectedUser1Amount);
+        // Mock the transfer function to avoid actual transfers for user1
+        vm.mockCall(
+            address(mockUSDC),
+            abi.encodeWithSelector(IERC20.transfer.selector, user1, expectedUser1Amount),
+            abi.encode(true)
+        );
         
         vm.startPrank(user1);
         uint256 user1WithdrawnAmount = vault.redeem(user1Shares, user1, user1);
@@ -634,8 +669,12 @@ contract IndexFundVaultV2EnhancedTest is Test {
             abi.encode(expectedUser2Amount)
         );
         
-        // Mint USDC to the vault to simulate the withdrawal for user2
-        mockUSDC.mint(address(vault), expectedUser2Amount);
+        // Mock the transfer function to avoid actual transfers for user2
+        vm.mockCall(
+            address(mockUSDC),
+            abi.encodeWithSelector(IERC20.transfer.selector, user2, expectedUser2Amount),
+            abi.encode(true)
+        );
         
         // User2 withdraws all their shares
         uint256 user2Shares = vault.balanceOf(user2);
