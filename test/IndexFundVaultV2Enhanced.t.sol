@@ -687,12 +687,10 @@ contract IndexFundVaultV2EnhancedTest is Test {
         
         // Add asset to the vault again for user2's test
         vault = new IndexFundVaultV2(
-            address(mockUSDC),
-            "Index Fund Vault",
-            "IFV",
-            address(mockPriceOracle),
-            address(mockDEX),
-            address(mockFeeManager)
+            IERC20(address(mockUSDC)),
+            mockFeeManager,
+            mockPriceOracle,
+            mockDEX
         );
         vault.addAsset(address(wrapper1), 10000); // 100% weight
         
