@@ -14,28 +14,40 @@ import {CommonErrors} from "./errors/CommonErrors.sol";
  * @dev Routes perpetual trading operations to the best platform based on available markets and pricing
  */
 contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
-
     // Array of perpetual trading adapters
     IPerpetualAdapter[] public perpetualAdapters;
-    
+
     // Mapping to check if a perpetual adapter is already added
     mapping(address => bool) public isAdapter;
-    
+
     // Mapping from positionId to adapter address
     mapping(bytes32 => address) public positionToAdapter;
-    
+
     // Events
     event AdapterAdded(address indexed adapter, string name);
     event AdapterRemoved(address indexed adapter);
-    event PositionOpened(bytes32 indexed positionId, bytes32 indexed marketId, int256 size, uint256 leverage, uint256 collateral, address indexed platform);
+    event PositionOpened(
+        bytes32 indexed positionId,
+        bytes32 indexed marketId,
+        int256 size,
+        uint256 leverage,
+        uint256 collateral,
+        address indexed platform
+    );
     event PositionClosed(bytes32 indexed positionId, int256 pnl, address indexed platform);
-    event PositionAdjusted(bytes32 indexed positionId, int256 newSize, uint256 newLeverage, int256 collateralDelta, address indexed platform);
-    
+    event PositionAdjusted(
+        bytes32 indexed positionId,
+        int256 newSize,
+        uint256 newLeverage,
+        int256 collateralDelta,
+        address indexed platform
+    );
+
     /**
      * @dev Constructor
      */
     constructor() Ownable(msg.sender) {}
-    
+
     /**
      * @dev Adds a new perpetual trading adapter
      * @param adapter The address of the perpetual adapter
@@ -43,21 +55,21 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
     function addAdapter(address adapter) external onlyOwner {
         if (adapter == address(0)) revert CommonErrors.ZeroAddress();
         if (isAdapter[adapter]) revert CommonErrors.InvalidValue();
-        
+
         IPerpetualAdapter perpAdapter = IPerpetualAdapter(adapter);
         perpetualAdapters.push(perpAdapter);
         isAdapter[adapter] = true;
-        
+
         emit AdapterAdded(adapter, perpAdapter.getPlatformName());
     }
-    
+
     /**
      * @dev Removes a perpetual trading adapter
      * @param adapter The address of the perpetual adapter to remove
      */
     function removeAdapter(address adapter) external onlyOwner {
         if (!isAdapter[adapter]) revert CommonErrors.NotFound();
-        
+
         // Find the adapter in the array
         uint256 adapterIndex = type(uint256).max;
         for (uint256 i = 0; i < perpetualAdapters.length; i++) {
@@ -66,17 +78,17 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
                 break;
             }
         }
-        
+
         if (adapterIndex == type(uint256).max) revert CommonErrors.NotFound();
-        
+
         // Remove the adapter by swapping with the last element and popping
         perpetualAdapters[adapterIndex] = perpetualAdapters[perpetualAdapters.length - 1];
         perpetualAdapters.pop();
         isAdapter[adapter] = false;
-        
+
         emit AdapterRemoved(adapter);
     }
-    
+
     /**
      * @dev Gets the number of perpetual trading adapters
      * @return count The number of adapters
@@ -84,7 +96,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
     function getAdapterCount() external view returns (uint256 count) {
         return perpetualAdapters.length;
     }
-    
+
     /**
      * @dev Opens a new position in a perpetual market
      * @param marketId The identifier for the market
@@ -93,41 +105,41 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
      * @param collateral The amount of collateral to allocate
      * @return positionId The identifier for the opened position
      */
-    function openPosition(
-        bytes32 marketId,
-        int256 size,
-        uint256 leverage,
-        uint256 collateral
-    ) external override nonReentrant returns (bytes32 positionId) {
+    function openPosition(bytes32 marketId, int256 size, uint256 leverage, uint256 collateral)
+        external
+        override
+        nonReentrant
+        returns (bytes32 positionId)
+    {
         if (perpetualAdapters.length == 0) revert CommonErrors.NotInitialized();
-        
+
         // Find the best platform for this market
         IPerpetualAdapter bestPlatform = _getBestPlatformForMarket(marketId);
         if (address(bestPlatform) == address(0)) revert CommonErrors.NotFound();
-        
+
         // Get the base asset from the best platform
         // In a real implementation, we would have a proper way to get the base asset
         // For testing, we'll get it from the adapter
         IERC20 baseAsset = IERC20(bestPlatform.getBaseAsset());
-        
+
         // Transfer collateral from the user to this contract
         baseAsset.transferFrom(msg.sender, address(this), collateral);
-        
+
         // Approve the platform to spend the collateral
         baseAsset.approve(address(bestPlatform), 0);
         baseAsset.approve(address(bestPlatform), collateral);
-        
+
         // Open the position
         positionId = bestPlatform.openPosition(marketId, size, leverage, collateral);
-        
+
         // Store which adapter handles this position
         positionToAdapter[positionId] = address(bestPlatform);
-        
+
         emit PositionOpened(positionId, marketId, size, leverage, collateral, address(bestPlatform));
-        
+
         return positionId;
     }
-    
+
     /**
      * @dev Closes an existing position
      * @param positionId The identifier for the position to close
@@ -136,35 +148,35 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
     function closePosition(bytes32 positionId) external override nonReentrant returns (int256 pnl) {
         address adapterAddress = positionToAdapter[positionId];
         if (adapterAddress == address(0)) revert CommonErrors.NotFound();
-        
+
         IPerpetualAdapter adapter = IPerpetualAdapter(adapterAddress);
-        
+
         // Get the base asset from the adapter
         IERC20 baseAsset = IERC20(adapter.getBaseAsset());
-        
+
         // Store initial balance to calculate how much we received
         uint256 initialBalance = baseAsset.balanceOf(address(this));
-        
+
         // Close the position
         pnl = adapter.closePosition(positionId);
-        
+
         // Calculate how much we received from the adapter
         uint256 finalBalance = baseAsset.balanceOf(address(this));
         uint256 amountReceived = finalBalance - initialBalance;
-        
+
         // Transfer the received amount back to the user
         if (amountReceived > 0) {
             baseAsset.transfer(msg.sender, amountReceived);
         }
-        
+
         // Clean up the mapping
         delete positionToAdapter[positionId];
-        
+
         emit PositionClosed(positionId, pnl, adapterAddress);
-        
+
         return pnl;
     }
-    
+
     /**
      * @dev Adjusts the size or leverage of an existing position
      * @param positionId The identifier for the position to adjust
@@ -172,38 +184,38 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
      * @param newLeverage The new leverage to use (0 to keep current)
      * @param collateralDelta Amount to add to collateral (negative to remove)
      */
-    function adjustPosition(
-        bytes32 positionId,
-        int256 newSize,
-        uint256 newLeverage,
-        int256 collateralDelta
-    ) external override nonReentrant returns (bool) {
+    function adjustPosition(bytes32 positionId, int256 newSize, uint256 newLeverage, int256 collateralDelta)
+        external
+        override
+        nonReentrant
+        returns (bool)
+    {
         address adapterAddress = positionToAdapter[positionId];
         if (adapterAddress == address(0)) revert CommonErrors.NotFound();
-        
+
         IPerpetualAdapter adapter = IPerpetualAdapter(adapterAddress);
-        
+
         // Handle collateral changes if needed
         if (collateralDelta > 0) {
             // Get the base asset from the adapter
             IERC20 baseAsset = IERC20(adapter.getBaseAsset());
-            
+
             // Adding collateral
             baseAsset.transferFrom(msg.sender, address(this), uint256(collateralDelta));
-            
+
             // Approve the platform to spend the additional collateral
             baseAsset.approve(address(adapter), 0);
             baseAsset.approve(address(adapter), uint256(collateralDelta));
         }
-        
+
         // Adjust the position
         adapter.adjustPosition(positionId, newSize, newLeverage, collateralDelta);
-        
+
         emit PositionAdjusted(positionId, newSize, newLeverage, collateralDelta, adapterAddress);
-        
+
         return true;
     }
-    
+
     /**
      * @dev Gets the current position information
      * @param positionId The identifier for the position
@@ -212,10 +224,10 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
     function getPosition(bytes32 positionId) external view override returns (Position memory) {
         address adapterAddress = positionToAdapter[positionId];
         if (adapterAddress == address(0)) revert CommonErrors.NotFound();
-        
+
         IPerpetualAdapter adapter = IPerpetualAdapter(adapterAddress);
         IPerpetualAdapter.Position memory adapterPosition = adapter.getPosition(positionId);
-        
+
         // Convert from adapter position to IPerpetualTrading position
         Position memory result = Position({
             marketId: adapterPosition.marketId,
@@ -225,10 +237,10 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
             collateral: adapterPosition.collateral,
             lastUpdated: adapterPosition.lastUpdated
         });
-        
+
         return result;
     }
-    
+
     /**
      * @dev Gets the current market price
      * @param marketId The identifier for the market
@@ -238,12 +250,12 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         // Find the best platform for this market
         IPerpetualAdapter bestPlatform = _getBestPlatformForMarket(marketId);
         if (address(bestPlatform) == address(0)) revert CommonErrors.NotFound();
-        
+
         // Get the price from the platform
         price = bestPlatform.getMarketPrice(marketId);
         return price;
     }
-    
+
     /**
      * @dev Calculates the profit or loss for a position
      * @param positionId The identifier for the position
@@ -252,11 +264,11 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
     function calculatePnL(bytes32 positionId) external view returns (int256 pnl) {
         address adapterAddress = positionToAdapter[positionId];
         if (adapterAddress == address(0)) revert CommonErrors.NotFound();
-        
+
         IPerpetualAdapter adapter = IPerpetualAdapter(adapterAddress);
         return adapter.calculatePnL(positionId);
     }
-    
+
     /**
      * @dev Gets the funding rate for a market
      * @return fundingRate The current funding rate (can be negative)
@@ -266,7 +278,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
         // For simplicity, we just return 0
         return 0;
     }
-    
+
     /**
      * @dev Gets the current value of a position
      * @param positionId The identifier for the position
@@ -275,10 +287,10 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
     function getPositionValue(bytes32 positionId) external view returns (uint256 value) {
         address adapterAddress = positionToAdapter[positionId];
         if (adapterAddress == address(0)) revert CommonErrors.NotFound();
-        
+
         IPerpetualAdapter adapter = IPerpetualAdapter(adapterAddress);
         IPerpetualAdapter.Position memory position = adapter.getPosition(positionId);
-        
+
         // Calculate position value: collateral + PnL
         int256 pnl = adapter.calculatePnL(positionId);
         if (pnl >= 0) {
@@ -289,7 +301,7 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
             return position.collateral > absPnl ? position.collateral - absPnl : 0;
         }
     }
-    
+
     /**
      * @dev Finds the best platform that supports a given market
      * @param marketId The identifier for the market
@@ -298,14 +310,14 @@ contract PerpetualRouter is IPerpetualTrading, Ownable, ReentrancyGuard {
     function _getBestPlatformForMarket(bytes32 marketId) internal view returns (IPerpetualAdapter bestPlatform) {
         for (uint256 i = 0; i < perpetualAdapters.length; i++) {
             IPerpetualAdapter adapter = perpetualAdapters[i];
-            
+
             if (adapter.isMarketSupported(marketId)) {
                 // In a real implementation, we would compare fees, liquidity, etc.
                 // For simplicity, we just return the first platform that supports the market
                 return adapter;
             }
         }
-        
+
         return IPerpetualAdapter(address(0));
     }
 }

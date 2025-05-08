@@ -19,20 +19,22 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
 
     // Array of DEX adapters
     IDEXAdapter[] public dexAdapters;
-    
+
     // Mapping to check if a DEX adapter is already added
     mapping(address => bool) public isAdapter;
-    
+
     // Events
     event AdapterAdded(address indexed adapter, string name);
     event AdapterRemoved(address indexed adapter);
-    event Swapped(address indexed fromToken, address indexed toToken, uint256 fromAmount, uint256 toAmount, address indexed dex);
-    
+    event Swapped(
+        address indexed fromToken, address indexed toToken, uint256 fromAmount, uint256 toAmount, address indexed dex
+    );
+
     /**
      * @dev Constructor
      */
     constructor() Ownable(msg.sender) {}
-    
+
     /**
      * @dev Adds a new DEX adapter
      * @param adapter The address of the DEX adapter
@@ -40,21 +42,21 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
     function addAdapter(address adapter) external onlyOwner {
         if (adapter == address(0)) revert CommonErrors.ZeroAddress();
         if (isAdapter[adapter]) revert CommonErrors.InvalidValue();
-        
+
         IDEXAdapter dexAdapter = IDEXAdapter(adapter);
         dexAdapters.push(dexAdapter);
         isAdapter[adapter] = true;
-        
+
         emit AdapterAdded(adapter, dexAdapter.getDexName());
     }
-    
+
     /**
      * @dev Removes a DEX adapter
      * @param adapter The address of the DEX adapter to remove
      */
     function removeAdapter(address adapter) external onlyOwner {
         if (!isAdapter[adapter]) revert CommonErrors.NotFound();
-        
+
         // Find the adapter in the array
         uint256 adapterIndex = type(uint256).max;
         for (uint256 i = 0; i < dexAdapters.length; i++) {
@@ -63,17 +65,17 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
                 break;
             }
         }
-        
+
         if (adapterIndex == type(uint256).max) revert CommonErrors.NotFound();
-        
+
         // Remove the adapter by swapping with the last element and popping
         dexAdapters[adapterIndex] = dexAdapters[dexAdapters.length - 1];
         dexAdapters.pop();
         isAdapter[adapter] = false;
-        
+
         emit AdapterRemoved(adapter);
     }
-    
+
     /**
      * @dev Gets the number of DEX adapters
      * @return count The number of adapters
@@ -81,7 +83,7 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
     function getAdapterCount() external view returns (uint256 count) {
         return dexAdapters.length;
     }
-    
+
     /**
      * @dev Swaps tokens using the best available DEX
      * @param fromToken The token to swap from
@@ -90,15 +92,15 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
      * @param minToAmount The minimum amount of toToken to receive
      * @return toAmount The amount of toToken received
      */
-    function swap(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount,
-        uint256 minToAmount
-    ) external override nonReentrant returns (uint256 toAmount) {
+    function swap(address fromToken, address toToken, uint256 fromAmount, uint256 minToAmount)
+        external
+        override
+        nonReentrant
+        returns (uint256 toAmount)
+    {
         return _swap(fromToken, toToken, fromAmount, minToAmount);
     }
-    
+
     /**
      * @dev Swaps an exact amount of input tokens for as many output tokens as possible
      * @param fromToken The token to swap from
@@ -107,15 +109,15 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
      * @param minToAmount The minimum amount of toToken to receive
      * @return toAmount The amount of toToken received
      */
-    function swapExactInput(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount,
-        uint256 minToAmount
-    ) external override nonReentrant returns (uint256 toAmount) {
+    function swapExactInput(address fromToken, address toToken, uint256 fromAmount, uint256 minToAmount)
+        external
+        override
+        nonReentrant
+        returns (uint256 toAmount)
+    {
         return _swap(fromToken, toToken, fromAmount, minToAmount);
     }
-    
+
     /**
      * @dev Gets the expected amount of toToken for a given amount of fromToken
      * @param fromToken The token to swap from
@@ -123,72 +125,71 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
      * @param fromAmount The amount of fromToken to swap
      * @return toAmount The expected amount of toToken
      */
-    function getExpectedAmount(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount
-    ) external view override returns (uint256 toAmount) {
-        (uint256 bestAmount, ) = _getBestQuote(fromToken, toToken, fromAmount);
+    function getExpectedAmount(address fromToken, address toToken, uint256 fromAmount)
+        external
+        view
+        override
+        returns (uint256 toAmount)
+    {
+        (uint256 bestAmount,) = _getBestQuote(fromToken, toToken, fromAmount);
         return bestAmount;
     }
-    
+
     /**
      * @dev Internal function to handle swaps
      */
-    function _swap(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount,
-        uint256 minToAmount
-    ) internal returns (uint256 toAmount) {
+    function _swap(address fromToken, address toToken, uint256 fromAmount, uint256 minToAmount)
+        internal
+        returns (uint256 toAmount)
+    {
         if (fromToken == toToken) revert CommonErrors.InvalidValue();
         if (fromAmount == 0) revert CommonErrors.ValueTooLow();
         if (dexAdapters.length == 0) revert CommonErrors.NotInitialized();
-        
+
         // Get the best DEX for this swap
         (uint256 expectedAmount, IDEXAdapter bestDex) = _getBestQuote(fromToken, toToken, fromAmount);
-        
+
         if (expectedAmount < minToAmount) revert CommonErrors.SlippageTooHigh();
         if (address(bestDex) == address(0)) revert CommonErrors.NotFound();
-        
+
         // Get the token contract
         IERC20 token = IERC20(fromToken);
-        
+
         // Transfer tokens from the user to this contract
         token.transferFrom(msg.sender, address(this), fromAmount);
-        
+
         // Approve the DEX to spend the tokens
         token.approve(address(bestDex), 0);
         token.approve(address(bestDex), fromAmount);
-        
+
         // Execute the swap
         toAmount = bestDex.swap(fromToken, toToken, fromAmount, minToAmount, msg.sender);
-        
+
         emit Swapped(fromToken, toToken, fromAmount, toAmount, address(bestDex));
-        
+
         return toAmount;
     }
-    
+
     /**
      * @dev Gets the best quote from all available DEXes
      * @return bestAmount The best amount out
      * @return bestDex The DEX offering the best rate
      */
-    function _getBestQuote(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount
-    ) internal view returns (uint256 bestAmount, IDEXAdapter bestDex) {
+    function _getBestQuote(address fromToken, address toToken, uint256 fromAmount)
+        internal
+        view
+        returns (uint256 bestAmount, IDEXAdapter bestDex)
+    {
         bestAmount = 0;
-        
+
         for (uint256 i = 0; i < dexAdapters.length; i++) {
             IDEXAdapter dex = dexAdapters[i];
-            
+
             // Check if this DEX supports the token pair
             if (!dex.isPairSupported(fromToken, toToken)) {
                 continue;
             }
-            
+
             try dex.getExpectedAmountOut(fromToken, toToken, fromAmount) returns (uint256 amount) {
                 if (amount > bestAmount) {
                     bestAmount = amount;
@@ -199,7 +200,7 @@ contract DEXRouter is IDEX, Ownable, ReentrancyGuard {
                 continue;
             }
         }
-        
+
         return (bestAmount, bestDex);
     }
 }

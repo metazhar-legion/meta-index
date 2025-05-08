@@ -21,34 +21,34 @@ import {IDEX} from "./interfaces/IDEX.sol";
 contract IndexFundVaultV2 is BaseVault {
     using SafeERC20 for IERC20;
     using Math for uint256;
-    
+
     // Constants
     uint256 public constant BASIS_POINTS = 10000; // 100% in basis points
-    
+
     // Optimized struct to hold asset information
     // Pack related variables together to use fewer storage slots
     struct AssetInfo {
-        IAssetWrapper wrapper;  // 20 bytes (address)
-        uint32 weight;         // 4 bytes (max 10000 for basis points, so uint32 is sufficient)
-        bool active;           // 1 byte
-        // 7 bytes of padding will be added by the compiler
+        IAssetWrapper wrapper; // 20 bytes (address)
+        uint32 weight; // 4 bytes (max 10000 for basis points, so uint32 is sufficient)
+        bool active; // 1 byte
+            // 7 bytes of padding will be added by the compiler
     }
-    
+
     // Asset registry
     address[] public assetList;
     mapping(address => AssetInfo) public assets;
-    
+
     // Price oracle and DEX
     IPriceOracle public priceOracle;
     IDEX public dex;
-    
+
     // Pack time-related variables into a single storage slot
     uint32 public rebalanceInterval = uint32(1 days);
     uint32 public lastRebalance;
-    
+
     // Rebalance threshold (max 10000 basis points = 100%)
     uint32 public rebalanceThreshold = 500;
-    
+
     // Events
     event AssetAdded(address indexed assetAddress, uint256 weight);
     event AssetRemoved(address indexed assetAddress);
@@ -58,7 +58,7 @@ contract IndexFundVaultV2 is BaseVault {
     event RebalanceThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
     event PriceOracleUpdated(address indexed oldOracle, address indexed newOracle);
     event DEXUpdated(address indexed oldDEX, address indexed newDEX);
-    
+
     /**
      * @dev Get information about an asset
      * @param assetAddress The address of the asset wrapper
@@ -70,7 +70,7 @@ contract IndexFundVaultV2 is BaseVault {
         AssetInfo memory info = assets[assetAddress];
         return (address(info.wrapper), uint256(info.weight), info.active);
     }
-    
+
     /**
      * @dev Constructor that initializes the vault with the asset token and dependencies
      * @param asset_ The underlying asset token (typically a stablecoin)
@@ -78,22 +78,17 @@ contract IndexFundVaultV2 is BaseVault {
      * @param priceOracle_ The price oracle contract address
      * @param dex_ The DEX contract address
      */
-    constructor(
-        IERC20 asset_,
-        IFeeManager feeManager_,
-        IPriceOracle priceOracle_,
-        IDEX dex_
-    ) 
+    constructor(IERC20 asset_, IFeeManager feeManager_, IPriceOracle priceOracle_, IDEX dex_)
         BaseVault(asset_, feeManager_)
     {
         if (address(priceOracle_) == address(0)) revert CommonErrors.ZeroAddress();
         if (address(dex_) == address(0)) revert CommonErrors.ZeroAddress();
-        
+
         priceOracle = priceOracle_;
         dex = dex_;
         lastRebalance = uint32(block.timestamp);
     }
-    
+
     /**
      * @dev Add a new asset to the index
      * @param assetAddress The address of the asset wrapper
@@ -103,46 +98,42 @@ contract IndexFundVaultV2 is BaseVault {
         if (assetAddress == address(0)) revert CommonErrors.ZeroAddress();
         if (weight == 0) revert CommonErrors.ValueTooLow();
         if (assets[assetAddress].active) revert CommonErrors.TokenAlreadyExists();
-        
+
         // Validate the asset wrapper
         IAssetWrapper wrapper = IAssetWrapper(assetAddress);
         if (wrapper.getBaseAsset() != address(asset())) revert CommonErrors.InvalidValue();
-        
+
         // Update total weight and ensure it doesn't exceed 100%
         uint256 totalWeight = getTotalWeight();
         if (totalWeight + weight > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
-        
+
         // Add the asset to the registry
-        assets[assetAddress] = AssetInfo({
-            wrapper: wrapper,
-            weight: uint32(weight),
-            active: true
-        });
-        
+        assets[assetAddress] = AssetInfo({wrapper: wrapper, weight: uint32(weight), active: true});
+
         assetList.push(assetAddress);
-        
+
         emit AssetAdded(assetAddress, weight);
     }
-    
+
     /**
      * @dev Remove an asset from the index
      * @param assetAddress The address of the asset wrapper to remove
      */
     function removeAsset(address assetAddress) external onlyOwner {
         if (!assets[assetAddress].active) revert CommonErrors.TokenNotFound();
-        
+
         // Withdraw all capital from the asset wrapper
         IAssetWrapper wrapper = assets[assetAddress].wrapper;
         uint256 assetValue = wrapper.getValueInBaseAsset();
-        
+
         if (assetValue > 0) {
             wrapper.withdrawCapital(assetValue);
         }
-        
+
         // Mark the asset as inactive
         assets[assetAddress].active = false;
         assets[assetAddress].weight = 0;
-        
+
         // Remove from assetList
         for (uint256 i = 0; i < assetList.length; i++) {
             if (assetList[i] == assetAddress) {
@@ -151,10 +142,10 @@ contract IndexFundVaultV2 is BaseVault {
                 break;
             }
         }
-        
+
         emit AssetRemoved(assetAddress);
     }
-    
+
     /**
      * @dev Update the weight of an asset in the index
      * @param assetAddress The address of the asset wrapper
@@ -163,62 +154,62 @@ contract IndexFundVaultV2 is BaseVault {
     function updateAssetWeight(address assetAddress, uint256 newWeight) external onlyOwner {
         if (!assets[assetAddress].active) revert CommonErrors.TokenNotFound();
         if (newWeight == 0) revert CommonErrors.ValueTooLow();
-        
+
         uint256 oldWeight = assets[assetAddress].weight;
-        
+
         // Calculate new total weight
         uint256 totalWeight = getTotalWeight() - oldWeight + newWeight;
         if (totalWeight > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
-        
+
         // Update the weight
         assets[assetAddress].weight = uint32(newWeight);
-        
+
         emit AssetWeightUpdated(assetAddress, oldWeight, newWeight);
     }
-    
+
     /**
      * @dev Rebalance the assets according to their target weights
      */
     function rebalance() external nonReentrant {
         if (paused()) revert CommonErrors.OperationPaused();
-        
+
         // Check if enough time has passed since the last rebalance
         if (block.timestamp < uint256(lastRebalance) + uint256(rebalanceInterval)) {
             // Allow rebalancing if the deviation exceeds the threshold
             if (!isRebalanceNeeded()) revert CommonErrors.TooEarly();
         }
-        
+
         // Update last rebalance timestamp (safely cast to uint32)
         lastRebalance = uint32(block.timestamp);
-        
+
         // Collect fees before rebalancing
         collectFees();
-        
+
         uint256 totalValue = totalAssets();
         if (totalValue == 0) return;
-        
+
         // Cache array length to avoid multiple storage reads
         uint256 length = assetList.length;
-        
+
         // Pre-calculate base asset balance once to avoid multiple external calls
         IERC20 baseAsset = IERC20(asset());
         uint256 baseAssetBalance = baseAsset.balanceOf(address(this));
-        
+
         // Calculate target allocations
         for (uint256 i = 0; i < length; i++) {
             address assetAddress = assetList[i];
             AssetInfo storage assetInfo = assets[assetAddress];
-            
+
             if (!assetInfo.active) continue;
-            
+
             // Use uint32 weight directly to avoid unnecessary conversion
             uint256 targetValue = (totalValue * assetInfo.weight) / BASIS_POINTS;
             uint256 currentValue = assetInfo.wrapper.getValueInBaseAsset();
-            
+
             if (currentValue < targetValue) {
                 // Need to allocate more to this asset
                 uint256 amountToAllocate = targetValue - currentValue;
-                
+
                 // Ensure we have enough base asset
                 if (baseAssetBalance < amountToAllocate) {
                     // Withdraw from other assets
@@ -226,7 +217,7 @@ contract IndexFundVaultV2 is BaseVault {
                     // Update base asset balance after withdrawal
                     baseAssetBalance = baseAsset.balanceOf(address(this));
                 }
-                
+
                 // Only approve what we can actually allocate
                 uint256 actualAllocation = amountToAllocate > baseAssetBalance ? baseAssetBalance : amountToAllocate;
                 if (actualAllocation > 0) {
@@ -242,11 +233,11 @@ contract IndexFundVaultV2 is BaseVault {
                 baseAssetBalance += amountToWithdraw;
             }
         }
-        
+
         lastRebalance = uint32(block.timestamp);
         emit Rebalanced();
     }
-    
+
     /**
      * @dev Check if rebalance is needed based on deviation from target weights
      * @return needed Whether rebalance is needed
@@ -254,16 +245,16 @@ contract IndexFundVaultV2 is BaseVault {
     function isRebalanceNeeded() public view returns (bool) {
         uint256 totalValue = totalAssets();
         if (totalValue == 0) return false;
-        
+
         for (uint256 i = 0; i < assetList.length; i++) {
             address assetAddress = assetList[i];
             AssetInfo storage assetInfo = assets[assetAddress];
-            
+
             if (!assetInfo.active) continue;
-            
+
             uint256 targetValue = (totalValue * assetInfo.weight) / BASIS_POINTS;
             uint256 currentValue = assetInfo.wrapper.getValueInBaseAsset();
-            
+
             // Calculate deviation in basis points
             uint256 deviation;
             if (currentValue > targetValue) {
@@ -271,68 +262,68 @@ contract IndexFundVaultV2 is BaseVault {
             } else {
                 deviation = ((targetValue - currentValue) * BASIS_POINTS) / targetValue;
             }
-            
+
             // If any asset deviates more than the threshold, rebalance is needed
             if (deviation > rebalanceThreshold) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * @dev Set the rebalance interval
      * @param interval The new interval in seconds
      */
     function setRebalanceInterval(uint256 interval) external onlyOwner {
         if (interval > type(uint32).max) revert CommonErrors.ValueTooHigh();
-        
+
         uint256 oldInterval = rebalanceInterval;
         rebalanceInterval = uint32(interval);
-        
+
         emit RebalanceIntervalUpdated(oldInterval, interval);
     }
-    
+
     /**
      * @dev Set the rebalance threshold
      * @param threshold The new threshold in basis points
      */
     function setRebalanceThreshold(uint256 threshold) external onlyOwner {
         if (threshold > BASIS_POINTS) revert CommonErrors.ValueTooHigh();
-        
+
         uint256 oldThreshold = rebalanceThreshold;
         rebalanceThreshold = uint32(threshold);
-        
+
         emit RebalanceThresholdUpdated(oldThreshold, threshold);
     }
-    
+
     /**
      * @dev Update the price oracle
      * @param newPriceOracle The new price oracle address
      */
     function updatePriceOracle(IPriceOracle newPriceOracle) external onlyOwner {
         if (address(newPriceOracle) == address(0)) revert CommonErrors.ZeroAddress();
-        
+
         address oldPriceOracle = address(priceOracle);
         priceOracle = newPriceOracle;
-        
+
         emit PriceOracleUpdated(oldPriceOracle, address(newPriceOracle));
     }
-    
+
     /**
      * @dev Update the DEX
      * @param newDEX The new DEX address
      */
     function updateDEX(IDEX newDEX) external onlyOwner {
         if (address(newDEX) == address(0)) revert CommonErrors.ZeroAddress();
-        
+
         address oldDEX = address(dex);
         dex = newDEX;
-        
+
         emit DEXUpdated(oldDEX, address(newDEX));
     }
-    
+
     /**
      * @dev Get the total weight of all active assets
      * @return totalWeight The total weight in basis points
@@ -340,19 +331,19 @@ contract IndexFundVaultV2 is BaseVault {
     function getTotalWeight() public view returns (uint256 totalWeight) {
         // Cache the length to avoid multiple storage reads
         uint256 length = assetList.length;
-        
+
         for (uint256 i = 0; i < length; i++) {
             // Cache the asset address to avoid multiple storage reads
             address assetAddress = assetList[i];
             AssetInfo storage assetInfo = assets[assetAddress];
-            
+
             if (assetInfo.active) {
                 totalWeight += assetInfo.weight;
             }
         }
         return totalWeight;
     }
-    
+
     /**
      * @dev Get all active assets
      * @return activeAssets Array of active asset addresses
@@ -361,7 +352,7 @@ contract IndexFundVaultV2 is BaseVault {
         // Cache the length to avoid multiple storage reads
         uint256 length = assetList.length;
         uint256 activeCount = 0;
-        
+
         // Count active assets
         for (uint256 i = 0; i < length; i++) {
             // Cache the asset address to avoid multiple storage reads
@@ -370,11 +361,11 @@ contract IndexFundVaultV2 is BaseVault {
                 activeCount++;
             }
         }
-        
+
         // Create array of active assets
         activeAssets = new address[](activeCount);
         uint256 index = 0;
-        
+
         for (uint256 i = 0; i < length; i++) {
             address assetAddress = assetList[i];
             if (assets[assetAddress].active) {
@@ -382,10 +373,10 @@ contract IndexFundVaultV2 is BaseVault {
                 index++;
             }
         }
-        
+
         return activeAssets;
     }
-    
+
     /**
      * @dev Calculate the total assets in the vault
      * This includes the base asset balance and the value of all asset wrappers
@@ -393,7 +384,7 @@ contract IndexFundVaultV2 is BaseVault {
     function totalAssets() public view override returns (uint256) {
         // Start with the base asset balance
         uint256 total = IERC20(asset()).balanceOf(address(this));
-        
+
         // Add the value of all asset wrappers
         for (uint256 i = 0; i < assetList.length; i++) {
             address assetAddress = assetList[i];
@@ -401,10 +392,10 @@ contract IndexFundVaultV2 is BaseVault {
                 total += assets[assetAddress].wrapper.getValueInBaseAsset();
             }
         }
-        
+
         return total;
     }
-    
+
     /**
      * @dev Withdraw from other assets to rebalance
      * @param excludeAsset Asset to exclude from withdrawal
@@ -412,7 +403,7 @@ contract IndexFundVaultV2 is BaseVault {
      */
     function _withdrawFromOtherAssets(address excludeAsset, uint256 amount) internal {
         uint256 remaining = amount;
-        
+
         // Calculate total value of other assets
         uint256 totalOtherValue = 0;
         for (uint256 i = 0; i < assetList.length; i++) {
@@ -421,37 +412,37 @@ contract IndexFundVaultV2 is BaseVault {
                 totalOtherValue += assets[assetAddress].wrapper.getValueInBaseAsset();
             }
         }
-        
+
         if (totalOtherValue == 0) return;
-        
+
         // Withdraw proportionally from other assets
         for (uint256 i = 0; i < assetList.length; i++) {
             address assetAddress = assetList[i];
             if (assetAddress != excludeAsset && assets[assetAddress].active) {
                 uint256 assetValue = assets[assetAddress].wrapper.getValueInBaseAsset();
                 uint256 withdrawAmount = (remaining * assetValue) / totalOtherValue;
-                
+
                 if (withdrawAmount > 0) {
                     assets[assetAddress].wrapper.withdrawCapital(withdrawAmount);
                 }
             }
         }
     }
-    
+
     /**
      * @dev Harvest yield from all asset wrappers
      * @return totalHarvested The total amount harvested
      */
     function harvestYield() external nonReentrant returns (uint256 totalHarvested) {
         if (paused()) revert CommonErrors.OperationPaused();
-        
+
         for (uint256 i = 0; i < assetList.length; i++) {
             address assetAddress = assetList[i];
             if (assets[assetAddress].active) {
                 totalHarvested += assets[assetAddress].wrapper.harvestYield();
             }
         }
-        
+
         return totalHarvested;
     }
 }

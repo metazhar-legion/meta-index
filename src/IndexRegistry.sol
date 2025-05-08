@@ -16,14 +16,14 @@ contract IndexRegistry is IIndexRegistry, Ownable {
     address[] public indexTokens;
     mapping(address => uint256) public tokenWeights;
     mapping(address => bool) public isTokenInIndex;
-    
+
     // Total weight must equal BASIS_POINTS
     uint256 public constant BASIS_POINTS = 10000;
-    
+
     // DAO governance
     address public daoGovernance;
     bool public isGovernanceEnabled;
-    
+
     // Proposal system
     struct IndexProposal {
         address[] tokens;
@@ -34,10 +34,10 @@ contract IndexRegistry is IIndexRegistry, Ownable {
         bool executed;
         bool canceled;
     }
-    
+
     IndexProposal[] public proposals;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
-    
+
     // Events
     event TokenAdded(address indexed token, uint256 weight);
     event TokenRemoved(address indexed token);
@@ -66,15 +66,15 @@ contract IndexRegistry is IIndexRegistry, Ownable {
         if (token == address(0)) revert CommonErrors.ZeroAddress();
         if (isTokenInIndex[token]) revert CommonErrors.TokenAlreadyExists();
         if (weight == 0) revert CommonErrors.ValueTooLow();
-        
+
         // Check that total weight doesn't exceed BASIS_POINTS
         uint256 totalWeight = getTotalWeight();
         if (totalWeight + weight > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
-        
+
         indexTokens.push(token);
         tokenWeights[token] = weight;
         isTokenInIndex[token] = true;
-        
+
         emit TokenAdded(token, weight);
     }
 
@@ -84,7 +84,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      */
     function removeToken(address token) external onlyOwnerOrGovernance {
         if (!isTokenInIndex[token]) revert CommonErrors.TokenNotFound();
-        
+
         // Find and remove the token from the array
         for (uint256 i = 0; i < indexTokens.length; i++) {
             if (indexTokens[i] == token) {
@@ -95,11 +95,11 @@ contract IndexRegistry is IIndexRegistry, Ownable {
                 break;
             }
         }
-        
+
         // Clear the weight and flag
         delete tokenWeights[token];
         isTokenInIndex[token] = false;
-        
+
         emit TokenRemoved(token);
     }
 
@@ -111,13 +111,13 @@ contract IndexRegistry is IIndexRegistry, Ownable {
     function updateTokenWeight(address token, uint256 newWeight) external onlyOwnerOrGovernance {
         if (!isTokenInIndex[token]) revert CommonErrors.TokenNotFound();
         if (newWeight == 0) revert CommonErrors.ValueTooLow();
-        
+
         // Calculate the total weight without this token
         uint256 totalWeight = getTotalWeight() - tokenWeights[token];
         if (totalWeight + newWeight > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
-        
+
         tokenWeights[token] = newWeight;
-        
+
         emit TokenWeightUpdated(token, newWeight);
     }
 
@@ -127,7 +127,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
     function rebalanceIndex() external onlyOwnerOrGovernance {
         uint256 totalWeight = getTotalWeight();
         if (totalWeight == 0) revert CommonErrors.EmptyArray();
-        
+
         if (totalWeight != BASIS_POINTS) {
             // Normalize weights
             for (uint256 i = 0; i < indexTokens.length; i++) {
@@ -136,7 +136,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
                 tokenWeights[token] = normalizedWeight;
             }
         }
-        
+
         emit IndexRebalanced();
     }
 
@@ -160,12 +160,12 @@ contract IndexRegistry is IIndexRegistry, Ownable {
     function getCurrentIndex() external view override returns (address[] memory tokens, uint256[] memory weights) {
         tokens = new address[](indexTokens.length);
         weights = new uint256[](indexTokens.length);
-        
+
         for (uint256 i = 0; i < indexTokens.length; i++) {
             tokens[i] = indexTokens[i];
             weights[i] = tokenWeights[indexTokens[i]];
         }
-        
+
         return (tokens, weights);
     }
 
@@ -185,7 +185,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
         if (daoAddress == address(0)) revert CommonErrors.ZeroAddress();
         daoGovernance = daoAddress;
         isGovernanceEnabled = true;
-        
+
         emit GovernanceEnabled(daoAddress);
     }
 
@@ -194,7 +194,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      */
     function disableGovernance() external onlyOwner {
         isGovernanceEnabled = false;
-        
+
         emit GovernanceDisabled();
     }
 
@@ -204,16 +204,12 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @param weights The proposed token weights
      * @param votingPeriod The voting period in seconds
      */
-    function createProposal(
-        address[] calldata tokens,
-        uint256[] calldata weights,
-        uint256 votingPeriod
-    ) external {
+    function createProposal(address[] calldata tokens, uint256[] calldata weights, uint256 votingPeriod) external {
         if (!isGovernanceEnabled) revert CommonErrors.GovernanceDisabled();
         if (tokens.length == 0) revert CommonErrors.EmptyArray();
         if (tokens.length != weights.length) revert CommonErrors.MismatchedArrayLengths();
         if (votingPeriod < 1 days) revert CommonErrors.InvalidTimeParameters();
-        
+
         // Check that weights sum up to BASIS_POINTS
         uint256 totalWeight = 0;
         for (uint256 i = 0; i < weights.length; i++) {
@@ -221,18 +217,20 @@ contract IndexRegistry is IIndexRegistry, Ownable {
             totalWeight += weights[i];
         }
         if (totalWeight != BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
-        
+
         // Create the proposal
-        proposals.push(IndexProposal({
-            tokens: tokens,
-            weights: weights,
-            votesFor: 0,
-            votesAgainst: 0,
-            endTime: block.timestamp + votingPeriod,
-            executed: false,
-            canceled: false
-        }));
-        
+        proposals.push(
+            IndexProposal({
+                tokens: tokens,
+                weights: weights,
+                votesFor: 0,
+                votesAgainst: 0,
+                endTime: block.timestamp + votingPeriod,
+                executed: false,
+                canceled: false
+            })
+        );
+
         emit ProposalCreated(proposals.length - 1, msg.sender);
     }
 
@@ -244,26 +242,26 @@ contract IndexRegistry is IIndexRegistry, Ownable {
     function vote(uint256 proposalId, bool support) external {
         if (!isGovernanceEnabled) revert CommonErrors.GovernanceDisabled();
         if (proposalId >= proposals.length) revert CommonErrors.ProposalInvalid();
-        
+
         IndexProposal storage proposal = proposals[proposalId];
-        
+
         if (proposal.executed) revert CommonErrors.ProposalAlreadyExecuted();
         if (proposal.canceled) revert CommonErrors.ProposalCanceled();
         if (block.timestamp >= proposal.endTime) revert CommonErrors.VotingPeriodEnded();
         if (hasVoted[proposalId][msg.sender]) revert CommonErrors.AlreadyVoted();
-        
+
         // In a real implementation, this would check the voter's voting power
         // based on their token holdings or other governance mechanism
         uint256 votingPower = 1; // Placeholder
-        
+
         if (support) {
             proposal.votesFor += votingPower;
         } else {
             proposal.votesAgainst += votingPower;
         }
-        
+
         hasVoted[proposalId][msg.sender] = true;
-        
+
         emit ProposalVote(proposalId, msg.sender, support);
     }
 
@@ -274,33 +272,33 @@ contract IndexRegistry is IIndexRegistry, Ownable {
     function executeProposal(uint256 proposalId) external {
         if (!isGovernanceEnabled) revert CommonErrors.GovernanceDisabled();
         if (proposalId >= proposals.length) revert CommonErrors.ProposalInvalid();
-        
+
         IndexProposal storage proposal = proposals[proposalId];
-        
+
         if (proposal.executed) revert CommonErrors.ProposalAlreadyExecuted();
         if (proposal.canceled) revert CommonErrors.ProposalCanceled();
         if (block.timestamp < proposal.endTime) revert CommonErrors.VotingPeriodActive();
         if (proposal.votesFor <= proposal.votesAgainst) revert CommonErrors.ProposalRejected();
-        
+
         // Clear the current index
         for (uint256 i = 0; i < indexTokens.length; i++) {
             isTokenInIndex[indexTokens[i]] = false;
             delete tokenWeights[indexTokens[i]];
         }
         delete indexTokens;
-        
+
         // Set the new index
         for (uint256 i = 0; i < proposal.tokens.length; i++) {
             address token = proposal.tokens[i];
             uint256 weight = proposal.weights[i];
-            
+
             indexTokens.push(token);
             tokenWeights[token] = weight;
             isTokenInIndex[token] = true;
         }
-        
+
         proposal.executed = true;
-        
+
         emit ProposalExecuted(proposalId);
         emit IndexRebalanced();
     }
@@ -311,14 +309,14 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      */
     function cancelProposal(uint256 proposalId) external onlyOwner {
         if (proposalId >= proposals.length) revert CommonErrors.ProposalInvalid();
-        
+
         IndexProposal storage proposal = proposals[proposalId];
-        
+
         if (proposal.executed) revert CommonErrors.ProposalAlreadyExecuted();
         if (proposal.canceled) revert CommonErrors.ProposalCanceled();
-        
+
         proposal.canceled = true;
-        
+
         emit ProposalCanceled(proposalId);
     }
 
@@ -326,8 +324,7 @@ contract IndexRegistry is IIndexRegistry, Ownable {
      * @dev Modifier that allows only the owner or the DAO governance to call a function
      */
     modifier onlyOwnerOrGovernance() {
-        if (msg.sender != owner() && 
-            !(isGovernanceEnabled && msg.sender == daoGovernance)) {
+        if (msg.sender != owner() && !(isGovernanceEnabled && msg.sender == daoGovernance)) {
             revert CommonErrors.Unauthorized();
         }
         _;

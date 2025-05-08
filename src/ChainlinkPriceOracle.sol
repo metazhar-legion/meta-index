@@ -14,16 +14,16 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 contract ChainlinkPriceOracle is IPriceOracle, Ownable {
     // Mapping from token address to price feed address
     mapping(address => address) public priceFeeds;
-    
+
     // Base asset address (e.g., USDC)
     address public immutable baseAsset;
-    
+
     // Base asset decimals
     uint8 public immutable baseAssetDecimals;
-    
+
     // Events
     event PriceFeedUpdated(address indexed token, address indexed priceFeed);
-    
+
     /**
      * @dev Constructor
      * @param _baseAsset The base asset address (e.g., USDC)
@@ -33,7 +33,7 @@ contract ChainlinkPriceOracle is IPriceOracle, Ownable {
         baseAsset = _baseAsset;
         baseAssetDecimals = IERC20Metadata(_baseAsset).decimals();
     }
-    
+
     /**
      * @dev Sets a price feed for a token
      * @param token The token address
@@ -42,16 +42,16 @@ contract ChainlinkPriceOracle is IPriceOracle, Ownable {
     function setPriceFeed(address token, address priceFeed) external onlyOwner {
         if (token == address(0)) revert CommonErrors.ZeroAddress();
         if (priceFeed == address(0)) revert CommonErrors.ZeroAddress();
-        
+
         // Verify that the price feed is valid by calling latestRoundData
         AggregatorV3Interface feed = AggregatorV3Interface(priceFeed);
-        (,int256 price,,,) = feed.latestRoundData();
+        (, int256 price,,,) = feed.latestRoundData();
         if (price <= 0) revert CommonErrors.InvalidValue();
-        
+
         priceFeeds[token] = priceFeed;
         emit PriceFeedUpdated(token, priceFeed);
     }
-    
+
     /**
      * @dev Gets the price of a token from Chainlink
      * @param token The token address
@@ -60,33 +60,33 @@ contract ChainlinkPriceOracle is IPriceOracle, Ownable {
     function getPrice(address token) external view override returns (uint256) {
         // If token is the base asset, return 1
         if (token == baseAsset) return 1e18;
-        
+
         address priceFeed = priceFeeds[token];
         if (priceFeed == address(0)) revert CommonErrors.PriceNotAvailable();
-        
+
         // Get the latest price from Chainlink
         AggregatorV3Interface feed = AggregatorV3Interface(priceFeed);
-        (,int256 price,,,) = feed.latestRoundData();
-        
+        (, int256 price,,,) = feed.latestRoundData();
+
         // Ensure the price is positive
         if (price <= 0) revert CommonErrors.PriceNotAvailable();
-        
+
         // Convert to uint256
         uint256 priceUint = uint256(price);
-        
+
         // Get the number of decimals in the price feed
         uint8 feedDecimals = feed.decimals();
-        
+
         // Convert to 18 decimals for our standard representation
         if (feedDecimals < 18) {
             priceUint = priceUint * (10 ** (18 - feedDecimals));
         } else if (feedDecimals > 18) {
             priceUint = priceUint / (10 ** (feedDecimals - 18));
         }
-        
+
         return priceUint;
     }
-    
+
     /**
      * @dev Converts an amount of a token to the base asset
      * @param token The token address
@@ -103,11 +103,11 @@ contract ChainlinkPriceOracle is IPriceOracle, Ownable {
             }
             return amount;
         }
-        
+
         // Get the token price and decimals
         uint256 price = this.getPrice(token);
         uint8 tokenDecimals = IERC20Metadata(token).decimals();
-        
+
         // Calculate the value in base asset
         uint256 valueInBaseAsset;
         if (tokenDecimals < 18) {
@@ -117,17 +117,17 @@ contract ChainlinkPriceOracle is IPriceOracle, Ownable {
         } else {
             valueInBaseAsset = (amount * price) / 1e18;
         }
-        
+
         // Convert to base asset decimals
         if (baseAssetDecimals < 18) {
             return valueInBaseAsset / (10 ** (18 - baseAssetDecimals));
         } else if (baseAssetDecimals > 18) {
             return valueInBaseAsset * (10 ** (baseAssetDecimals - 18));
         }
-        
+
         return valueInBaseAsset;
     }
-    
+
     /**
      * @dev Converts an amount of the base asset to a token
      * @param token The token address
@@ -144,11 +144,11 @@ contract ChainlinkPriceOracle is IPriceOracle, Ownable {
             }
             return amount;
         }
-        
+
         // Get the token price and decimals
         uint256 price = this.getPrice(token);
         uint8 tokenDecimals = IERC20Metadata(token).decimals();
-        
+
         // Adjust base asset amount to 18 decimals
         uint256 adjustedAmount;
         if (baseAssetDecimals < 18) {
@@ -158,17 +158,17 @@ contract ChainlinkPriceOracle is IPriceOracle, Ownable {
         } else {
             adjustedAmount = amount;
         }
-        
+
         // Calculate the equivalent token amount
         uint256 tokenAmount = (adjustedAmount * 1e18) / price;
-        
+
         // Adjust for token decimals
         if (tokenDecimals < 18) {
             return tokenAmount / (10 ** (18 - tokenDecimals));
         } else if (tokenDecimals > 18) {
             return tokenAmount * (10 ** (tokenDecimals - 18));
         }
-        
+
         return tokenAmount;
     }
 }

@@ -13,13 +13,13 @@ contract FeeManager is Ownable {
     uint256 public managementFeePercentage = 100; // 1% annual (in basis points)
     uint256 public performanceFeePercentage = 1000; // 10% (in basis points)
     uint256 public constant BASIS_POINTS = 10000;
-    
+
     // High watermark for performance fees, mapped by vault address
     mapping(address => uint256) public highWaterMarks;
-    
+
     // Last fee collection timestamp, mapped by vault address
     mapping(address => uint256) public lastFeeCollectionTimestamps;
-    
+
     // Events
     event ManagementFeeCalculated(address indexed vault, uint256 amount);
     event PerformanceFeeCalculated(address indexed vault, uint256 amount);
@@ -28,7 +28,7 @@ contract FeeManager is Ownable {
     event HighWaterMarkUpdated(address indexed vault, uint256 newHighWaterMark);
 
     constructor() Ownable(msg.sender) {}
-    
+
     /**
      * @dev Updates the management fee percentage
      * @param newFee The new fee in basis points
@@ -38,7 +38,7 @@ contract FeeManager is Ownable {
         managementFeePercentage = newFee;
         emit ManagementFeeUpdated(newFee);
     }
-    
+
     /**
      * @dev Updates the performance fee percentage
      * @param newFee The new fee in basis points
@@ -48,7 +48,7 @@ contract FeeManager is Ownable {
         performanceFeePercentage = newFee;
         emit PerformanceFeeUpdated(newFee);
     }
-    
+
     /**
      * @dev Calculates management fee
      * @param vault The address of the vault
@@ -56,30 +56,30 @@ contract FeeManager is Ownable {
      * @param currentTimestamp The current timestamp
      * @return managementFee The calculated management fee
      */
-    function calculateManagementFee(
-        address vault,
-        uint256 totalAssetsValue,
-        uint256 currentTimestamp
-    ) public returns (uint256 managementFee) {
+    function calculateManagementFee(address vault, uint256 totalAssetsValue, uint256 currentTimestamp)
+        public
+        returns (uint256 managementFee)
+    {
         uint256 lastTimestamp = lastFeeCollectionTimestamps[vault];
-        
+
         // If this is the first fee calculation, set the timestamp and return 0
         if (lastTimestamp == 0) {
             lastFeeCollectionTimestamps[vault] = currentTimestamp;
             return 0;
         }
-        
+
         uint256 timeSinceLastCollection = currentTimestamp - lastTimestamp;
-        
+
         // Management fee is prorated based on time since last collection
-        managementFee = (totalAssetsValue * managementFeePercentage * timeSinceLastCollection) / (BASIS_POINTS * 365 days);
-        
+        managementFee =
+            (totalAssetsValue * managementFeePercentage * timeSinceLastCollection) / (BASIS_POINTS * 365 days);
+
         // Update the last collection timestamp
         lastFeeCollectionTimestamps[vault] = currentTimestamp;
-        
+
         emit ManagementFeeCalculated(vault, managementFee);
     }
-    
+
     /**
      * @dev Calculates performance fee
      * @param vault The address of the vault
@@ -88,32 +88,30 @@ contract FeeManager is Ownable {
      * @param decimals The number of decimals in the share token
      * @return performanceFee The calculated performance fee
      */
-    function calculatePerformanceFee(
-        address vault,
-        uint256 currentSharePrice,
-        uint256 totalSupply,
-        uint8 decimals
-    ) public returns (uint256 performanceFee) {
+    function calculatePerformanceFee(address vault, uint256 currentSharePrice, uint256 totalSupply, uint8 decimals)
+        public
+        returns (uint256 performanceFee)
+    {
         uint256 highWaterMark = highWaterMarks[vault];
-        
+
         // If current share price is higher than high water mark
         if (currentSharePrice > highWaterMark) {
             uint256 appreciation = currentSharePrice - highWaterMark;
             uint256 feePerShare = (appreciation * performanceFeePercentage) / BASIS_POINTS;
-            
+
             if (feePerShare > 0) {
                 // Calculate total performance fee based on total supply
-                performanceFee = (feePerShare * totalSupply) / 10**decimals;
-                
+                performanceFee = (feePerShare * totalSupply) / 10 ** decimals;
+
                 emit PerformanceFeeCalculated(vault, performanceFee);
             }
-            
+
             // Update high watermark
             highWaterMarks[vault] = currentSharePrice;
             emit HighWaterMarkUpdated(vault, currentSharePrice);
         }
     }
-    
+
     /**
      * @dev Manually set the high water mark for a vault
      * @param vault The address of the vault
@@ -123,7 +121,7 @@ contract FeeManager is Ownable {
         highWaterMarks[vault] = newHighWaterMark;
         emit HighWaterMarkUpdated(vault, newHighWaterMark);
     }
-    
+
     /**
      * @dev Manually set the last fee collection timestamp for a vault
      * @param vault The address of the vault
