@@ -6,6 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {IAssetWrapper} from "../interfaces/IAssetWrapper.sol";
+import {CommonErrors} from "../errors/CommonErrors.sol";
 
 /**
  * @title MockRWAAssetWrapper
@@ -33,7 +34,7 @@ contract MockRWAAssetWrapper is IAssetWrapper, Ownable {
     }
     
     function withdrawCapital(uint256 amount) external override returns (uint256) {
-        require(amount <= valueInBaseAsset, "Insufficient balance");
+        if (amount > valueInBaseAsset) revert CommonErrors.InsufficientBalance();
         valueInBaseAsset -= amount;
         baseAsset.safeTransfer(msg.sender, amount);
         return amount;

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IRWASyntheticToken} from "../interfaces/IRWASyntheticToken.sol";
+import {CommonErrors} from "../errors/CommonErrors.sol";
 
 /**
  * @title MockRWASyntheticToken
@@ -87,7 +88,7 @@ contract MockRWASyntheticToken is ERC20, IRWASyntheticToken, Ownable {
      * @return success Whether the mint was successful
      */
     function mint(address to, uint256 amount) external override returns (bool success) {
-        require(msg.sender == _minter || msg.sender == owner(), "Not authorized to mint");
+        if (msg.sender != _minter && msg.sender != owner()) revert CommonErrors.Unauthorized();
         _mint(to, amount);
         return true;
     }
@@ -99,7 +100,7 @@ contract MockRWASyntheticToken is ERC20, IRWASyntheticToken, Ownable {
      * @return success Whether the burn was successful
      */
     function burn(address from, uint256 amount) external override returns (bool success) {
-        require(msg.sender == _minter || msg.sender == owner(), "Not authorized to burn");
+        if (msg.sender != _minter && msg.sender != owner()) revert CommonErrors.Unauthorized();
         _burn(from, amount);
         return true;
     }
