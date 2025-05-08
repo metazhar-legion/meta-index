@@ -249,7 +249,7 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
      * @param additionalCollateral The amount of additional collateral
      */
     function _increasePosition(uint256 additionalCollateral) internal {
-        require(activePositionId != bytes32(0), "No active position");
+        if (activePositionId == bytes32(0)) revert CommonErrors.NotFound();
         
         // Get current position
         IPerpetualTrading.Position memory position = perpetualTrading.getPosition(activePositionId);
@@ -320,7 +320,7 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
      * @param _leverage The new leverage value
      */
     function setLeverage(uint256 _leverage) external onlyOwner {
-        require(_leverage > 0 && _leverage <= 10, "Invalid leverage value");
+        if (_leverage == 0 || _leverage > 10) revert CommonErrors.ValueOutOfRange(_leverage, 1, 10);
         leverage = _leverage;
     }
     
@@ -329,7 +329,7 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
      * @param _priceOracle The address of the new price oracle
      */
     function setPriceOracle(address _priceOracle) external onlyOwner {
-        require(_priceOracle != address(0), "Invalid price oracle address");
+        if (_priceOracle == address(0)) revert CommonErrors.ZeroAddress();
         priceOracle = _priceOracle;
         assetInfo.oracle = _priceOracle;
     }

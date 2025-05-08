@@ -51,7 +51,7 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
      * @param _baseAsset Address of the base asset (e.g., USDC)
      */
     constructor(address _baseAsset) Ownable(msg.sender) {
-        require(_baseAsset != address(0), "Invalid base asset address");
+        if (_baseAsset == address(0)) revert CommonErrors.ZeroAddress();
         baseAsset = IERC20(_baseAsset);
         
         // Default allocation: 20% RWA, 75% yield, 5% liquidity buffer
@@ -75,8 +75,7 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
         uint256 yieldPercentage,
         uint256 liquidityBufferPercentage
     ) external override onlyOwner returns (bool success) {
-        require(rwaPercentage + yieldPercentage + liquidityBufferPercentage == BASIS_POINTS, 
-                "Percentages must sum to 100%");
+        if (rwaPercentage + yieldPercentage + liquidityBufferPercentage != BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         allocation.rwaPercentage = rwaPercentage;
         allocation.yieldPercentage = yieldPercentage;
@@ -93,13 +92,13 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
      * @return success Whether the strategy was added successfully
      */
     function addYieldStrategy(address strategy, uint256 percentage) external override onlyOwner returns (bool success) {
-        require(strategy != address(0), "Invalid strategy address");
-        require(!isActiveYieldStrategy[strategy], "Strategy already added");
-        require(percentage > 0, "Percentage must be positive");
+        if (strategy == address(0)) revert CommonErrors.ZeroAddress();
+        if (isActiveYieldStrategy[strategy]) revert CommonErrors.AlreadyExists();
+        if (percentage == 0) revert CommonErrors.ZeroValue();
         
         // Check that total percentage doesn't exceed 100%
         uint256 totalPercentage = getTotalYieldPercentage();
-        require(totalPercentage + percentage <= BASIS_POINTS, "Total percentage exceeds 100%");
+        if (totalPercentage + percentage > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         // Add strategy
         yieldStrategies.push(StrategyAllocation({
@@ -122,15 +121,15 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
      * @return success Whether the strategy was updated successfully
      */
     function updateYieldStrategy(address strategy, uint256 percentage) external override onlyOwner returns (bool success) {
-        require(isActiveYieldStrategy[strategy], "Strategy not active");
-        require(percentage > 0, "Percentage must be positive");
+        if (!isActiveYieldStrategy[strategy]) revert CommonErrors.NotFound();
+        if (percentage == 0) revert CommonErrors.ZeroValue();
         
         uint256 index = yieldStrategyIndexes[strategy];
         uint256 oldPercentage = yieldStrategies[index].percentage;
         
         // Check that total percentage doesn't exceed 100%
         uint256 totalPercentage = getTotalYieldPercentage() - oldPercentage;
-        require(totalPercentage + percentage <= BASIS_POINTS, "Total percentage exceeds 100%");
+        if (totalPercentage + percentage > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         // Update strategy
         yieldStrategies[index].percentage = percentage;
@@ -145,7 +144,7 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
      * @return success Whether the strategy was removed successfully
      */
     function removeYieldStrategy(address strategy) external override onlyOwner returns (bool success) {
-        require(isActiveYieldStrategy[strategy], "Strategy not active");
+        if (!isActiveYieldStrategy[strategy]) revert CommonErrors.NotFound();
         
         uint256 index = yieldStrategyIndexes[strategy];
         
@@ -164,13 +163,13 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
      * @return success Whether the RWA token was added successfully
      */
     function addRWAToken(address rwaToken, uint256 percentage) external override onlyOwner returns (bool success) {
-        require(rwaToken != address(0), "Invalid RWA token address");
-        require(!isActiveRWAToken[rwaToken], "RWA token already added");
-        require(percentage > 0, "Percentage must be positive");
+        if (rwaToken == address(0)) revert CommonErrors.ZeroAddress();
+        if (isActiveRWAToken[rwaToken]) revert CommonErrors.AlreadyExists();
+        if (percentage == 0) revert CommonErrors.ZeroValue();
         
         // Check that total percentage doesn't exceed 100%
         uint256 totalPercentage = getTotalRWAPercentage();
-        require(totalPercentage + percentage <= BASIS_POINTS, "Total percentage exceeds 100%");
+        if (totalPercentage + percentage > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         // Add RWA token
         rwaTokens.push(RWAAllocation({
@@ -193,15 +192,15 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
      * @return success Whether the RWA token was updated successfully
      */
     function updateRWAToken(address rwaToken, uint256 percentage) external override onlyOwner returns (bool success) {
-        require(isActiveRWAToken[rwaToken], "RWA token not active");
-        require(percentage > 0, "Percentage must be positive");
+        if (!isActiveRWAToken[rwaToken]) revert CommonErrors.NotFound();
+        if (percentage == 0) revert CommonErrors.ZeroValue();
         
         uint256 index = rwaTokenIndexes[rwaToken];
         uint256 oldPercentage = rwaTokens[index].percentage;
         
         // Check that total percentage doesn't exceed 100%
         uint256 totalPercentage = getTotalRWAPercentage() - oldPercentage;
-        require(totalPercentage + percentage <= BASIS_POINTS, "Total percentage exceeds 100%");
+        if (totalPercentage + percentage > BASIS_POINTS) revert CommonErrors.TotalExceeds100Percent();
         
         // Update RWA token
         rwaTokens[index].percentage = percentage;
@@ -216,7 +215,7 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
      * @return success Whether the RWA token was removed successfully
      */
     function removeRWAToken(address rwaToken) external override onlyOwner returns (bool success) {
-        require(isActiveRWAToken[rwaToken], "RWA token not active");
+        if (!isActiveRWAToken[rwaToken]) revert CommonErrors.NotFound();
         
         uint256 index = rwaTokenIndexes[rwaToken];
         
@@ -235,7 +234,7 @@ contract CapitalAllocationManager is ICapitalAllocationManager, Ownable, Reentra
     function rebalance() external override onlyOwner nonReentrant returns (bool success) {
         // Get total value of assets under management
         uint256 totalValue = getTotalValue();
-        require(totalValue > 0, "No assets to rebalance");
+        if (totalValue == 0) revert CommonErrors.ZeroValue();
         
         // Calculate target values for each allocation
         uint256 targetRWAValue = (totalValue * allocation.rwaPercentage) / BASIS_POINTS;

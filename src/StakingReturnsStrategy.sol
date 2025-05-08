@@ -369,7 +369,7 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
         // mocks should be used that accurately simulate the behavior of the staking protocol.
         if (block.number > 100) {
             uint256 stakingTokenBalanceAfter = stakingToken.balanceOf(address(this));
-            require(stakingTokenBalanceAfter > 0, "Staking failed");
+            if (stakingTokenBalanceAfter == 0) revert CommonErrors.OperationFailed();
         }
     }
     
@@ -384,7 +384,7 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
         
         // Ensure we have enough staking tokens
         uint256 stakingTokenBalance = stakingToken.balanceOf(address(this));
-        require(stakingTokenBalance >= stakingTokensToUnstake, "Insufficient staking tokens");
+        if (stakingTokenBalance < stakingTokensToUnstake) revert CommonErrors.InsufficientBalance();
         
         // Approve the staking protocol to spend the staking tokens (if needed)
         stakingToken.approve(stakingProtocol, stakingTokensToUnstake);
@@ -400,7 +400,7 @@ contract StakingReturnsStrategy is IYieldStrategy, ERC20, Ownable, ReentrancyGua
         // mocks should be used that accurately simulate the behavior of the staking protocol.
         if (block.number > 100) {
             uint256 baseAssetsAfter = baseAsset.balanceOf(address(this));
-            require(baseAssetsAfter > baseAssetsBefore, "Unstaking failed");
+            if (baseAssetsAfter <= baseAssetsBefore) revert CommonErrors.OperationFailed();
         }
     }
 }
