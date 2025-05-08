@@ -33,6 +33,7 @@ contract MockToken is ERC20 {
         _burn(from, amount);
     }
 }
+
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 
 /**
@@ -60,13 +61,11 @@ contract MockDEXAdapter is IDEXAdapter {
         exchangeRates[pairKey] = rate;
     }
 
-    function swap(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address recipient
-    ) external override returns (uint256 amountOut) {
+    function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 minAmountOut, address recipient)
+        external
+        override
+        returns (uint256 amountOut)
+    {
         bytes32 pairKey = keccak256(abi.encodePacked(tokenIn, tokenOut));
         require(supportedPairs[pairKey], "Pair not supported");
 
@@ -81,11 +80,12 @@ contract MockDEXAdapter is IDEXAdapter {
         return amountOut;
     }
 
-    function getExpectedAmountOut(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) external view override returns (uint256 amountOut) {
+    function getExpectedAmountOut(address tokenIn, address tokenOut, uint256 amountIn)
+        external
+        view
+        override
+        returns (uint256 amountOut)
+    {
         bytes32 pairKey = keccak256(abi.encodePacked(tokenIn, tokenOut));
         if (!supportedPairs[pairKey]) return 0;
 
@@ -93,10 +93,7 @@ contract MockDEXAdapter is IDEXAdapter {
         return (amountIn * rate * (10000 - fee)) / 10000 / 1e18;
     }
 
-    function isPairSupported(
-        address tokenIn,
-        address tokenOut
-    ) external view override returns (bool supported) {
+    function isPairSupported(address tokenIn, address tokenOut) external view override returns (bool supported) {
         bytes32 pairKey = keccak256(abi.encodePacked(tokenIn, tokenOut));
         return supportedPairs[pairKey];
     }
@@ -143,45 +140,45 @@ contract DEXRouterTest is Test {
         // Setup user
         user = address(0x1);
         vm.startPrank(user);
-        
+
         // Mint tokens to user
         tokenA.mint(user, 100000 * 1e18);
         tokenB.mint(user, 100000 * 1e18);
-        
+
         // Also mint tokens to the mock DEXes for liquidity
         tokenA.mint(address(adapter1), 100000 * 1e18);
         tokenB.mint(address(adapter1), 100000 * 1e18);
         tokenA.mint(address(adapter2), 100000 * 1e18);
         tokenB.mint(address(adapter2), 100000 * 1e18);
-        
+
         // Approve router to spend tokens
         tokenA.approve(address(router), type(uint256).max);
         tokenB.approve(address(router), type(uint256).max);
-        
+
         vm.stopPrank();
     }
 
     function testAddAdapter() public {
         assertEq(router.getAdapterCount(), 2);
-        
+
         // Create a new adapter
         MockDEXAdapter adapter3 = new MockDEXAdapter("DEX 3", 25);
-        
+
         // Add it to the router
         vm.prank(router.owner());
         router.addAdapter(address(adapter3));
-        
+
         assertEq(router.getAdapterCount(), 3);
         assertTrue(router.isAdapter(address(adapter3)));
     }
 
     function testRemoveAdapter() public {
         assertEq(router.getAdapterCount(), 2);
-        
+
         // Remove an adapter
         vm.prank(router.owner());
         router.removeAdapter(address(adapter1));
-        
+
         assertEq(router.getAdapterCount(), 1);
         assertFalse(router.isAdapter(address(adapter1)));
         assertTrue(router.isAdapter(address(adapter2)));
@@ -191,30 +188,30 @@ contract DEXRouterTest is Test {
         // Should route to DEX 1 since it has better rate despite higher fee
         uint256 amountIn = 10 * 1e18;
         uint256 expectedAmount = router.getExpectedAmount(address(tokenA), address(tokenB), amountIn);
-        
+
         // Calculate expected amount from DEX 1
         uint256 dex1Amount = adapter1.getExpectedAmountOut(address(tokenA), address(tokenB), amountIn);
-        
+
         assertEq(expectedAmount, dex1Amount);
     }
 
     function testSwap() public {
         uint256 amountIn = 10 * 1e18;
         uint256 minAmountOut = 19 * 1e18; // Slightly less than expected to account for fees
-        
+
         uint256 userABalanceBefore = tokenA.balanceOf(user);
         uint256 userBBalanceBefore = tokenB.balanceOf(user);
-        
+
         vm.prank(user);
         uint256 amountOut = router.swap(address(tokenA), address(tokenB), amountIn, minAmountOut);
-        
+
         uint256 userABalanceAfter = tokenA.balanceOf(user);
         uint256 userBBalanceAfter = tokenB.balanceOf(user);
-        
+
         // Check balances
         assertEq(userABalanceBefore - userABalanceAfter, amountIn);
         assertEq(userBBalanceAfter - userBBalanceBefore, amountOut);
-        
+
         // Should be routed to DEX 1 (better rate)
         uint256 dex1Amount = adapter1.getExpectedAmountOut(address(tokenA), address(tokenB), amountIn);
         assertEq(amountOut, dex1Amount);
@@ -223,7 +220,7 @@ contract DEXRouterTest is Test {
     function testSwapWithSlippage() public {
         uint256 amountIn = 10 * 1e18;
         uint256 minAmountOut = 20 * 1e18; // Higher than expected, should fail
-        
+
         vm.prank(user);
         vm.expectRevert(); // Should revert due to slippage
         router.swap(address(tokenA), address(tokenB), amountIn, minAmountOut);
@@ -232,13 +229,13 @@ contract DEXRouterTest is Test {
     function testSwapWithBestDEX() public {
         // Change the exchange rate on DEX 2 to make it better than DEX 1
         adapter2.setExchangeRate(address(tokenA), address(tokenB), 2.1 * 1e18);
-        
+
         uint256 amountIn = 10 * 1e18;
         uint256 minAmountOut = 20 * 1e18;
-        
+
         vm.prank(user);
         uint256 amountOut = router.swap(address(tokenA), address(tokenB), amountIn, minAmountOut);
-        
+
         // Should be routed to DEX 2 now (better rate)
         uint256 dex2Amount = adapter2.getExpectedAmountOut(address(tokenA), address(tokenB), amountIn);
         assertEq(amountOut, dex2Amount);
@@ -247,10 +244,10 @@ contract DEXRouterTest is Test {
     function testSwapWithUnsupportedPair() public {
         // Create a new token
         MockToken tokenC = new MockToken("Token C", "TKNC", 18);
-        
+
         uint256 amountIn = 10 * 1e18;
         uint256 minAmountOut = 1;
-        
+
         vm.prank(user);
         vm.expectRevert(); // Should revert as no DEX supports this pair
         router.swap(address(tokenA), address(tokenC), amountIn, minAmountOut);

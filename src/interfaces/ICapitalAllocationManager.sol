@@ -10,28 +10,28 @@ interface ICapitalAllocationManager {
      * @dev Allocation structure for tracking capital distribution
      */
     struct Allocation {
-        uint256 rwaPercentage;         // Percentage allocated to RWA synthetics (in basis points)
-        uint256 yieldPercentage;       // Percentage allocated to yield strategies (in basis points)
+        uint256 rwaPercentage; // Percentage allocated to RWA synthetics (in basis points)
+        uint256 yieldPercentage; // Percentage allocated to yield strategies (in basis points)
         uint256 liquidityBufferPercentage; // Percentage kept as liquidity buffer (in basis points)
-        uint256 lastRebalanced;        // Timestamp of last rebalance
+        uint256 lastRebalanced; // Timestamp of last rebalance
     }
 
     /**
      * @dev Strategy allocation structure
      */
     struct StrategyAllocation {
-        address strategy;      // Address of the yield strategy
-        uint256 percentage;    // Percentage allocation within yield portion (in basis points)
-        bool active;           // Whether this allocation is active
+        address strategy; // Address of the yield strategy
+        uint256 percentage; // Percentage allocation within yield portion (in basis points)
+        bool active; // Whether this allocation is active
     }
 
     /**
      * @dev RWA allocation structure
      */
     struct RWAAllocation {
-        address rwaToken;      // Address of the RWA synthetic token
-        uint256 percentage;    // Percentage allocation within RWA portion (in basis points)
-        bool active;           // Whether this allocation is active
+        address rwaToken; // Address of the RWA synthetic token
+        uint256 percentage; // Percentage allocation within RWA portion (in basis points)
+        bool active; // Whether this allocation is active
     }
 
     /**
@@ -41,11 +41,9 @@ interface ICapitalAllocationManager {
      * @param liquidityBufferPercentage Percentage for liquidity buffer (in basis points)
      * @return success Whether the allocation was set successfully
      */
-    function setAllocation(
-        uint256 rwaPercentage,
-        uint256 yieldPercentage,
-        uint256 liquidityBufferPercentage
-    ) external returns (bool success);
+    function setAllocation(uint256 rwaPercentage, uint256 yieldPercentage, uint256 liquidityBufferPercentage)
+        external
+        returns (bool success);
 
     /**
      * @dev Adds a yield strategy with an allocation percentage

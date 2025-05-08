@@ -21,12 +21,10 @@ contract MockRWASyntheticToken is ERC20, IRWASyntheticToken, Ownable {
      * @param assetType The type of asset
      * @param oracle The oracle address
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        AssetType assetType,
-        address oracle
-    ) ERC20(name_, symbol_) Ownable(msg.sender) {
+    constructor(string memory name_, string memory symbol_, AssetType assetType, address oracle)
+        ERC20(name_, symbol_)
+        Ownable(msg.sender)
+    {
         _assetInfo = AssetInfo({
             name: name_,
             symbol: symbol_,

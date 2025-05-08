@@ -17,11 +17,7 @@ contract MockToken is ERC20, Ownable {
      * @param symbol The symbol of the token
      * @param decimals_ The number of decimals for the token
      */
-    constructor(
-        string memory name,
-        string memory symbol,
-        uint8 decimals_
-    ) ERC20(name, symbol) Ownable(msg.sender) {
+    constructor(string memory name, string memory symbol, uint8 decimals_) ERC20(name, symbol) Ownable(msg.sender) {
         _decimals = decimals_;
     }
 

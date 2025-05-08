@@ -37,12 +37,10 @@ contract MockDEX is IDEX, Ownable {
      * @param minToAmount The minimum amount of toToken to receive
      * @return toAmount The amount of toToken received
      */
-    function swap(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount,
-        uint256 minToAmount
-    ) external returns (uint256 toAmount) {
+    function swap(address fromToken, address toToken, uint256 fromAmount, uint256 minToAmount)
+        external
+        returns (uint256 toAmount)
+    {
         if (fromToken == toToken) revert CommonErrors.InvalidValue();
         if (fromAmount == 0) revert CommonErrors.ValueTooLow();
 
@@ -71,12 +69,10 @@ contract MockDEX is IDEX, Ownable {
      * @param minToAmount The minimum amount of toToken to receive
      * @return toAmount The amount of toToken received
      */
-    function swapExactInput(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount,
-        uint256 minToAmount
-    ) external returns (uint256 toAmount) {
+    function swapExactInput(address fromToken, address toToken, uint256 fromAmount, uint256 minToAmount)
+        external
+        returns (uint256 toAmount)
+    {
         if (fromToken == toToken) revert CommonErrors.InvalidValue();
         if (fromAmount == 0) revert CommonErrors.ValueTooLow();
 
@@ -104,11 +100,11 @@ contract MockDEX is IDEX, Ownable {
      * @param fromAmount The amount of fromToken to swap
      * @return toAmount The expected amount of toToken
      */
-    function getExpectedAmount(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount
-    ) external view returns (uint256 toAmount) {
+    function getExpectedAmount(address fromToken, address toToken, uint256 fromAmount)
+        external
+        view
+        returns (uint256 toAmount)
+    {
         uint256 fromValueInBase = priceOracle.convertToBaseAsset(fromToken, fromAmount);
         uint256 feeAmount = (fromValueInBase * FEE_BASIS_POINTS) / BASIS_POINTS;
         uint256 toValueInBase = fromValueInBase - feeAmount;

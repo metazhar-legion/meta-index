@@ -10,14 +10,14 @@ interface IYieldStrategy {
      * @dev Represents the status and performance of a yield strategy
      */
     struct StrategyInfo {
-        string name;           // Name of the strategy
-        address asset;         // Address of the underlying asset
-        uint256 totalDeposited;// Total amount deposited into this strategy
-        uint256 currentValue;  // Current value including yield
-        uint256 apy;           // Current APY in basis points (e.g., 500 = 5%)
-        uint256 lastUpdated;   // Timestamp of last update
-        bool active;           // Whether the strategy is currently active
-        uint256 risk;          // Risk level from 1 (lowest) to 10 (highest)
+        string name; // Name of the strategy
+        address asset; // Address of the underlying asset
+        uint256 totalDeposited; // Total amount deposited into this strategy
+        uint256 currentValue; // Current value including yield
+        uint256 apy; // Current APY in basis points (e.g., 500 = 5%)
+        uint256 lastUpdated; // Timestamp of last update
+        bool active; // Whether the strategy is currently active
+        uint256 risk; // Risk level from 1 (lowest) to 10 (highest)
     }
 
     /**

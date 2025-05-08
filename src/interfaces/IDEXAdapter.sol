@@ -15,14 +15,10 @@ interface IDEXAdapter {
      * @param recipient The address to receive the swapped tokens
      * @return amountOut The amount of tokenOut received
      */
-    function swap(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address recipient
-    ) external returns (uint256 amountOut);
-    
+    function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 minAmountOut, address recipient)
+        external
+        returns (uint256 amountOut);
+
     /**
      * @dev Gets the expected amount of tokenOut for a given amount of tokenIn
      * @param tokenIn The token to swap from
@@ -30,23 +26,19 @@ interface IDEXAdapter {
      * @param amountIn The amount of tokenIn to swap
      * @return amountOut The expected amount of tokenOut
      */
-    function getExpectedAmountOut(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) external view returns (uint256 amountOut);
-    
+    function getExpectedAmountOut(address tokenIn, address tokenOut, uint256 amountIn)
+        external
+        view
+        returns (uint256 amountOut);
+
     /**
      * @dev Checks if the DEX supports a specific token pair
      * @param tokenIn The input token
      * @param tokenOut The output token
      * @return supported Whether the pair is supported
      */
-    function isPairSupported(
-        address tokenIn,
-        address tokenOut
-    ) external view returns (bool supported);
-    
+    function isPairSupported(address tokenIn, address tokenOut) external view returns (bool supported);
+
     /**
      * @dev Gets the name of the DEX
      * @return name The name of the DEX

@@ -14,13 +14,10 @@ interface IDEX {
      * @param minToAmount The minimum amount of toToken to receive
      * @return toAmount The amount of toToken received
      */
-    function swap(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount,
-        uint256 minToAmount
-    ) external returns (uint256 toAmount);
-    
+    function swap(address fromToken, address toToken, uint256 fromAmount, uint256 minToAmount)
+        external
+        returns (uint256 toAmount);
+
     /**
      * @dev Swaps an exact amount of input tokens for as many output tokens as possible
      * @param fromToken The token to swap from
@@ -29,12 +26,9 @@ interface IDEX {
      * @param minToAmount The minimum amount of toToken to receive
      * @return toAmount The amount of toToken received
      */
-    function swapExactInput(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount,
-        uint256 minToAmount
-    ) external returns (uint256 toAmount);
+    function swapExactInput(address fromToken, address toToken, uint256 fromAmount, uint256 minToAmount)
+        external
+        returns (uint256 toAmount);
 
     /**
      * @dev Gets the expected amount of toToken for a given amount of fromToken
@@ -43,9 +37,8 @@ interface IDEX {
      * @param fromAmount The amount of fromToken to swap
      * @return toAmount The expected amount of toToken
      */
-    function getExpectedAmount(
-        address fromToken,
-        address toToken,
-        uint256 fromAmount
-    ) external view returns (uint256 toAmount);
+    function getExpectedAmount(address fromToken, address toToken, uint256 fromAmount)
+        external
+        view
+        returns (uint256 toAmount);
 }
