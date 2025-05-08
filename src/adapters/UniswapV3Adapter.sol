@@ -43,6 +43,8 @@ interface IUniswapV3Factory {
  * @dev Adapter for Uniswap V3 DEX
  */
 contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
+    // Constants
+    uint256 private constant TRANSACTION_DEADLINE = 15 minutes;
 
     // Uniswap V3 contracts
     IUniswapV3SwapRouter public immutable swapRouter;
@@ -119,7 +121,7 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
             tokenOut: tokenOut,
             fee: feeTier,
             recipient: recipient,
-            deadline: block.timestamp + 15 minutes,
+            deadline: block.timestamp + TRANSACTION_DEADLINE,
             amountIn: amountIn,
             amountOutMinimum: minAmountOut,
             sqrtPriceLimitX96: 0

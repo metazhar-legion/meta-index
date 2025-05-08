@@ -13,6 +13,10 @@ import {CommonErrors} from "../errors/CommonErrors.sol";
  * @dev Mock implementation of a perpetual trading platform for testing RWA synthetic tokens
  */
 contract MockPerpetualTrading is IPerpetualTrading, Ownable {
+    // Constants
+    uint256 private constant SECONDS_PER_HOUR = 3600;
+    uint256 private constant FUNDING_RATE_PERIOD_HOURS = 8;
+    uint256 private constant BASIS_POINTS = 10000;
     using SafeERC20 for IERC20;
 
     // Base asset (e.g., USDC)
@@ -278,11 +282,11 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
         uint256 timeElapsed = block.timestamp - position.lastUpdated;
         if (timeElapsed > 0 && fundingRates[position.marketId] != 0) {
             // Convert time to hours (approximate)
-            uint256 hoursElapsed = timeElapsed / 3600;
+            uint256 hoursElapsed = timeElapsed / SECONDS_PER_HOUR;
             
             // Apply funding rate (funding rate is per 8 hours in basis points)
             int256 fundingRate = fundingRates[position.marketId];
-            int256 fundingAmount = (positionValue * fundingRate * int256(hoursElapsed)) / (int256(8 * 10000));
+            int256 fundingAmount = (positionValue * fundingRate * int256(hoursElapsed)) / (int256(FUNDING_RATE_PERIOD_HOURS * BASIS_POINTS));
             
             // For long positions, positive funding rate means paying funding
             // For short positions, it's the opposite

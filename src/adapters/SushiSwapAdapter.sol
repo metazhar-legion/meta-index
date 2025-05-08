@@ -31,6 +31,8 @@ interface ISushiSwapFactory {
  * @dev Adapter for SushiSwap DEX
  */
 contract SushiSwapAdapter is IDEXAdapter, Ownable, ReentrancyGuard {
+    // Constants
+    uint256 private constant TRANSACTION_DEADLINE = 15 minutes;
 
     // SushiSwap contracts
     ISushiSwapRouter public immutable router;
@@ -94,7 +96,7 @@ contract SushiSwapAdapter is IDEXAdapter, Ownable, ReentrancyGuard {
             minAmountOut,
             path,
             recipient,
-            block.timestamp + 15 minutes
+            block.timestamp + TRANSACTION_DEADLINE
         );
         
         amountOut = amounts[amounts.length - 1];
