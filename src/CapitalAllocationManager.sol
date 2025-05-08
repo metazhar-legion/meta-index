@@ -9,6 +9,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {ICapitalAllocationManager} from "./interfaces/ICapitalAllocationManager.sol";
 import {IYieldStrategy} from "./interfaces/IYieldStrategy.sol";
 import {IRWASyntheticToken} from "./interfaces/IRWASyntheticToken.sol";
+import {CommonErrors} from "./errors/CommonErrors.sol";
 
 /**
  * @title CapitalAllocationManager
