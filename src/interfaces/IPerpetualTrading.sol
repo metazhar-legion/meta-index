@@ -10,12 +10,12 @@ interface IPerpetualTrading {
      * @dev Represents a synthetic position in a perpetual market
      */
     struct Position {
-        bytes32 marketId;      // Identifier for the market (e.g., "BTC-USD")
-        int256 size;           // Position size (positive for long, negative for short)
-        uint256 entryPrice;    // Entry price of the position
-        uint256 leverage;      // Leverage used (e.g., 2x, 5x)
-        uint256 collateral;    // Amount of collateral allocated to this position
-        uint256 lastUpdated;   // Timestamp of last position update
+        bytes32 marketId; // Identifier for the market (e.g., "BTC-USD")
+        int256 size; // Position size (positive for long, negative for short)
+        uint256 entryPrice; // Entry price of the position
+        uint256 leverage; // Leverage used (e.g., 2x, 5x)
+        uint256 collateral; // Amount of collateral allocated to this position
+        uint256 lastUpdated; // Timestamp of last position update
     }
 
     /**
@@ -26,12 +26,9 @@ interface IPerpetualTrading {
      * @param collateral The amount of collateral to allocate
      * @return positionId The identifier for the opened position
      */
-    function openPosition(
-        bytes32 marketId,
-        int256 size,
-        uint256 leverage,
-        uint256 collateral
-    ) external returns (bytes32 positionId);
+    function openPosition(bytes32 marketId, int256 size, uint256 leverage, uint256 collateral)
+        external
+        returns (bytes32 positionId);
 
     /**
      * @dev Closes an existing position
@@ -47,12 +44,9 @@ interface IPerpetualTrading {
      * @param newLeverage The new leverage to use (0 to keep current)
      * @param collateralDelta Amount to add to collateral (negative to remove)
      */
-    function adjustPosition(
-        bytes32 positionId,
-        int256 newSize,
-        uint256 newLeverage,
-        int256 collateralDelta
-    ) external returns (bool);
+    function adjustPosition(bytes32 positionId, int256 newSize, uint256 newLeverage, int256 collateralDelta)
+        external
+        returns (bool);
 
     /**
      * @dev Gets the current market price for a given market

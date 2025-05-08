@@ -31,7 +31,10 @@ interface IUniswapV3QuoterV2 {
         uint24 fee,
         uint256 amountIn,
         uint160 sqrtPriceLimitX96
-    ) external view returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate);
+    )
+        external
+        view
+        returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate);
 }
 
 interface IUniswapV3Factory {
@@ -50,40 +53,36 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
     IUniswapV3SwapRouter public immutable swapRouter;
     IUniswapV3QuoterV2 public immutable quoter;
     IUniswapV3Factory public immutable factory;
-    
+
     // Fee tiers to check for liquidity (in order of preference)
     uint24[] public feeTiers;
-    
+
     // Cache for supported pairs
     mapping(bytes32 => bool) private pairSupported;
     mapping(bytes32 => uint24) private pairFeeTier;
-    
+
     // Events
     event Swapped(address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut, uint24 fee);
-    
+
     /**
      * @dev Constructor
      * @param _swapRouter The Uniswap V3 swap router address
      * @param _quoter The Uniswap V3 quoter address
      * @param _factory The Uniswap V3 factory address
      */
-    constructor(
-        address _swapRouter,
-        address _quoter,
-        address _factory
-    ) Ownable(msg.sender) {
+    constructor(address _swapRouter, address _quoter, address _factory) Ownable(msg.sender) {
         if (_swapRouter == address(0)) revert CommonErrors.ZeroAddress();
         if (_quoter == address(0)) revert CommonErrors.ZeroAddress();
         if (_factory == address(0)) revert CommonErrors.ZeroAddress();
-        
+
         swapRouter = IUniswapV3SwapRouter(_swapRouter);
         quoter = IUniswapV3QuoterV2(_quoter);
         factory = IUniswapV3Factory(_factory);
-        
+
         // Initialize fee tiers (from lowest to highest)
         feeTiers = [100, 500, 3000, 10000]; // 0.01%, 0.05%, 0.3%, 1%
     }
-    
+
     /**
      * @dev Swaps tokens using Uniswap V3
      * @param tokenIn The token to swap from
@@ -93,28 +92,27 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
      * @param recipient The address to receive the swapped tokens
      * @return amountOut The amount of tokenOut received
      */
-    function swap(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address recipient
-    ) external override nonReentrant returns (uint256 amountOut) {
+    function swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 minAmountOut, address recipient)
+        external
+        override
+        nonReentrant
+        returns (uint256 amountOut)
+    {
         if (tokenIn == tokenOut) revert CommonErrors.InvalidValue();
         if (amountIn == 0) revert CommonErrors.ValueTooLow();
         if (recipient == address(0)) revert CommonErrors.ZeroAddress();
-        
+
         // Find the best fee tier for this pair
         uint24 feeTier = _getBestFeeTier(tokenIn, tokenOut);
         if (feeTier == 0) revert CommonErrors.PairNotSupported();
-        
+
         // Transfer tokens from the sender to this contract
         IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
-        
+
         // Approve the router to spend the tokens
         IERC20(tokenIn).approve(address(swapRouter), 0);
         IERC20(tokenIn).approve(address(swapRouter), amountIn);
-        
+
         // Execute the swap
         IUniswapV3SwapRouter.ExactInputSingleParams memory params = IUniswapV3SwapRouter.ExactInputSingleParams({
             tokenIn: tokenIn,
@@ -126,14 +124,14 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
             amountOutMinimum: minAmountOut,
             sqrtPriceLimitX96: 0
         });
-        
+
         amountOut = swapRouter.exactInputSingle(params);
-        
+
         emit Swapped(tokenIn, tokenOut, amountIn, amountOut, feeTier);
-        
+
         return amountOut;
     }
-    
+
     /**
      * @dev Gets the expected amount of tokenOut for a given amount of tokenIn
      * @param tokenIn The token to swap from
@@ -141,51 +139,45 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
      * @param amountIn The amount of tokenIn to swap
      * @return amountOut The expected amount of tokenOut
      */
-    function getExpectedAmountOut(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) external view override returns (uint256 amountOut) {
+    function getExpectedAmountOut(address tokenIn, address tokenOut, uint256 amountIn)
+        external
+        view
+        override
+        returns (uint256 amountOut)
+    {
         if (tokenIn == tokenOut) return amountIn;
         if (amountIn == 0) return 0;
-        
+
         // Find the best fee tier for this pair
         uint24 feeTier = _getBestFeeTier(tokenIn, tokenOut);
         if (feeTier == 0) return 0;
-        
+
         // Use the cached fee tier to get the quote
-        try quoter.quoteExactInputSingle(
-            tokenIn,
-            tokenOut,
-            feeTier,
-            amountIn,
-            0
-        ) returns (uint256 _amountOut, uint160, uint32, uint256) {
+        try quoter.quoteExactInputSingle(tokenIn, tokenOut, feeTier, amountIn, 0) returns (
+            uint256 _amountOut, uint160, uint32, uint256
+        ) {
             return _amountOut;
         } catch {
             return 0;
         }
     }
-    
+
     /**
      * @dev Checks if Uniswap V3 supports a specific token pair
      * @param tokenIn The input token
      * @param tokenOut The output token
      * @return supported Whether the pair is supported
      */
-    function isPairSupported(
-        address tokenIn,
-        address tokenOut
-    ) external view override returns (bool supported) {
+    function isPairSupported(address tokenIn, address tokenOut) external view override returns (bool supported) {
         if (tokenIn == tokenOut) return true;
-        
+
         bytes32 pairKey = _getPairKey(tokenIn, tokenOut);
-        
+
         // Check cache first
         if (pairSupported[pairKey]) {
             return true;
         }
-        
+
         // Check if any fee tier has liquidity
         for (uint256 i = 0; i < feeTiers.length; i++) {
             address pool = factory.getPool(tokenIn, tokenOut, feeTiers[i]);
@@ -193,10 +185,10 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * @dev Gets the name of the DEX
      * @return name The name of the DEX
@@ -204,7 +196,7 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
     function getDexName() external pure override returns (string memory name) {
         return "Uniswap V3";
     }
-    
+
     /**
      * @dev Gets the best fee tier for a token pair
      * @param tokenIn The input token
@@ -213,12 +205,12 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
      */
     function _getBestFeeTier(address tokenIn, address tokenOut) internal view returns (uint24 feeTier) {
         bytes32 pairKey = _getPairKey(tokenIn, tokenOut);
-        
+
         // Check cache first
         if (pairSupported[pairKey]) {
             return pairFeeTier[pairKey];
         }
-        
+
         // Check all fee tiers and find the one with the most liquidity
         for (uint256 i = 0; i < feeTiers.length; i++) {
             address pool = factory.getPool(tokenIn, tokenOut, feeTiers[i]);
@@ -226,17 +218,14 @@ contract UniswapV3Adapter is IDEXAdapter, Ownable, ReentrancyGuard {
                 return feeTiers[i];
             }
         }
-        
+
         return 0;
     }
-    
+
     /**
      * @dev Generates a unique key for a token pair
      */
     function _getPairKey(address tokenA, address tokenB) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(
-            tokenA < tokenB ? tokenA : tokenB,
-            tokenA < tokenB ? tokenB : tokenA
-        ));
+        return keccak256(abi.encodePacked(tokenA < tokenB ? tokenA : tokenB, tokenA < tokenB ? tokenB : tokenA));
     }
 }

@@ -12,26 +12,27 @@ interface IRWASyntheticToken is IERC20 {
      * @dev Asset type enumeration
      */
     enum AssetType {
-        EQUITY_INDEX,  // Stock market indices like S&P 500
-        COMMODITY,     // Commodities like Gold
-        FIXED_INCOME,  // Fixed income assets like Treasury bonds
-        REAL_ESTATE,   // Real estate indices
-        CURRENCY,      // Fiat currencies
-        OTHER          // Other asset types
+        EQUITY_INDEX, // Stock market indices like S&P 500
+        COMMODITY, // Commodities like Gold
+        FIXED_INCOME, // Fixed income assets like Treasury bonds
+        REAL_ESTATE, // Real estate indices
+        CURRENCY, // Fiat currencies
+        OTHER // Other asset types
+
     }
 
     /**
      * @dev Asset information structure
      */
     struct AssetInfo {
-        string name;           // Name of the asset (e.g., "S&P 500 Index")
-        string symbol;         // Symbol of the asset (e.g., "SPX")
-        AssetType assetType;   // Type of the asset
-        address oracle;        // Oracle providing price data
-        uint256 lastPrice;     // Last recorded price in USD (scaled by 10^18)
-        uint256 lastUpdated;   // Timestamp of last price update
-        bytes32 marketId;      // Identifier for the perpetual market
-        bool isActive;         // Whether the asset is active
+        string name; // Name of the asset (e.g., "S&P 500 Index")
+        string symbol; // Symbol of the asset (e.g., "SPX")
+        AssetType assetType; // Type of the asset
+        address oracle; // Oracle providing price data
+        uint256 lastPrice; // Last recorded price in USD (scaled by 10^18)
+        uint256 lastUpdated; // Timestamp of last price update
+        bytes32 marketId; // Identifier for the perpetual market
+        bool isActive; // Whether the asset is active
     }
 
     /**

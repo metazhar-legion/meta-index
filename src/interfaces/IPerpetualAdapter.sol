@@ -10,12 +10,12 @@ interface IPerpetualAdapter {
      * @dev Represents a synthetic position in a perpetual market
      */
     struct Position {
-        bytes32 marketId;      // Identifier for the market (e.g., "BTC-USD")
-        int256 size;           // Position size (positive for long, negative for short)
-        uint256 entryPrice;    // Entry price of the position
-        uint256 leverage;      // Leverage used (e.g., 2x, 5x)
-        uint256 collateral;    // Amount of collateral allocated to this position
-        uint256 lastUpdated;   // Timestamp of last position update
+        bytes32 marketId; // Identifier for the market (e.g., "BTC-USD")
+        int256 size; // Position size (positive for long, negative for short)
+        uint256 entryPrice; // Entry price of the position
+        uint256 leverage; // Leverage used (e.g., 2x, 5x)
+        uint256 collateral; // Amount of collateral allocated to this position
+        uint256 lastUpdated; // Timestamp of last position update
     }
 
     /**
@@ -26,12 +26,9 @@ interface IPerpetualAdapter {
      * @param collateral The amount of collateral to allocate
      * @return positionId The identifier for the opened position
      */
-    function openPosition(
-        bytes32 marketId,
-        int256 size,
-        uint256 leverage,
-        uint256 collateral
-    ) external returns (bytes32 positionId);
+    function openPosition(bytes32 marketId, int256 size, uint256 leverage, uint256 collateral)
+        external
+        returns (bytes32 positionId);
 
     /**
      * @dev Closes an existing position
@@ -47,12 +44,7 @@ interface IPerpetualAdapter {
      * @param newLeverage The new leverage to use (0 to keep current)
      * @param collateralDelta Amount to add to collateral (negative to remove)
      */
-    function adjustPosition(
-        bytes32 positionId,
-        int256 newSize,
-        uint256 newLeverage,
-        int256 collateralDelta
-    ) external;
+    function adjustPosition(bytes32 positionId, int256 newSize, uint256 newLeverage, int256 collateralDelta) external;
 
     /**
      * @dev Gets the current position information
@@ -74,19 +66,19 @@ interface IPerpetualAdapter {
      * @return pnl The profit or loss (can be negative)
      */
     function calculatePnL(bytes32 positionId) external view returns (int256 pnl);
-    
+
     /**
      * @dev Gets the name of the perpetual trading platform
      * @return name The name of the platform
      */
     function getPlatformName() external view returns (string memory name);
-    
+
     /**
      * @dev Gets the base asset (collateral token) used by this platform
      * @return baseAsset The address of the base asset token
      */
     function getBaseAsset() external view returns (address baseAsset);
-    
+
     /**
      * @dev Checks if a market is supported by the platform
      * @param marketId The identifier for the market
