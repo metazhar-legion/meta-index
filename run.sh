@@ -104,6 +104,32 @@ echo -e "${BLUE}USDC: $USDC_ADDRESS${NC}"
 echo -e "${BLUE}Price Oracle: $PRICE_ORACLE_ADDRESS${NC}"
 echo -e "${BLUE}DEX: $DEX_ADDRESS${NC}"
 
+# Update frontend contract addresses
+echo -e "\n${YELLOW}Updating frontend contract addresses...${NC}"
+FRONTEND_ADDRESSES_FILE="./frontend/src/contracts/addresses.ts"
+
+# Create the updated addresses file content
+cat > "$FRONTEND_ADDRESSES_FILE" << EOL
+// Contract addresses - automatically updated by run.sh script
+export const CONTRACT_ADDRESSES = {
+  // Updated with the latest deployment addresses
+  VAULT: '$VAULT_ADDRESS',
+  REGISTRY: '0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82', // Using existing registry address
+  // Mock tokens
+  USDC: '$USDC_ADDRESS',
+  WBTC: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512', // Using existing address
+  WETH: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', // Using existing address
+  LINK: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9', // Using existing address
+  UNI: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9', // Using existing address
+  AAVE: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707', // Using existing address
+  // Infrastructure
+  PRICE_ORACLE: '$PRICE_ORACLE_ADDRESS',
+  DEX: '$DEX_ADDRESS',
+};
+EOL
+
+echo -e "${GREEN}Frontend contract addresses updated successfully!${NC}"
+
 # Mint additional USDC to test accounts
 echo -e "\n${YELLOW}Minting USDC to test accounts...${NC}"
 forge script script/MintUSDC.s.sol:MintUSDC --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 >> deploy.log 2>&1
