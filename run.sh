@@ -72,7 +72,7 @@ echo -e "${BLUE}Local blockchain available at: http://localhost:8545${NC}"
 
 # Deploy contracts to local Anvil
 echo -e "\n${YELLOW}Deploying contracts to local blockchain...${NC}"
-forge script script/DeployMultiAssetVault.s.sol:DeployMultiAssetVault --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 > deploy.log 2>&1
+forge script script/DeployIndexFundVaultV2.s.sol:DeployIndexFundVaultV2 --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 > deploy.log 2>&1
 
 # Check if deployment was successful
 if [ $? -ne 0 ]; then
