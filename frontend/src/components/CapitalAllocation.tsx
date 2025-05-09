@@ -97,88 +97,150 @@ const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
         setLoading(true);
         setError(null);
 
-        // Get capital allocation
-        const allocationData = await vaultContract.getCapitalAllocation();
+        // Get asset list length
+        let assetCount = 0;
+        try {
+          // Keep trying to get assets until we get an error (out of bounds)
+          while (true) {
+            await vaultContract.assetList(assetCount);
+            assetCount++;
+          }
+        } catch (e) {
+          // This is expected when we reach the end of the array
+          console.log(`Found ${assetCount} assets`);
+        }
+
+        // Get the last rebalance timestamp
+        const lastRebalanceTimestamp = await vaultContract.lastRebalance();
+
+        // Get the total weight
+        let totalWeight = 0;
+        const assetAddresses: string[] = [];
+        const assetWeights: number[] = [];
+
+        // Get all asset addresses and weights
+        for (let i = 0; i < assetCount; i++) {
+          try {
+            const assetAddress = await vaultContract.assetList(i);
+            assetAddresses.push(assetAddress);
+
+            // Get asset info
+            const assetInfo = await vaultContract.assets(assetAddress);
+            const weight = Number(assetInfo.weight);
+            assetWeights.push(weight);
+            totalWeight += weight;
+          } catch (e) {
+            console.error(`Error getting asset at index ${i}:`, e);
+          }
+        }
+
+        // Calculate percentages
+        const rwaPercentage = totalWeight / 100; // Convert basis points to percentage
+        const liquidityBufferPercentage = 100 - rwaPercentage;
+
+        // Set allocation data
         setAllocation({
-          rwaPercentage: Number(allocationData.rwaPercentage) / 100,
-          yieldPercentage: Number(allocationData.yieldPercentage) / 100,
-          liquidityBufferPercentage: Number(allocationData.liquidityBufferPercentage) / 100,
-          lastRebalanced: Number(allocationData.lastRebalanced)
+          rwaPercentage: rwaPercentage,
+          yieldPercentage: 0, // We don't have this in the new architecture
+          liquidityBufferPercentage: liquidityBufferPercentage,
+          lastRebalanced: Number(lastRebalanceTimestamp)
         });
 
-        // Get RWA tokens
-        const rwaTokensData = await vaultContract.getRWATokens();
+        // Get RWA tokens info
         const rwaTokensWithInfo = await Promise.all(
-          rwaTokensData.map(async (token: any) => {
+          assetAddresses.map(async (assetAddress, index) => {
             try {
-              const tokenContract = new ethers.Contract(
-                token.rwaToken,
+              // Get asset info from the vault
+              const assetInfo = await vaultContract.assets(assetAddress);
+              
+              // Get wrapper address
+              const wrapperAddress = assetInfo.wrapper;
+              
+              // Create wrapper contract
+              const wrapperContract = new ethers.Contract(
+                wrapperAddress,
                 [
-                  'function getAssetInfo() external view returns (tuple(string name, string symbol, uint8 assetType, address oracle, uint256 lastPrice, uint256 lastUpdated, bytes32 marketId, bool isActive))'
+                  'function name() external view returns (string)',
+                  'function getRWAToken() external view returns (address)',
+                  'function getValueInBaseAsset() external view returns (uint256)'
                 ],
                 provider
               );
               
-              const assetInfo = await tokenContract.getAssetInfo();
+              // Get wrapper name and RWA token address
+              let wrapperName = 'Unknown Wrapper';
+              try {
+                wrapperName = await wrapperContract.name();
+              } catch (e) {
+                console.error('Error getting wrapper name:', e);
+              }
+              
+              let rwaTokenAddress = ethers.ZeroAddress;
+              try {
+                rwaTokenAddress = await wrapperContract.getRWAToken();
+              } catch (e) {
+                console.error('Error getting RWA token address:', e);
+              }
+              
+              // Get RWA token info if available
+              let tokenName = wrapperName;
+              let tokenSymbol = 'RWA';
+              
+              if (rwaTokenAddress !== ethers.ZeroAddress) {
+                try {
+                  const tokenContract = new ethers.Contract(
+                    rwaTokenAddress,
+                    [
+                      'function name() external view returns (string)',
+                      'function symbol() external view returns (string)'
+                    ],
+                    provider
+                  );
+                  
+                  tokenName = await tokenContract.name();
+                  tokenSymbol = await tokenContract.symbol();
+                } catch (e) {
+                  console.error('Error getting token info:', e);
+                }
+              }
+              
+              // Get value in base asset
+              let valueInBaseAsset = 0;
+              try {
+                valueInBaseAsset = Number(ethers.formatUnits(await wrapperContract.getValueInBaseAsset(), 6));
+              } catch (e) {
+                console.error('Error getting value in base asset:', e);
+              }
               
               return {
-                ...token,
-                percentage: Number(token.percentage) / 100,
-                name: assetInfo.name,
-                symbol: assetInfo.symbol,
-                assetType: Number(assetInfo.assetType),
-                lastPrice: Number(ethers.formatUnits(assetInfo.lastPrice, 18))
+                rwaToken: rwaTokenAddress,
+                percentage: assetWeights[index] / 100, // Convert basis points to percentage
+                active: assetInfo.active,
+                name: tokenName,
+                symbol: tokenSymbol,
+                assetType: 0, // Default asset type
+                lastPrice: valueInBaseAsset > 0 ? valueInBaseAsset : 0
               };
             } catch (e) {
               console.error('Error fetching RWA token info:', e);
               return {
-                ...token,
-                percentage: Number(token.percentage) / 100,
-                name: 'Unknown RWA',
-                symbol: '???',
+                rwaToken: assetAddress,
+                percentage: assetWeights[index] / 100, // Convert basis points to percentage
+                active: true,
+                name: `Asset ${index + 1}`,
+                symbol: 'RWA',
                 assetType: 0,
                 lastPrice: 0
               };
             }
           })
         );
+        
         setRwaTokens(rwaTokensWithInfo);
 
-        // Get yield strategies
-        const yieldStrategiesData = await vaultContract.getYieldStrategies();
-        const strategiesWithInfo = await Promise.all(
-          yieldStrategiesData.map(async (strategy: any) => {
-            try {
-              const strategyContract = new ethers.Contract(
-                strategy.strategy,
-                [
-                  'function getStrategyInfo() external view returns (tuple(string name, address asset, uint256 totalDeposited, uint256 currentValue, uint256 apy, uint256 lastUpdated, bool active, uint256 risk))'
-                ],
-                provider
-              );
-              
-              const strategyInfo = await strategyContract.getStrategyInfo();
-              
-              return {
-                ...strategy,
-                percentage: Number(strategy.percentage) / 100,
-                name: strategyInfo.name,
-                apy: Number(strategyInfo.apy) / 100,
-                risk: Number(strategyInfo.risk)
-              };
-            } catch (e) {
-              console.error('Error fetching yield strategy info:', e);
-              return {
-                ...strategy,
-                percentage: Number(strategy.percentage) / 100,
-                name: 'Unknown Strategy',
-                apy: 0,
-                risk: 0
-              };
-            }
-          })
-        );
-        setYieldStrategies(strategiesWithInfo);
+        // In the new architecture, we don't have separate yield strategies
+        // They're integrated into the asset wrappers
+        setYieldStrategies([]);
 
       } catch (err) {
         console.error('Error loading capital allocation:', err);

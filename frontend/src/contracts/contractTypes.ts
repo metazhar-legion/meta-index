@@ -118,22 +118,19 @@ export function toBigInt(value: any): bigint {
 
 // IndexFundVault interface
 export interface IndexFundVaultInterface {
-  // Contract properties
-  target: string;  // The contract address
-  runner?: ethers.Provider | ethers.Signer;  // The provider or signer
+  target: string;
+  runner?: ethers.Provider | ethers.Signer;
   
-  // ERC20 methods
-  balanceOf: (account: string) => Promise<any>; // Use 'any' to handle different return formats
-  totalSupply: () => Promise<any>; // Use 'any' to handle different return formats
+  // ERC20 functions
+  balanceOf: (account: string) => Promise<any>;
+  totalSupply: () => Promise<any>;
   
-  // ERC4626 methods
+  // ERC4626 functions
   deposit: (assets: BigIntish, receiver: string) => Promise<ethers.ContractTransactionResponse>;
   withdraw: (assets: BigIntish, receiver: string, owner: string) => Promise<ethers.ContractTransactionResponse>;
   redeem: (shares: BigIntish, receiver: string, owner: string) => Promise<ethers.ContractTransactionResponse>;
   mint: (shares: BigIntish, receiver: string) => Promise<ethers.ContractTransactionResponse>;
-  
-  // View methods
-  totalAssets: () => Promise<any>; // Use 'any' to handle different return formats
+  totalAssets: () => Promise<any>;
   convertToShares: (assets: BigIntish) => Promise<any>;
   convertToAssets: (shares: BigIntish) => Promise<any>;
   previewDeposit: (assets: BigIntish) => Promise<any>;
@@ -145,7 +142,7 @@ export interface IndexFundVaultInterface {
   maxWithdraw: (owner: string) => Promise<any>;
   maxRedeem: (owner: string) => Promise<any>;
   
-  // Custom methods
+  // Vault management functions
   rebalance: () => Promise<ethers.ContractTransactionResponse>;
   collectManagementFee: () => Promise<ethers.ContractTransactionResponse>;
   collectPerformanceFee: () => Promise<ethers.ContractTransactionResponse>;
@@ -153,6 +150,22 @@ export interface IndexFundVaultInterface {
   setPerformanceFee: (newFee: BigIntish) => Promise<ethers.ContractTransactionResponse>;
   setPriceOracle: (newOracle: string) => Promise<ethers.ContractTransactionResponse>;
   setDEX: (newDEX: string) => Promise<ethers.ContractTransactionResponse>;
+  
+  // IndexFundVaultV2 specific functions
+  assetList: (index: number) => Promise<string>;
+  assets: (assetAddress: string) => Promise<{wrapper: string, weight: number, active: boolean}>;
+  lastRebalance: () => Promise<number>;
+  rebalanceInterval: () => Promise<number>;
+  rebalanceThreshold: () => Promise<number>;
+  getTotalWeight: () => Promise<number>;
+  isRebalanceNeeded: () => Promise<boolean>;
+  addAsset: (assetAddress: string, weight: number) => Promise<ethers.ContractTransactionResponse>;
+  removeAsset: (assetAddress: string) => Promise<ethers.ContractTransactionResponse>;
+  updateAssetWeight: (assetAddress: string, newWeight: number) => Promise<ethers.ContractTransactionResponse>;
+  setRebalanceInterval: (newInterval: number) => Promise<ethers.ContractTransactionResponse>;
+  setRebalanceThreshold: (newThreshold: number) => Promise<ethers.ContractTransactionResponse>;
+  
+  // Legacy capital allocation functions - kept for backward compatibility
   getCapitalAllocation: () => Promise<CapitalAllocationData>;
   getRWATokens: () => Promise<RWATokenData[]>;
   getYieldStrategies: () => Promise<YieldStrategyData[]>;
