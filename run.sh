@@ -72,7 +72,7 @@ echo -e "${BLUE}Local blockchain available at: http://localhost:8545${NC}"
 
 # Deploy contracts to local Anvil
 echo -e "\n${YELLOW}Deploying contracts to local blockchain...${NC}"
-forge script script/Deploy.s.sol:Deploy --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 > deploy.log 2>&1
+forge script script/DeployMultiAssetVault.s.sol:DeployMultiAssetVault --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 > deploy.log 2>&1
 
 # Check if deployment was successful
 if [ $? -ne 0 ]; then
@@ -86,90 +86,43 @@ echo -e "${GREEN}Contracts deployed successfully!${NC}"
 
 # Extract contract addresses from deployment logs
 echo -e "${YELLOW}Extracting contract addresses...${NC}"
-VAULT_ADDRESS=$(grep "Index Fund Vault deployed at:" deploy.log | awk '{print $NF}')
-REGISTRY_ADDRESS=$(grep "Index Registry deployed at:" deploy.log | awk '{print $NF}')
-USDC_ADDRESS=$(grep "USDC deployed at:" deploy.log | awk '{print $NF}')
-WBTC_ADDRESS=$(grep "WBTC deployed at:" deploy.log | awk '{print $NF}')
-WETH_ADDRESS=$(grep "WETH deployed at:" deploy.log | awk '{print $NF}')
-LINK_ADDRESS=$(grep "LINK deployed at:" deploy.log | awk '{print $NF}')
-UNI_ADDRESS=$(grep "UNI deployed at:" deploy.log | awk '{print $NF}')
-AAVE_ADDRESS=$(grep "AAVE deployed at:" deploy.log | awk '{print $NF}')
-PRICE_ORACLE_ADDRESS=$(grep "Price Oracle deployed at:" deploy.log | awk '{print $NF}')
-DEX_ADDRESS=$(grep "DEX deployed at:" deploy.log | awk '{print $NF}')
+VAULT_ADDRESS=$(grep "IndexFundVaultV2 deployed at:" deploy.log | awk '{print $NF}')
+USDC_ADDRESS=$(grep "MockUSDC deployed at:" deploy.log | awk '{print $NF}')
+PRICE_ORACLE_ADDRESS=$(grep "MockPriceOracle deployed at:" deploy.log | awk '{print $NF}')
+DEX_ADDRESS=$(grep "MockDEX deployed at:" deploy.log | awk '{print $NF}')
 
-if [ -z "$VAULT_ADDRESS" ] || [ -z "$REGISTRY_ADDRESS" ] || [ -z "$USDC_ADDRESS" ]; then
+if [ -z "$VAULT_ADDRESS" ] || [ -z "$USDC_ADDRESS" ]; then
     echo -e "${RED}Error: Could not extract contract addresses.${NC}"
     echo -e "${YELLOW}Check deploy.log for details.${NC}"
     kill $anvil_pid
     exit 1
 fi
 
-echo -e "${GREEN}Contract addresses:${NC}"
+echo -e "${GREEN}Contract addresses extracted successfully:${NC}"
 echo -e "${BLUE}Vault: $VAULT_ADDRESS${NC}"
-echo -e "${BLUE}Registry: $REGISTRY_ADDRESS${NC}"
 echo -e "${BLUE}USDC: $USDC_ADDRESS${NC}"
-echo -e "${BLUE}WBTC: $WBTC_ADDRESS${NC}"
-echo -e "${BLUE}WETH: $WETH_ADDRESS${NC}"
-echo -e "${BLUE}LINK: $LINK_ADDRESS${NC}"
-echo -e "${BLUE}UNI: $UNI_ADDRESS${NC}"
-echo -e "${BLUE}AAVE: $AAVE_ADDRESS${NC}"
 echo -e "${BLUE}Price Oracle: $PRICE_ORACLE_ADDRESS${NC}"
 echo -e "${BLUE}DEX: $DEX_ADDRESS${NC}"
 
-# Create .env file for frontend
-echo -e "\n${YELLOW}Creating frontend environment file...${NC}"
-cat > ./frontend/.env.local << EOL
-REACT_APP_CHAIN_ID=31337
-REACT_APP_NETWORK_NAME=Anvil
-REACT_APP_INDEX_FUND_VAULT_ADDRESS=$VAULT_ADDRESS
-REACT_APP_INDEX_REGISTRY_ADDRESS=$REGISTRY_ADDRESS
-REACT_APP_USDC_ADDRESS=$USDC_ADDRESS
-REACT_APP_RPC_URL=http://localhost:8545
-REACT_APP_ENABLE_TESTNET_FAUCET=true
-REACT_APP_DEFAULT_THEME=dark
-EOL
+# Mint additional USDC to test accounts
+echo -e "\n${YELLOW}Minting USDC to test accounts...${NC}"
+forge script script/MintUSDC.s.sol:MintUSDC --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 >> deploy.log 2>&1
 
-echo -e "${GREEN}Frontend environment file created at ./frontend/.env.local${NC}"
-
-# Update the frontend's addresses.ts file
-echo -e "\n${YELLOW}Updating frontend contract addresses...${NC}"
-cat > ./frontend/src/contracts/addresses.ts << EOL
-// Contract addresses - automatically updated by run.sh script
-export const CONTRACT_ADDRESSES = {
-  // Updated with the latest deployment addresses
-  VAULT: '$VAULT_ADDRESS',
-  REGISTRY: '$REGISTRY_ADDRESS',
-  // Mock tokens
-  USDC: '$USDC_ADDRESS',
-  WBTC: '$WBTC_ADDRESS',
-  WETH: '$WETH_ADDRESS',
-  LINK: '$LINK_ADDRESS',
-  UNI: '$UNI_ADDRESS',
-  AAVE: '$AAVE_ADDRESS',
-  // Infrastructure
-  PRICE_ORACLE: '$PRICE_ORACLE_ADDRESS',
-  DEX: '$DEX_ADDRESS',
-};
-EOL
-
-echo -e "${GREEN}Frontend contract addresses updated at ./frontend/src/contracts/addresses.ts${NC}"
-
-# Start frontend in the background
-echo -e "\n${YELLOW}Starting frontend application...${NC}"
-cd frontend
-npm install > ../frontend-install.log 2>&1
-
+# Check if USDC minting was successful
 if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Failed to install frontend dependencies.${NC}"
-    echo -e "${YELLOW}Check frontend-install.log for details.${NC}"
-    cd ..
+    echo -e "${RED}Error: USDC minting failed.${NC}"
+    echo -e "${YELLOW}Check deploy.log for details.${NC}"
     kill $anvil_pid
     exit 1
 fi
 
+echo -e "${GREEN}USDC minted successfully!${NC}"
+
+# Start frontend in the background
+echo -e "\n${YELLOW}Starting frontend application...${NC}"
+cd frontend
 npm start > ../frontend.log 2>&1 &
 frontend_pid=$!
-cd ..
 
 # Check if frontend started successfully
 sleep 5
@@ -183,23 +136,8 @@ fi
 echo -e "${GREEN}Frontend running with PID: $frontend_pid${NC}"
 echo -e "${BLUE}Frontend available at: http://localhost:3000${NC}"
 
-# Display test accounts
-echo -e "\n${YELLOW}Test Accounts (from Anvil):${NC}"
-echo -e "${BLUE}Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266${NC}"
-echo -e "${BLUE}Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80${NC}"
-echo -e "${BLUE}Account #1: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8${NC}"
-echo -e "${BLUE}Private Key: 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d${NC}"
+echo -e "\n${GREEN}Web3 Index Fund development environment is now running!${NC}"
+echo -e "${YELLOW}Press Ctrl+C to shut down all services.${NC}"
 
-# Display instructions
-echo -e "\n${GREEN}Development environment is running!${NC}"
-echo -e "${YELLOW}Instructions:${NC}"
-echo -e "1. Open ${BLUE}http://localhost:3000${NC} in your browser"
-echo -e "2. Connect MetaMask to ${BLUE}http://localhost:8545${NC} (Chain ID: 31337)"
-echo -e "3. Import test accounts using the private keys above"
-echo -e "4. Press ${BLUE}Ctrl+C${NC} to stop all services when done"
-
-# Keep script running until user interrupts
-echo -e "\n${YELLOW}Press Ctrl+C to stop all services${NC}"
-while true; do
-    sleep 1
-done
+# Keep the script running until user interrupts
+wait
