@@ -13,6 +13,9 @@ contract FeeManager is Ownable {
     uint256 public managementFeePercentage = 100; // 1% annual (in basis points)
     uint256 public performanceFeePercentage = 1000; // 10% (in basis points)
     uint256 public constant BASIS_POINTS = 10000;
+    
+    // Fee recipient address
+    address public feeRecipient;
 
     // High watermark for performance fees, mapped by vault address
     mapping(address => uint256) public highWaterMarks;
@@ -27,7 +30,9 @@ contract FeeManager is Ownable {
     event PerformanceFeeUpdated(uint256 newFee);
     event HighWaterMarkUpdated(address indexed vault, uint256 newHighWaterMark);
 
-    constructor() Ownable(msg.sender) {}
+    constructor() Ownable(msg.sender) {
+        feeRecipient = msg.sender; // Set the fee recipient to the deployer by default
+    }
 
     /**
      * @dev Updates the management fee percentage
@@ -129,5 +134,44 @@ contract FeeManager is Ownable {
      */
     function setLastFeeCollectionTimestamp(address vault, uint256 timestamp) external onlyOwner {
         lastFeeCollectionTimestamps[vault] = timestamp;
+    }
+    
+    /**
+     * @dev Collect management and performance fees
+     * @param totalValue The total value of the vault
+     * @param timeElapsed The time elapsed since last fee collection
+     * @return managementFee The management fee collected
+     * @return performanceFee The performance fee collected
+     */
+    function collectFees(uint256 totalValue, uint256 timeElapsed)
+        external
+        view
+        returns (uint256 managementFee, uint256 performanceFee)
+    {
+        // Calculate management fee based on total value and time elapsed
+        managementFee = (totalValue * managementFeePercentage * timeElapsed) / (BASIS_POINTS * 365 days);
+        
+        // For simplicity, we're not calculating performance fee here
+        // In a real implementation, you would need additional parameters like current share price
+        performanceFee = 0;
+        
+        return (managementFee, performanceFee);
+    }
+    
+    /**
+     * @dev Get the fee recipient address
+     * @return recipient The address of the fee recipient
+     */
+    function getFeeRecipient() external view returns (address recipient) {
+        return feeRecipient;
+    }
+    
+    /**
+     * @dev Set the fee recipient address
+     * @param newRecipient The new fee recipient address
+     */
+    function setFeeRecipient(address newRecipient) external onlyOwner {
+        if (newRecipient == address(0)) revert CommonErrors.ZeroAddress();
+        feeRecipient = newRecipient;
     }
 }
