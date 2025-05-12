@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
+import {Test} from "forge-std/Test";
+import {console} from "forge-std/console";
 
 import {PerpetualPositionWrapper} from "../src/PerpetualPositionWrapper.sol";
 import {MockPerpetualRouter} from "../src/mocks/MockPerpetualRouter.sol";
@@ -94,7 +94,7 @@ contract PerpetualPositionWrapperTest is Test {
         wrapper.openPosition(1000 * 1e6);
         
         // Increase price by 10%
-        priceOracle.setPrice(address(0xBTC), 55000 * 1e18); // $55,000 per BTC
+        priceOracle.setPrice(address(0x1234), 55000 * 1e18); // $55,000 per BTC
         
         // Check position details
         (
@@ -122,7 +122,7 @@ contract PerpetualPositionWrapperTest is Test {
         wrapper.openPosition(1000 * 1e6);
         
         // Decrease price by 10%
-        priceOracle.setPrice(address(0xBTC), 45000 * 1e18); // $45,000 per BTC
+        priceOracle.setPrice(address(0x1234), 45000 * 1e18); // $45,000 per BTC
         
         // Check position details
         (
@@ -150,7 +150,7 @@ contract PerpetualPositionWrapperTest is Test {
         wrapper.openPosition(1000 * 1e6);
         
         // Increase price by 10%
-        priceOracle.setPrice(address(0xBTC), 55000 * 1e18); // $55,000 per BTC
+        priceOracle.setPrice(address(0x1234), 55000 * 1e18); // $55,000 per BTC
         
         // Get initial USDC balance
         uint256 initialBalance = usdc.balanceOf(address(wrapper));
@@ -184,7 +184,7 @@ contract PerpetualPositionWrapperTest is Test {
         wrapper.openPosition(1000 * 1e6);
         
         // Decrease price by 10%
-        priceOracle.setPrice(address(0xBTC), 45000 * 1e18); // $45,000 per BTC
+        priceOracle.setPrice(address(0x1234), 45000 * 1e18); // $45,000 per BTC
         
         // Get initial USDC balance
         uint256 initialBalance = usdc.balanceOf(address(wrapper));
