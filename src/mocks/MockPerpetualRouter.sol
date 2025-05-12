@@ -132,7 +132,7 @@ contract MockPerpetualRouter is IPerpetualRouter, Ownable {
         }
         
         // Check if position already exists
-        if (positions[marketId].isOpen && positions[marketId].owner == msg.sender) {
+        if (positions[marketId].isOpen) {
             revert PositionAlreadyExists();
         }
         
@@ -142,7 +142,9 @@ contract MockPerpetualRouter is IPerpetualRouter, Ownable {
         }
         
         // Transfer collateral from user
-        baseAsset.safeTransferFrom(msg.sender, address(this), collateralAmount);
+        if (msg.sender != address(this)) {
+            baseAsset.safeTransferFrom(msg.sender, address(this), collateralAmount);
+        }
         
         // Get current price from oracle
         price = priceOracle.getPrice(markets[marketId].baseToken);
@@ -189,20 +191,21 @@ contract MockPerpetualRouter is IPerpetualRouter, Ownable {
             baseAsset.safeTransfer(msg.sender, position.collateral + profit);
             pnl = profit;
         } else if (calculatedPnl < 0) {
-            // Loss: return collateral - loss (minimum 0)
+            // Loss: return collateral - loss
             uint256 loss = uint256(-calculatedPnl);
+            
             if (loss >= position.collateral) {
                 // Total loss
                 pnl = 0;
             } else {
                 // Partial loss
                 baseAsset.safeTransfer(msg.sender, position.collateral - loss);
-                pnl = 0;
+                pnl = position.collateral - loss; // Return the actual amount after loss
             }
         } else {
             // No PnL: return collateral
             baseAsset.safeTransfer(msg.sender, position.collateral);
-            pnl = 0;
+            pnl = position.collateral;
         }
         
         // Close position
