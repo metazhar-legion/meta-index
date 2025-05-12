@@ -271,12 +271,15 @@ contract PerpetualPositionWrapper is Ownable, ReentrancyGuard {
         totalValue = collateralAmount;
         if (pnl > 0) {
             totalValue += uint256(pnl);
-        } else if (pnl < 0 && uint256(-pnl) < collateralAmount) {
-            totalValue -= uint256(-pnl);
-        } else {
-            // If PnL loss exceeds collateral, position is liquidated
-            totalValue = 0;
+        } else if (pnl < 0) {
+            if (uint256(-pnl) < collateralAmount) {
+                totalValue -= uint256(-pnl);
+            } else {
+                // If PnL loss exceeds collateral, position is liquidated
+                totalValue = 0;
+            }
         }
+        // If pnl == 0, totalValue remains equal to collateralAmount
         
         return totalValue;
     }
