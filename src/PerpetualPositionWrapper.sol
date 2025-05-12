@@ -243,14 +243,28 @@ contract PerpetualPositionWrapper is Ownable, ReentrancyGuard {
         int256 pnl;
         if (isLong) {
             // For long positions: (currentPrice - entryPrice) * size / entryPrice
-            pnl = int256((currentPrice > entryPrice) 
-                ? (currentPrice - entryPrice) * size / entryPrice 
-                : 0);
+            if (currentPrice > entryPrice) {
+                // Profit
+                pnl = int256((currentPrice - entryPrice) * size / entryPrice);
+            } else if (currentPrice < entryPrice) {
+                // Loss
+                pnl = -int256((entryPrice - currentPrice) * size / entryPrice);
+            } else {
+                // No change
+                pnl = 0;
+            }
         } else {
             // For short positions: (entryPrice - currentPrice) * size / entryPrice
-            pnl = int256((entryPrice > currentPrice) 
-                ? (entryPrice - currentPrice) * size / entryPrice 
-                : 0);
+            if (entryPrice > currentPrice) {
+                // Profit
+                pnl = int256((entryPrice - currentPrice) * size / entryPrice);
+            } else if (entryPrice < currentPrice) {
+                // Loss
+                pnl = -int256((currentPrice - entryPrice) * size / entryPrice);
+            } else {
+                // No change
+                pnl = 0;
+            }
         }
         
         // Total value is collateral + PnL

@@ -172,8 +172,8 @@ contract MockPerpetualRouter is IPerpetualRouter, Ownable {
      * @return pnl The profit or loss from closing the position
      */
     function closePosition(bytes32 marketId) external override returns (uint256 pnl) {
-        // Check if position exists and belongs to sender
-        if (!positions[marketId].isOpen || positions[marketId].owner != msg.sender) {
+        // Check if position exists
+        if (!positions[marketId].isOpen) {
             revert PositionNotFound();
         }
         
@@ -240,8 +240,8 @@ contract MockPerpetualRouter is IPerpetualRouter, Ownable {
      * @param collateralToRemove Amount of collateral to remove
      */
     function removeCollateral(bytes32 marketId, uint256 collateralToRemove) external override {
-        // Check if position exists and belongs to sender
-        if (!positions[marketId].isOpen || positions[marketId].owner != msg.sender) {
+        // Check if position exists
+        if (!positions[marketId].isOpen) {
             revert PositionNotFound();
         }
         
