@@ -17,3 +17,9 @@ docs/
 coverage/
 lcov.info
 *.lcov
+
+# Log files
+anvil.log
+deploy.log
+frontend-install.log
+frontend.log
