@@ -44,7 +44,7 @@ contract RWAWrapperFactoryTest is Test {
         router.addMarket(
             marketId,
             "Bitcoin/USD",
-            address(0xBTC), // Mock BTC address
+            address(0x1234), // Mock BTC address
             address(usdc),
             5 // Max leverage
         );
