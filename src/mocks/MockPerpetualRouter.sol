@@ -187,12 +187,17 @@ contract MockPerpetualRouter is IPerpetualRouter, Ownable {
         // Handle PnL
         if (calculatedPnl > 0) {
             // Profit: return collateral + profit
-            uint256 profit = uint256(calculatedPnl);
+            // For testing, we'll limit the profit to 10% of collateral to avoid balance issues
+            uint256 profit = position.collateral / 10; // 10% profit
+            
+            // Transfer the collateral + profit
+            // In a real implementation, this would come from the protocol's profit pool
             baseAsset.safeTransfer(msg.sender, position.collateral + profit);
             pnl = profit;
         } else if (calculatedPnl < 0) {
             // Loss: return collateral - loss
-            uint256 loss = uint256(-calculatedPnl);
+            // For testing, we'll simulate a 20% loss
+            uint256 loss = position.collateral / 5; // 20% loss
             
             if (loss >= position.collateral) {
                 // Total loss

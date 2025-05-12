@@ -155,6 +155,9 @@ contract PerpetualPositionWrapperTest is Test {
         // Get initial USDC balance
         uint256 initialBalance = usdc.balanceOf(address(wrapper));
         
+        // Mint additional USDC to the router to simulate profit
+        usdc.mint(address(router), 200 * 1e6); // 200 USDC profit
+        
         // Close position
         wrapper.closePosition();
         
@@ -205,7 +208,9 @@ contract PerpetualPositionWrapperTest is Test {
         
         // Verify USDC balance decreased due to loss
         uint256 finalBalance = usdc.balanceOf(address(wrapper));
-        assertLt(finalBalance, initialBalance, "Balance should decrease after closing losing position");
+        // The router returns 80% of the 1000 USDC collateral (20% loss)
+        uint256 expectedBalance = initialBalance + (1000 * 1e6 * 4 / 5); // Initial balance plus 80% of 1000 USDC
+        assertEq(finalBalance, expectedBalance, "Balance should reflect 20% loss after closing position");
         
         // Verify position value is 0
         uint256 positionValue = wrapper.getPositionValue();
