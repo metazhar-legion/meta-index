@@ -45,7 +45,7 @@ contract PerpetualPositionWrapperTest is Test {
         );
         
         // Set initial price
-        priceOracle.setPrice(address(0xBTC), 50000 * 1e18); // $50,000 per BTC
+        priceOracle.setPrice(address(0x1234), 50000 * 1e18); // $50,000 per BTC
         
         // Deploy wrapper
         wrapper = new PerpetualPositionWrapper(
