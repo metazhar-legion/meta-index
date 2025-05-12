@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test} from "forge-std/Test";
-import {console} from "forge-std/console";
+import "forge-std/Test.sol";
+import "forge-std/console.sol";
 
 import {PerpetualPositionWrapper} from "../src/PerpetualPositionWrapper.sol";
 import {MockPerpetualRouter} from "../src/mocks/MockPerpetualRouter.sol";

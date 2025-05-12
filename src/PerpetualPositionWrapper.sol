@@ -91,30 +91,30 @@ contract PerpetualPositionWrapper is Ownable, ReentrancyGuard {
     
     /**
      * @dev Opens a perpetual position with the specified collateral
-     * @param collateralAmount Amount of collateral to use
+     * @param _collateralAmount Amount of collateral to use
      */
-    function openPosition(uint256 collateralAmount) external onlyOwner nonReentrant {
+    function openPosition(uint256 _collateralAmount) external onlyOwner nonReentrant {
         if (positionOpen) {
             revert PositionAlreadyOpen();
         }
-        if (collateralAmount == 0) {
+        if (_collateralAmount == 0) {
             revert InsufficientCollateral();
         }
         
         // Ensure we have enough balance
         uint256 balance = baseAsset.balanceOf(address(this));
-        if (balance < collateralAmount) {
+        if (balance < _collateralAmount) {
             revert InsufficientCollateral();
         }
         
         // Approve the router to spend the collateral
-        baseAsset.approve(address(perpetualRouter), collateralAmount);
+        baseAsset.approve(address(perpetualRouter), _collateralAmount);
         
         // Open the position
-        try perpetualRouter.openPosition(marketId, collateralAmount, leverage, isLong) returns (uint256 size, uint256 price) {
+        try perpetualRouter.openPosition(marketId, _collateralAmount, leverage, isLong) returns (uint256 size, uint256 price) {
             positionSize = size;
             entryPrice = price;
-            this.collateralAmount = collateralAmount;
+            collateralAmount = _collateralAmount;
             positionOpen = true;
             lastUpdated = block.timestamp;
             
@@ -293,14 +293,14 @@ contract PerpetualPositionWrapper is Ownable, ReentrancyGuard {
         // Calculate PnL
         if (isLong) {
             // For long positions: (currentPrice - entryPrice) * size / entryPrice
-            pnl = int256((currentPrice > entryPrice) 
-                ? (currentPrice - entryPrice) * size / entryPrice 
-                : -int256((entryPrice - currentPrice) * size / entryPrice));
+            pnl = currentPrice > entryPrice
+                ? int256((currentPrice - entryPrice) * size / entryPrice)
+                : -int256((entryPrice - currentPrice) * size / entryPrice);
         } else {
             // For short positions: (entryPrice - currentPrice) * size / entryPrice
-            pnl = int256((entryPrice > currentPrice) 
-                ? (entryPrice - currentPrice) * size / entryPrice 
-                : -int256((currentPrice - entryPrice) * size / entryPrice));
+            pnl = entryPrice > currentPrice
+                ? int256((entryPrice - currentPrice) * size / entryPrice)
+                : -int256((currentPrice - entryPrice) * size / entryPrice);
         }
         
         isActive = positionOpen;
