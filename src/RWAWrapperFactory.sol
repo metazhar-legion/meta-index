@@ -156,65 +156,66 @@ contract RWAWrapperFactory is Ownable {
         return address(wrapper);
     }
     
+    // Structs to group parameters and avoid stack too deep errors
+    struct PerpetualParams {
+        address router;
+        bytes32 marketId;
+        uint256 leverage;
+        bool isLong;
+        string tokenName;
+        string tokenSymbol;
+    }
+    
+    struct YieldParams {
+        string strategyName;
+        address lendingProtocol;
+        address yieldToken;
+        address feeRecipient;
+    }
+    
     /**
      * @dev Creates a hybrid wrapper with both synthetic token and perpetual position
      * @param name Name of the wrapper
-     * @param syntheticTokenName Name of the synthetic token
-     * @param syntheticTokenSymbol Symbol of the synthetic token
-     * @param perpetualRouter Address of the perpetual router
-     * @param marketId Market identifier for the perpetual position
-     * @param leverage Initial leverage for positions
-     * @param isLong Whether positions should be long (true) or short (false)
-     * @param yieldStrategyName Name of the yield strategy
-     * @param lendingProtocol Address of the lending protocol
-     * @param yieldToken Address of the yield token
-     * @param feeRecipient Address of the fee recipient
+     * @param perpParams Parameters for the perpetual position
+     * @param yieldParams Parameters for the yield strategy
      * @return wrapperAddress Address of the created wrapper
      */
     function createHybridWrapper(
         string memory name,
-        string memory syntheticTokenName,
-        string memory syntheticTokenSymbol,
-        address perpetualRouter,
-        bytes32 marketId,
-        uint256 leverage,
-        bool isLong,
-        string memory yieldStrategyName,
-        address lendingProtocol,
-        address yieldToken,
-        address feeRecipient
+        PerpetualParams memory perpParams,
+        YieldParams memory yieldParams
     ) external onlyOwner returns (address wrapperAddress) {
         // Validate parameters
-        if (perpetualRouter == address(0) || lendingProtocol == address(0) || 
-            yieldToken == address(0) || feeRecipient == address(0)) {
+        if (perpParams.router == address(0) || yieldParams.lendingProtocol == address(0) || 
+            yieldParams.yieldToken == address(0) || yieldParams.feeRecipient == address(0)) {
             revert CommonErrors.ZeroAddress();
         }
         
         // Create perpetual position wrapper
         PerpetualPositionWrapper perpWrapper = new PerpetualPositionWrapper(
-            perpetualRouter,
+            perpParams.router,
             baseAsset,
             address(priceOracle),
-            marketId,
-            leverage,
-            isLong,
-            syntheticTokenSymbol
+            perpParams.marketId,
+            perpParams.leverage,
+            perpParams.isLong,
+            perpParams.tokenSymbol
         );
         
         // Create adapter to make the perpetual wrapper compatible with IRWASyntheticToken
         PerpetualPositionAdapter perpAdapter = new PerpetualPositionAdapter(
             address(perpWrapper),
-            syntheticTokenName,
+            perpParams.tokenName,
             IRWASyntheticToken.AssetType.EQUITY_INDEX // Default type, can be parameterized if needed
         );
         
         // Create yield strategy
         StablecoinLendingStrategy yieldStrategy = new StablecoinLendingStrategy(
-            yieldStrategyName,
+            yieldParams.strategyName,
             baseAsset,
-            lendingProtocol,
-            yieldToken,
-            feeRecipient
+            yieldParams.lendingProtocol,
+            yieldParams.yieldToken,
+            yieldParams.feeRecipient
         );
         
         // Create RWA wrapper to manage both components
@@ -236,7 +237,7 @@ contract RWAWrapperFactory is Ownable {
         isRegisteredWrapper[address(wrapper)] = true;
         
         emit WrapperCreated(address(wrapper), WrapperType.Hybrid, name);
-        emit PerpetualPositionWrapperCreated(address(perpWrapper), marketId, syntheticTokenSymbol);
+        emit PerpetualPositionWrapperCreated(address(perpWrapper), perpParams.marketId, perpParams.tokenSymbol);
         
         return address(wrapper);
     }
