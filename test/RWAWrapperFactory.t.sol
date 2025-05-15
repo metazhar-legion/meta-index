@@ -201,7 +201,7 @@ contract RWAWrapperFactoryTest is Test {
         assertEq(address(wrapper.priceOracle()), address(priceOracle), "Price oracle should match");
         
         // Verify that the wrapper has both a synthetic token and a yield strategy
-        address syntheticToken = address(wrapper.syntheticToken());
+        address rwaToken = address(wrapper.rwaToken());
         address yieldStrategy = address(wrapper.yieldStrategy());
         
         assertTrue(syntheticToken != address(0), "Synthetic token should not be zero address");
