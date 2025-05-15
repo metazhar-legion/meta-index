@@ -44,6 +44,7 @@ library CommonErrors {
     error TokenNotFound();
     error TransferFailed();
     error InsufficientBalance();
+    error InsufficientAllowance();
     error SlippageTooHigh();
     error PairNotSupported();
 

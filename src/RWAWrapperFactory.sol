@@ -8,8 +8,10 @@ import {RWAAssetWrapper} from "./RWAAssetWrapper.sol";
 import {RWASyntheticSP500} from "./RWASyntheticSP500.sol";
 import {StablecoinLendingStrategy} from "./StablecoinLendingStrategy.sol";
 import {PerpetualPositionWrapper} from "./PerpetualPositionWrapper.sol";
+import {PerpetualPositionAdapter} from "./adapters/PerpetualPositionAdapter.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
 import {IPerpetualRouter} from "./interfaces/IPerpetualRouter.sol";
+import {IRWASyntheticToken} from "./interfaces/IRWASyntheticToken.sol";
 import {CommonErrors} from "./errors/CommonErrors.sol";
 
 /**
@@ -199,6 +201,13 @@ contract RWAWrapperFactory is Ownable {
             syntheticTokenSymbol
         );
         
+        // Create adapter to make the perpetual wrapper compatible with IRWASyntheticToken
+        PerpetualPositionAdapter perpAdapter = new PerpetualPositionAdapter(
+            address(perpWrapper),
+            syntheticTokenName,
+            IRWASyntheticToken.AssetType.EQUITY_INDEX // Default type, can be parameterized if needed
+        );
+        
         // Create yield strategy
         StablecoinLendingStrategy yieldStrategy = new StablecoinLendingStrategy(
             yieldStrategyName,
@@ -212,13 +221,14 @@ contract RWAWrapperFactory is Ownable {
         RWAAssetWrapper wrapper = new RWAAssetWrapper(
             name,
             IERC20(baseAsset),
-            perpWrapper,
+            perpAdapter,
             yieldStrategy,
             priceOracle
         );
         
         // Transfer ownership of components to the wrapper
-        perpWrapper.transferOwnership(address(wrapper));
+        perpWrapper.transferOwnership(address(perpAdapter));
+        perpAdapter.transferOwnership(address(wrapper));
         yieldStrategy.transferOwnership(address(wrapper));
         
         // Register wrapper
