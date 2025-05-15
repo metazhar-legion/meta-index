@@ -110,7 +110,7 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
      */
     function getCurrentPriceFromOracle() internal view returns (uint256 price) {
         // Get the price from the oracle based on the market ID
-        bytes32 marketId = perpWrapper.marketId();
+        // Market ID is not needed here, but we could use it in future implementations
         address baseToken = address(0x1234); // This should be determined based on the market ID
         
         return priceOracle.getPrice(baseToken);
@@ -206,7 +206,7 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
     /**
      * @dev Returns the decimals of the token
      */
-    function decimals() external view returns (uint8) {
+    function decimals() external pure returns (uint8) {
         return 18;
     }
     

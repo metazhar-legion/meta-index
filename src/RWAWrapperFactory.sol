@@ -71,8 +71,8 @@ contract RWAWrapperFactory is Ownable {
      */
     function createStandardWrapper(
         string memory name,
-        string memory syntheticTokenName,
-        string memory syntheticTokenSymbol,
+        string memory /* syntheticTokenName */,
+        string memory /* syntheticTokenSymbol */,
         address perpetualTrading,
         string memory yieldStrategyName,
         address lendingProtocol,
