@@ -175,19 +175,28 @@ contract RWAWrapperFactoryTest is Test {
     
     // Test creating a hybrid wrapper
     function testCreateHybridWrapper() public {
+        // Create parameter structs
+        RWAWrapperFactory.PerpetualParams memory perpParams = RWAWrapperFactory.PerpetualParams({
+            router: address(router),
+            marketId: marketId,
+            leverage: 2, // 2x leverage
+            isLong: true, // Long position
+            tokenName: "Hybrid Token",
+            tokenSymbol: "HYB"
+        });
+        
+        RWAWrapperFactory.YieldParams memory yieldParams = RWAWrapperFactory.YieldParams({
+            strategyName: "Yield Strategy",
+            lendingProtocol: address(0x123), // Mock lending protocol
+            yieldToken: address(usdc),
+            feeRecipient: address(this)
+        });
+        
         // Create hybrid wrapper
         address wrapperAddress = factory.createHybridWrapper(
             "Hybrid Wrapper",
-            "Hybrid Token",
-            "HYB",
-            address(router),
-            marketId,
-            2, // 2x leverage
-            true, // Long position
-            "Yield Strategy",
-            address(0x123), // Mock lending protocol
-            address(usdc),
-            address(this)
+            perpParams,
+            yieldParams
         );
         
         // Verify wrapper was created
