@@ -204,7 +204,7 @@ contract RWAWrapperFactoryTest is Test {
         address rwaToken = address(wrapper.rwaToken());
         address yieldStrategy = address(wrapper.yieldStrategy());
         
-        assertTrue(syntheticToken != address(0), "Synthetic token should not be zero address");
+        assertTrue(rwaToken != address(0), "RWA token should not be zero address");
         assertTrue(yieldStrategy != address(0), "Yield strategy should not be zero address");
     }
 }
