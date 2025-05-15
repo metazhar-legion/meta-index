@@ -173,22 +173,38 @@ contract RWAWrapperFactoryTest is Test {
         assertEq(address(wrapper.baseAsset()), address(newBaseAsset), "Wrapper should use new base asset");
     }
     
-    // Test creating a hybrid wrapper (should revert as it's not implemented yet)
+    // Test creating a hybrid wrapper
     function testCreateHybridWrapper() public {
-        // Attempt to create hybrid wrapper (should revert)
-        vm.expectRevert();
-        factory.createHybridWrapper(
+        // Create hybrid wrapper
+        address wrapperAddress = factory.createHybridWrapper(
             "Hybrid Wrapper",
             "Hybrid Token",
             "HYB",
             address(router),
             marketId,
-            2,
-            true,
+            2, // 2x leverage
+            true, // Long position
             "Yield Strategy",
-            address(0x123),
+            address(0x123), // Mock lending protocol
             address(usdc),
             address(this)
         );
+        
+        // Verify wrapper was created
+        assertTrue(wrapperAddress != address(0), "Wrapper address should not be zero");
+        assertTrue(factory.isRegisteredWrapper(wrapperAddress), "Wrapper should be registered");
+        
+        // Verify wrapper is of correct type
+        RWAAssetWrapper wrapper = RWAAssetWrapper(wrapperAddress);
+        assertEq(wrapper.name(), "Hybrid Wrapper", "Wrapper name should match");
+        assertEq(address(wrapper.baseAsset()), address(usdc), "Base asset should be USDC");
+        assertEq(address(wrapper.priceOracle()), address(priceOracle), "Price oracle should match");
+        
+        // Verify that the wrapper has both a synthetic token and a yield strategy
+        address syntheticToken = address(wrapper.syntheticToken());
+        address yieldStrategy = address(wrapper.yieldStrategy());
+        
+        assertTrue(syntheticToken != address(0), "Synthetic token should not be zero address");
+        assertTrue(yieldStrategy != address(0), "Yield strategy should not be zero address");
     }
 }

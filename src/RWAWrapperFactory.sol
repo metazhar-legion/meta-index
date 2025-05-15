@@ -182,10 +182,53 @@ contract RWAWrapperFactory is Ownable {
         address yieldToken,
         address feeRecipient
     ) external onlyOwner returns (address wrapperAddress) {
-        // This is a placeholder for a more advanced implementation
-        // In a real implementation, you would create a specialized hybrid wrapper
-        // For now, we'll revert with an unsupported error
-        revert UnsupportedWrapperType();
+        // Validate parameters
+        if (perpetualRouter == address(0) || lendingProtocol == address(0) || 
+            yieldToken == address(0) || feeRecipient == address(0)) {
+            revert CommonErrors.ZeroAddress();
+        }
+        
+        // Create perpetual position wrapper
+        PerpetualPositionWrapper perpWrapper = new PerpetualPositionWrapper(
+            perpetualRouter,
+            baseAsset,
+            address(priceOracle),
+            marketId,
+            leverage,
+            isLong,
+            syntheticTokenSymbol
+        );
+        
+        // Create yield strategy
+        StablecoinLendingStrategy yieldStrategy = new StablecoinLendingStrategy(
+            yieldStrategyName,
+            baseAsset,
+            lendingProtocol,
+            yieldToken,
+            feeRecipient
+        );
+        
+        // Create RWA wrapper to manage both components
+        RWAAssetWrapper wrapper = new RWAAssetWrapper(
+            name,
+            IERC20(baseAsset),
+            perpWrapper,
+            yieldStrategy,
+            priceOracle
+        );
+        
+        // Transfer ownership of components to the wrapper
+        perpWrapper.transferOwnership(address(wrapper));
+        yieldStrategy.transferOwnership(address(wrapper));
+        
+        // Register wrapper
+        wrappers.push(address(wrapper));
+        isRegisteredWrapper[address(wrapper)] = true;
+        
+        emit WrapperCreated(address(wrapper), WrapperType.Hybrid, name);
+        emit PerpetualPositionWrapperCreated(address(perpWrapper), marketId, syntheticTokenSymbol);
+        
+        return address(wrapper);
     }
     
     /**
