@@ -60,8 +60,6 @@ contract RWAWrapperFactory is Ownable {
     /**
      * @dev Creates a standard RWA wrapper with synthetic token
      * @param name Name of the wrapper
-     * @param syntheticTokenName Name of the synthetic token
-     * @param syntheticTokenSymbol Symbol of the synthetic token
      * @param perpetualTrading Address of the perpetual trading contract
      * @param yieldStrategyName Name of the yield strategy
      * @param lendingProtocol Address of the lending protocol
