@@ -30,6 +30,7 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Events to test
     event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
     
     function setUp() public {
         // Deploy mock contracts
@@ -168,6 +169,92 @@ contract PerpetualPositionAdapterTest is Test {
         assertTrue(currentPrice > initialCollateral, "Price should increase with profit");
     }
     
+    // Test getCurrentPrice function directly
+    function testGetCurrentPrice() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
+        // First mint tokens to open a position
+        adapter.mint(address(this), initialCollateral);
+        
+        // Get the current price
+        uint256 currentPrice = adapter.getCurrentPrice();
+        
+        // Price should be at least the initial collateral amount
+        assertTrue(currentPrice >= initialCollateral, "Current price should be at least the initial collateral");
+    }
+    
+    // Test event emissions for mint
+    function testMintEvents() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
+        // Expect Transfer event when minting
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(0), address(this), initialCollateral);
+        
+        // Mint tokens
+        adapter.mint(address(this), initialCollateral);
+    }
+    
+    // Test event emissions for burn
+    function testBurnEvents() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
+        // First mint tokens
+        adapter.mint(address(this), initialCollateral);
+        
+        // Expect Transfer event when burning
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(this), address(0), initialCollateral);
+        
+        // Burn tokens
+        adapter.burn(address(this), initialCollateral);
+    }
+    
+    // Test edge cases for transfer
+    function testTransferEdgeCases() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
+        // First mint tokens to this address
+        adapter.mint(address(this), initialCollateral);
+        
+        // Test transferring to self
+        uint256 beforeBalance = adapter.balanceOf(address(this));
+        adapter.transfer(address(this), initialCollateral / 2);
+        uint256 afterBalance = adapter.balanceOf(address(this));
+        assertEq(beforeBalance, afterBalance, "Balance should not change when transferring to self");
+        
+        // Test transferring 0 amount
+        beforeBalance = adapter.balanceOf(address(this));
+        adapter.transfer(address(0x456), 0);
+        afterBalance = adapter.balanceOf(address(this));
+        assertEq(beforeBalance, afterBalance, "Balance should not change when transferring 0 amount");
+        
+        // Test transferring more than balance (should fail)
+        uint256 tooMuch = initialCollateral * 2;
+        vm.expectRevert(); // Should revert with insufficient balance
+        adapter.transfer(address(0x456), tooMuch);
+    }
+    
     // Test adjusting position size
     function testAdjustPositionSize() public {
         // Mint USDC to the wrapper directly to simulate the token transfer
@@ -260,6 +347,84 @@ contract PerpetualPositionAdapterTest is Test {
         // Test withdrawing zero amount
         vm.expectRevert(); // CommonErrors.ValueTooLow
         adapter.withdrawBaseAsset(0);
+    }
+    
+    // Test ERC20 transfer function
+    function testTransfer() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
+        // First mint tokens to this address
+        adapter.mint(address(this), initialCollateral);
+        
+        // Create a recipient address
+        address recipient = address(0x456);
+        
+        // Transfer half of the tokens to the recipient
+        uint256 transferAmount = initialCollateral / 2;
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(this), recipient, transferAmount);
+        adapter.transfer(recipient, transferAmount);
+        
+        // Check balances after transfer
+        assertEq(adapter.balanceOf(address(this)), initialCollateral - transferAmount, "Sender balance mismatch");
+        assertEq(adapter.balanceOf(recipient), transferAmount, "Recipient balance mismatch");
+    }
+    
+    // Test ERC20 approve and transferFrom functions
+    function testApproveAndTransferFrom() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
+        // First mint tokens to this address
+        adapter.mint(address(this), initialCollateral);
+        
+        // Create a spender address
+        address spender = address(0x789);
+        
+        // Approve the spender to spend tokens
+        uint256 approvalAmount = initialCollateral;
+        vm.expectEmit(true, true, false, true);
+        emit Approval(address(this), spender, approvalAmount);
+        adapter.approve(spender, approvalAmount);
+        
+        // Check allowance
+        assertEq(adapter.allowance(address(this), spender), approvalAmount, "Allowance mismatch");
+        
+        // Create a recipient address
+        address recipient = address(0x456);
+        
+        // Have the spender transfer tokens from this address to the recipient
+        uint256 transferAmount = initialCollateral / 2;
+        vm.prank(spender);
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(this), recipient, transferAmount);
+        adapter.transferFrom(address(this), recipient, transferAmount);
+        
+        // Check balances and allowance after transfer
+        assertEq(adapter.balanceOf(address(this)), initialCollateral - transferAmount, "Sender balance mismatch");
+        assertEq(adapter.balanceOf(recipient), transferAmount, "Recipient balance mismatch");
+        assertEq(adapter.allowance(address(this), spender), approvalAmount - transferAmount, "Allowance not decreased");
+    }
+    
+    // Test ERC20 metadata functions
+    function testERC20Metadata() public {
+        // Check name
+        assertEq(adapter.name(), "ETH Perpetual Position", "Name mismatch");
+        
+        // Check symbol
+        assertEq(adapter.symbol(), "ETH", "Symbol mismatch");
+        
+        // Check decimals
+        assertEq(adapter.decimals(), 18, "Decimals mismatch");
     }
     
     // Test access control
