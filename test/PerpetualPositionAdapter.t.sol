@@ -34,8 +34,8 @@ contract PerpetualPositionAdapterTest is Test {
     function setUp() public {
         // Deploy mock contracts
         usdc = new MockERC20("USD Coin", "USDC", 6);
-        router = new MockPerpetualRouter();
-        priceOracle = new MockPriceOracle();
+        priceOracle = new MockPriceOracle(address(usdc));
+        router = new MockPerpetualRouter(address(priceOracle), address(usdc));
         
         // Set initial price in the oracle
         priceOracle.setPrice(address(usdc), 1 * 10**18); // 1 USDC = $1
@@ -79,7 +79,7 @@ contract PerpetualPositionAdapterTest is Test {
         IRWASyntheticToken.AssetInfo memory info = adapter.getAssetInfo();
         assertEq(info.name, "ETH Perpetual Position", "Asset name mismatch");
         assertEq(info.symbol, assetSymbol, "Asset symbol mismatch");
-        assertEq(info.assetType, IRWASyntheticToken.AssetType.EQUITY_INDEX, "Asset type mismatch");
+        assertEq(uint8(info.assetType), uint8(IRWASyntheticToken.AssetType.EQUITY_INDEX), "Asset type mismatch");
         assertEq(info.oracle, address(priceOracle), "Oracle address mismatch");
         assertEq(info.marketId, marketId, "Market ID mismatch");
         assertTrue(info.isActive, "Asset should be active");
