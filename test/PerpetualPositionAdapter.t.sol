@@ -40,6 +40,18 @@ contract PerpetualPositionAdapterTest is Test {
         // Set initial price in the oracle
         priceOracle.setPrice(address(usdc), 1 * 10**18); // 1 USDC = $1
         
+        // Add a market to the router
+        router.addMarket(
+            marketId,
+            "ETH-USD",
+            address(usdc),
+            address(0x123), // Dummy quote token
+            10 // Max leverage
+        );
+        
+        // Mint USDC to the router for liquidity
+        usdc.mint(address(router), 100000 * 10**6); // 100,000 USDC
+        
         // Deploy perpetual position wrapper
         perpWrapper = new PerpetualPositionWrapper(
             address(router),
