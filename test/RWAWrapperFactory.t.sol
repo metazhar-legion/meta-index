@@ -216,4 +216,149 @@ contract RWAWrapperFactoryTest is Test {
         assertTrue(rwaToken != address(0), "RWA token should not be zero address");
         assertTrue(yieldStrategy != address(0), "Yield strategy should not be zero address");
     }
+    
+    // Test creating a hybrid wrapper with zero address router
+    function testCreateHybridWrapper_ZeroAddressRouter() public {
+        // Create parameter structs with zero address router
+        RWAWrapperFactory.PerpetualParams memory perpParams = RWAWrapperFactory.PerpetualParams({
+            router: address(0), // Zero address
+            marketId: marketId,
+            leverage: 2,
+            isLong: true,
+            tokenName: "Hybrid Token",
+            tokenSymbol: "HYB"
+        });
+        
+        RWAWrapperFactory.YieldParams memory yieldParams = RWAWrapperFactory.YieldParams({
+            strategyName: "Yield Strategy",
+            lendingProtocol: address(0x123),
+            yieldToken: address(usdc),
+            feeRecipient: address(this)
+        });
+        
+        // Expect revert when creating hybrid wrapper with zero address router
+        vm.expectRevert(); // CommonErrors.ZeroAddress
+        factory.createHybridWrapper(
+            "Hybrid Wrapper",
+            perpParams,
+            yieldParams
+        );
+    }
+    
+    // Test creating a hybrid wrapper with zero address lending protocol
+    function testCreateHybridWrapper_ZeroAddressLendingProtocol() public {
+        // Create parameter structs with zero address lending protocol
+        RWAWrapperFactory.PerpetualParams memory perpParams = RWAWrapperFactory.PerpetualParams({
+            router: address(router),
+            marketId: marketId,
+            leverage: 2,
+            isLong: true,
+            tokenName: "Hybrid Token",
+            tokenSymbol: "HYB"
+        });
+        
+        RWAWrapperFactory.YieldParams memory yieldParams = RWAWrapperFactory.YieldParams({
+            strategyName: "Yield Strategy",
+            lendingProtocol: address(0), // Zero address
+            yieldToken: address(usdc),
+            feeRecipient: address(this)
+        });
+        
+        // Expect revert when creating hybrid wrapper with zero address lending protocol
+        vm.expectRevert(); // CommonErrors.ZeroAddress
+        factory.createHybridWrapper(
+            "Hybrid Wrapper",
+            perpParams,
+            yieldParams
+        );
+    }
+    
+    // Test creating a hybrid wrapper with zero address yield token
+    function testCreateHybridWrapper_ZeroAddressYieldToken() public {
+        // Create parameter structs with zero address yield token
+        RWAWrapperFactory.PerpetualParams memory perpParams = RWAWrapperFactory.PerpetualParams({
+            router: address(router),
+            marketId: marketId,
+            leverage: 2,
+            isLong: true,
+            tokenName: "Hybrid Token",
+            tokenSymbol: "HYB"
+        });
+        
+        RWAWrapperFactory.YieldParams memory yieldParams = RWAWrapperFactory.YieldParams({
+            strategyName: "Yield Strategy",
+            lendingProtocol: address(0x123),
+            yieldToken: address(0), // Zero address
+            feeRecipient: address(this)
+        });
+        
+        // Expect revert when creating hybrid wrapper with zero address yield token
+        vm.expectRevert(); // CommonErrors.ZeroAddress
+        factory.createHybridWrapper(
+            "Hybrid Wrapper",
+            perpParams,
+            yieldParams
+        );
+    }
+    
+    // Test creating a hybrid wrapper with zero address fee recipient
+    function testCreateHybridWrapper_ZeroAddressFeeRecipient() public {
+        // Create parameter structs with zero address fee recipient
+        RWAWrapperFactory.PerpetualParams memory perpParams = RWAWrapperFactory.PerpetualParams({
+            router: address(router),
+            marketId: marketId,
+            leverage: 2,
+            isLong: true,
+            tokenName: "Hybrid Token",
+            tokenSymbol: "HYB"
+        });
+        
+        RWAWrapperFactory.YieldParams memory yieldParams = RWAWrapperFactory.YieldParams({
+            strategyName: "Yield Strategy",
+            lendingProtocol: address(0x123),
+            yieldToken: address(usdc),
+            feeRecipient: address(0) // Zero address
+        });
+        
+        // Expect revert when creating hybrid wrapper with zero address fee recipient
+        vm.expectRevert(); // CommonErrors.ZeroAddress
+        factory.createHybridWrapper(
+            "Hybrid Wrapper",
+            perpParams,
+            yieldParams
+        );
+    }
+    
+    // Test creating a hybrid wrapper as non-owner
+    function testCreateHybridWrapper_NonOwner() public {
+        // Create parameter structs
+        RWAWrapperFactory.PerpetualParams memory perpParams = RWAWrapperFactory.PerpetualParams({
+            router: address(router),
+            marketId: marketId,
+            leverage: 2,
+            isLong: true,
+            tokenName: "Hybrid Token",
+            tokenSymbol: "HYB"
+        });
+        
+        RWAWrapperFactory.YieldParams memory yieldParams = RWAWrapperFactory.YieldParams({
+            strategyName: "Yield Strategy",
+            lendingProtocol: address(0x123),
+            yieldToken: address(usdc),
+            feeRecipient: address(this)
+        });
+        
+        // Create a new address
+        address user = address(0x456);
+        
+        // Try to call createHybridWrapper as non-owner
+        vm.startPrank(user);
+        vm.expectRevert("Ownable: caller is not the owner");
+        factory.createHybridWrapper(
+            "Hybrid Wrapper",
+            perpParams,
+            yieldParams
+        );
+        vm.stopPrank();
+    }
 }
