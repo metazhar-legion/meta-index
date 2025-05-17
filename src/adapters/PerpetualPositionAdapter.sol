@@ -109,10 +109,10 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
      * @return price The current price (scaled by 10^18)
      */
     function getCurrentPriceFromOracle() internal view returns (uint256 price) {
-        // Get the price from the oracle based on the market ID
-        // Market ID is not needed here, but we could use it in future implementations
-        address baseToken = address(0x1234); // This should be determined based on the market ID
+        // Get the base token address from the perpetual wrapper
+        address baseToken = address(perpWrapper.baseAsset());
         
+        // Get the price from the oracle
         return priceOracle.getPrice(baseToken);
     }
     
