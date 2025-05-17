@@ -348,11 +348,11 @@ contract RWAWrapperFactoryTest is Test {
             feeRecipient: address(this)
         });
         
-        // Create a new address
-        address user = address(0x456);
+        // Create a new address for testing
+        address nonOwner = address(0x456);
         
         // Try to call createHybridWrapper as non-owner
-        vm.startPrank(user);
+        vm.startPrank(nonOwner);
         vm.expectRevert("Ownable: caller is not the owner");
         factory.createHybridWrapper(
             "Hybrid Wrapper",
