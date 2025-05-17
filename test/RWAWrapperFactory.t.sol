@@ -353,7 +353,9 @@ contract RWAWrapperFactoryTest is Test {
         
         // Try to call createHybridWrapper as non-owner
         vm.startPrank(nonOwner);
-        vm.expectRevert("Ownable: caller is not the owner");
+        // Use bytes4 selector for the OwnableUnauthorizedAccount error
+        bytes4 selector = bytes4(keccak256("OwnableUnauthorizedAccount(address)"));
+        vm.expectRevert(abi.encodeWithSelector(selector, nonOwner));
         factory.createHybridWrapper(
             "Hybrid Wrapper",
             perpParams,
