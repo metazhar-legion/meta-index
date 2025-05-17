@@ -213,21 +213,22 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test withdrawing base asset
     function testWithdrawBaseAsset() public {
-        // Mint USDC to the wrapper directly to simulate the token transfer
-        usdc.mint(address(perpWrapper), initialCollateral * 2); // Double the amount to have extra for withdrawal
+        // First mint tokens to the wrapper for the initial position
+        usdc.mint(address(perpWrapper), initialCollateral);
         
         // Ensure we have enough USDC and approve it for the adapter
         usdc.mint(address(this), initialCollateral);
         usdc.approve(address(adapter), initialCollateral);
         
-        // First mint tokens to open a position
+        // Mint tokens to open a position
         adapter.mint(address(this), initialCollateral);
         
-        // Mint additional USDC to the router to simulate profit
-        usdc.mint(address(router), initialCollateral);
+        // Now add extra USDC to the wrapper AFTER opening the position
+        // This simulates profit or additional funds that can be withdrawn
+        uint256 extraAmount = 500 * 10**6; // 500 USDC
+        usdc.mint(address(perpWrapper), extraAmount);
         
-        // Simulate a profit by transferring additional USDC to the wrapper
-        // This ensures there's available balance to withdraw
+        // Amount to withdraw (less than the extra amount)
         uint256 withdrawAmount = 200 * 10**6; // 200 USDC
         
         // Record balance before withdrawal
