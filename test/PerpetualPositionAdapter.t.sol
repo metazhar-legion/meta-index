@@ -99,6 +99,10 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test minting synthetic tokens
     function testMint() public {
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
         // Mint synthetic tokens
         adapter.mint(address(this), initialCollateral);
         
@@ -113,6 +117,10 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test burning synthetic tokens
     function testBurn() public {
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
         // First mint tokens
         adapter.mint(address(this), initialCollateral);
         
@@ -129,6 +137,10 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test updating price
     function testUpdatePrice() public {
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
         // First mint tokens to open a position
         adapter.mint(address(this), initialCollateral);
         
@@ -149,6 +161,10 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test adjusting position size
     function testAdjustPositionSize() public {
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral + 500 * 10**6);
+        usdc.approve(address(adapter), initialCollateral + 500 * 10**6);
+        
         // First mint tokens to open a position
         adapter.mint(address(this), initialCollateral);
         
@@ -162,6 +178,10 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test changing leverage
     function testChangeLeverage() public {
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
         // First mint tokens to open a position
         adapter.mint(address(this), initialCollateral);
         
@@ -175,6 +195,10 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test withdrawing base asset
     function testWithdrawBaseAsset() public {
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
         // First mint tokens to open a position
         adapter.mint(address(this), initialCollateral);
         
@@ -233,14 +257,18 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test access control
     function testAccessControl() public {
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral);
+        usdc.approve(address(adapter), initialCollateral);
+        
         // First mint tokens to open a position
         adapter.mint(address(this), initialCollateral);
         
         // Create a new address
-        address user = address(0x123);
+        address nonOwnerUser = address(0x123);
         
         // Try to call adapter methods as non-owner
-        vm.startPrank(user);
+        vm.startPrank(nonOwnerUser);
         
         // Test adjusting position as non-owner
         vm.expectRevert("Ownable: caller is not the owner");
