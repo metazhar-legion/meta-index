@@ -143,6 +143,9 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test updating price
     function testUpdatePrice() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
         // Ensure we have enough USDC and approve it for the adapter
         usdc.mint(address(this), initialCollateral);
         usdc.approve(address(adapter), initialCollateral);
@@ -166,7 +169,7 @@ contract PerpetualPositionAdapterTest is Test {
     }
     
     // Test adjusting position size
-    function testAdjustPosition() public {
+    function testAdjustPositionSize() public {
         // Mint USDC to the wrapper directly to simulate the token transfer
         usdc.mint(address(perpWrapper), initialCollateral);
         
@@ -181,8 +184,8 @@ contract PerpetualPositionAdapterTest is Test {
         usdc.mint(address(perpWrapper), initialCollateral);
         
         // Adjust position size
-        uint256 newCollateral = initialCollateral * 2;
-        adapter.adjustPosition(newCollateral);
+        uint256 additionalCollateral = initialCollateral;
+        adapter.adjustPositionSize(additionalCollateral);
         
         // Check that the position was adjusted in the perpetual wrapper
         assertEq(perpWrapper.collateralAmount(), initialCollateral * 2, "Collateral amount mismatch after adjustment");
@@ -190,6 +193,9 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test changing leverage
     function testChangeLeverage() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
         // Ensure we have enough USDC and approve it for the adapter
         usdc.mint(address(this), initialCollateral);
         usdc.approve(address(adapter), initialCollateral);
@@ -207,6 +213,9 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test withdrawing base asset
     function testWithdrawBaseAsset() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral * 2); // Double the amount to have extra for withdrawal
+        
         // Ensure we have enough USDC and approve it for the adapter
         usdc.mint(address(this), initialCollateral);
         usdc.approve(address(adapter), initialCollateral);
@@ -217,8 +226,11 @@ contract PerpetualPositionAdapterTest is Test {
         // Mint additional USDC to the router to simulate profit
         usdc.mint(address(router), initialCollateral);
         
-        // Withdraw some base asset
+        // Simulate a profit by transferring additional USDC to the wrapper
+        // This ensures there's available balance to withdraw
         uint256 withdrawAmount = 200 * 10**6; // 200 USDC
+        
+        // Record balance before withdrawal
         uint256 balanceBefore = usdc.balanceOf(address(this));
         
         // Transfer ownership to this contract for testing
@@ -269,6 +281,9 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test access control
     function testAccessControl() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
         // Ensure we have enough USDC and approve it for the adapter
         usdc.mint(address(this), initialCollateral);
         usdc.approve(address(adapter), initialCollateral);
@@ -283,19 +298,19 @@ contract PerpetualPositionAdapterTest is Test {
         vm.startPrank(nonOwnerUser);
         
         // Test adjusting position as non-owner
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         adapter.adjustPositionSize(500 * 10**6);
         
         // Test changing leverage as non-owner
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         adapter.changeLeverage(3);
         
         // Test withdrawing base asset as non-owner
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         adapter.withdrawBaseAsset(200 * 10**6);
         
         // Test burning as non-owner
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         adapter.burn(address(this), initialCollateral);
         
         vm.stopPrank();

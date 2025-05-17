@@ -281,8 +281,8 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
     }
     
     /**
-     * @dev Adjusts the position size
-     * @param additionalCollateral Additional collateral to add to the position
+     * @dev Adjusts the size of the position by adding more collateral
+     * @param additionalCollateral Additional collateral to add
      * @return success Whether the adjustment was successful
      */
     function adjustPositionSize(uint256 additionalCollateral) external onlyOwner nonReentrant returns (bool success) {
@@ -291,9 +291,13 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
         // Transfer additional collateral from sender to this contract
         baseAsset.safeTransferFrom(msg.sender, address(this), additionalCollateral);
         
+        // Calculate new total collateral amount
+        uint256 currentCollateral = perpWrapper.collateralAmount();
+        uint256 newTotalCollateral = currentCollateral + additionalCollateral;
+        
         // Approve and adjust position in the perpetual wrapper
         baseAsset.approve(address(perpWrapper), additionalCollateral);
-        perpWrapper.adjustPosition(additionalCollateral);
+        perpWrapper.adjustPosition(newTotalCollateral);
         
         // Update price after adjustment
         updatePrice();
