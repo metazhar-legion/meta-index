@@ -281,6 +281,71 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
     }
     
     /**
+     * @dev Adjusts the position size
+     * @param additionalCollateral Additional collateral to add to the position
+     * @return success Whether the adjustment was successful
+     */
+    function adjustPositionSize(uint256 additionalCollateral) external onlyOwner nonReentrant returns (bool success) {
+        if (additionalCollateral == 0) revert CommonErrors.ValueTooLow();
+        
+        // Transfer additional collateral from sender to this contract
+        baseAsset.safeTransferFrom(msg.sender, address(this), additionalCollateral);
+        
+        // Approve and adjust position in the perpetual wrapper
+        baseAsset.approve(address(perpWrapper), additionalCollateral);
+        perpWrapper.adjustPosition(additionalCollateral);
+        
+        // Update price after adjustment
+        updatePrice();
+        
+        return true;
+    }
+    
+    /**
+     * @dev Changes the leverage of the position
+     * @param newLeverage New leverage value
+     * @return success Whether the leverage change was successful
+     */
+    function changeLeverage(uint256 newLeverage) external onlyOwner nonReentrant returns (bool success) {
+        if (newLeverage == 0) revert CommonErrors.ValueTooLow();
+        
+        // Change leverage in the perpetual wrapper
+        perpWrapper.changeLeverage(newLeverage);
+        
+        // Update price after leverage change
+        updatePrice();
+        
+        return true;
+    }
+    
+    /**
+     * @dev Withdraws base asset from the adapter
+     * @param amount Amount to withdraw
+     * @return success Whether the withdrawal was successful
+     */
+    function withdrawBaseAsset(uint256 amount) external onlyOwner nonReentrant returns (bool success) {
+        if (amount == 0) revert CommonErrors.ValueTooLow();
+        
+        // Withdraw from the perpetual wrapper
+        perpWrapper.withdrawBaseAsset(amount);
+        
+        // Transfer base asset to the owner
+        uint256 balance = baseAsset.balanceOf(address(this));
+        if (balance >= amount) {
+            baseAsset.safeTransfer(owner(), amount);
+        } else if (balance > 0) {
+            baseAsset.safeTransfer(owner(), balance);
+        } else {
+            revert CommonErrors.InsufficientBalance();
+        }
+        
+        // Update price after withdrawal
+        updatePrice();
+        
+        return true;
+    }
+    
+    /**
      * @dev Emergency function to recover tokens sent to this contract
      * @param token The token to recover
      * @param to The address to send the tokens to
