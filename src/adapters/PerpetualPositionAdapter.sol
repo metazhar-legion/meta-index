@@ -310,7 +310,7 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
         if (newLeverage == 0) revert CommonErrors.ValueTooLow();
         
         // Change leverage in the perpetual wrapper
-        perpWrapper.changeLeverage(newLeverage);
+        perpWrapper.setLeverage(newLeverage);
         
         // Update price after leverage change
         updatePrice();
