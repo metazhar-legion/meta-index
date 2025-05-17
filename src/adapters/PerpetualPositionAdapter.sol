@@ -326,8 +326,8 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
     function withdrawBaseAsset(uint256 amount) external onlyOwner nonReentrant returns (bool success) {
         if (amount == 0) revert CommonErrors.ValueTooLow();
         
-        // Withdraw from the perpetual wrapper
-        perpWrapper.withdrawBaseAsset(amount);
+        // Withdraw from the perpetual wrapper to this contract
+        perpWrapper.withdrawBaseAsset(amount, address(this));
         
         // Transfer base asset to the owner
         uint256 balance = baseAsset.balanceOf(address(this));
