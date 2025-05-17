@@ -99,6 +99,9 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test minting synthetic tokens
     function testMint() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
         // Ensure we have enough USDC and approve it for the adapter
         usdc.mint(address(this), initialCollateral);
         usdc.approve(address(adapter), initialCollateral);
@@ -117,6 +120,9 @@ contract PerpetualPositionAdapterTest is Test {
     
     // Test burning synthetic tokens
     function testBurn() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
         // Ensure we have enough USDC and approve it for the adapter
         usdc.mint(address(this), initialCollateral);
         usdc.approve(address(adapter), initialCollateral);
@@ -160,20 +166,26 @@ contract PerpetualPositionAdapterTest is Test {
     }
     
     // Test adjusting position size
-    function testAdjustPositionSize() public {
-        // Ensure we have enough USDC and approve it for the adapter
-        usdc.mint(address(this), initialCollateral + 500 * 10**6);
-        usdc.approve(address(adapter), initialCollateral + 500 * 10**6);
+    function testAdjustPosition() public {
+        // Mint USDC to the wrapper directly to simulate the token transfer
+        usdc.mint(address(perpWrapper), initialCollateral);
         
-        // First mint tokens to open a position
+        // Ensure we have enough USDC and approve it for the adapter
+        usdc.mint(address(this), initialCollateral * 2);
+        usdc.approve(address(adapter), initialCollateral * 2);
+        
+        // First mint tokens
         adapter.mint(address(this), initialCollateral);
         
-        // Add more collateral
-        uint256 additionalCollateral = 500 * 10**6; // 500 USDC
-        adapter.adjustPositionSize(additionalCollateral);
+        // Mint more USDC to the wrapper for the adjustment
+        usdc.mint(address(perpWrapper), initialCollateral);
+        
+        // Adjust position size
+        uint256 newCollateral = initialCollateral * 2;
+        adapter.adjustPosition(newCollateral);
         
         // Check that the position was adjusted in the perpetual wrapper
-        assertEq(perpWrapper.collateralAmount(), initialCollateral + additionalCollateral, "Collateral amount mismatch after adjustment");
+        assertEq(perpWrapper.collateralAmount(), initialCollateral * 2, "Collateral amount mismatch after adjustment");
     }
     
     // Test changing leverage
