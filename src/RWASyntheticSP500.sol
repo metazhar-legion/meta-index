@@ -319,6 +319,26 @@ contract RWASyntheticSP500 is IRWASyntheticToken, ERC20, Ownable {
     }
 
     /**
+     * @dev Recovers any ERC20 tokens accidentally sent to the contract
+     * @param token The token to recover
+     * @param amount The amount to recover
+     */
+    function recoverToken(address token, uint256 amount) external onlyOwner {
+        if (token == address(baseAsset)) revert CommonErrors.InvalidValue();
+        IERC20(token).safeTransfer(owner(), amount);
+    }
+    
+    /**
+     * @dev Gets the current leverage ratio for the position
+     * @return leverage The current leverage ratio (scaled by 100, e.g., 300 = 3x)
+     */
+    function getCurrentLeverage() external pure override returns (uint256) {
+        // Default implementation returns a fixed leverage ratio
+        // In a real implementation, this would query the perpetual trading platform
+        return 100; // 1x leverage
+    }
+
+    /**
      * @dev Gets the total value of the synthetic asset
      * @return value The total value in the base asset
      */
