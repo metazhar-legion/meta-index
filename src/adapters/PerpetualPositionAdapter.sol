@@ -361,9 +361,11 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
     
     /**
      * @dev Gets the current leverage ratio for the position
-     * @return leverage The current leverage ratio (scaled by 100, e.g., 300 = 3x)
+     * @return The current leverage ratio (scaled by 100, e.g., 300 = 3x)
      */
-    function getCurrentLeverage() external view override returns (uint256 leverage) {
-        return perpWrapper.getLeverage();
+    function getCurrentLeverage() external view override returns (uint256) {
+        // Access the public leverage variable from the wrapper
+        // Multiply by 100 to match the expected scale (e.g., 3x leverage = 300)
+        return perpWrapper.leverage() * 100;
     }
 }
