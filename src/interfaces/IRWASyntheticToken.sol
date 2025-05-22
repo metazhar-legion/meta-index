@@ -68,4 +68,11 @@ interface IRWASyntheticToken is IERC20 {
      * @return success Whether the burn was successful
      */
     function burn(address from, uint256 amount) external returns (bool success);
+
+    /**
+     * @dev Gets the current leverage ratio for the position (if applicable)
+     * @return leverage The current leverage ratio (scaled by 100, e.g., 300 = 3x)
+     * @notice This function is optional and may revert if the token doesn't support leverage
+     */
+    function getCurrentLeverage() external view returns (uint256 leverage);
 }
