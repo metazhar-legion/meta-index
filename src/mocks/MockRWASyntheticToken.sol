@@ -102,4 +102,13 @@ contract MockRWASyntheticToken is ERC20, IRWASyntheticToken, Ownable {
         _burn(from, amount);
         return true;
     }
+    
+    /**
+     * @dev Gets the current leverage ratio for the position
+     * @return leverage The current leverage ratio (scaled by 100, e.g., 300 = 3x)
+     */
+    function getCurrentLeverage() external pure override returns (uint256 leverage) {
+        // Mock implementation returns a fixed leverage ratio
+        return 100; // 1x leverage
+    }
 }
