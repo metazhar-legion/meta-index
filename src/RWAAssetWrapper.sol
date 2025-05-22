@@ -132,7 +132,7 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
         baseAsset.safeTransferFrom(msg.sender, address(this), amount);
 
         // Calculate the allocation amounts
-        uint256 rwaAmount = (amount * RWA_ALLOCATION) / BASIS_POINTS;
+        uint256 rwaAmount = (amount * rwaAllocation) / BASIS_POINTS;
         uint256 yieldAmount = amount - rwaAmount;
 
         // Allocate to RWA token
@@ -274,7 +274,7 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
     function setAllocationRatio(uint256 _rwaAllocation, uint256 _yieldAllocation) external onlyOwner {
         // Validate parameters
         if (_rwaAllocation + _yieldAllocation != BASIS_POINTS) {
-            revert CommonErrors.InvalidParameters();
+            revert CommonErrors.InvalidValue();
         }
         
         // Update allocations
@@ -301,7 +301,7 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
         if (_maxPositionSizePercent > BASIS_POINTS || 
             _slippageTolerancePercent > BASIS_POINTS || 
             _rebalanceThreshold > BASIS_POINTS) {
-            revert CommonErrors.InvalidParameters();
+            revert CommonErrors.InvalidValue();
         }
         
         // Update risk parameters
