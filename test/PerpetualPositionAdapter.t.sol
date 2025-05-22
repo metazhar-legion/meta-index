@@ -82,7 +82,7 @@ contract PerpetualPositionAdapterTest is Test {
     }
     
     // Test initialization
-    function testInitialization() public {
+    function testInitialization() public view {
         // Check adapter state
         assertEq(address(adapter.perpWrapper()), address(perpWrapper), "Perpetual wrapper address mismatch");
         assertEq(address(adapter.baseAsset()), address(usdc), "Base asset mismatch");
@@ -299,7 +299,7 @@ contract PerpetualPositionAdapterTest is Test {
     }
     
     // Test withdrawing base asset
-    function testWithdrawBaseAsset() public {
+    function testWithdrawBaseAsset() public pure {
         // Create a mock implementation that doesn't rely on the wrapper's withdrawBaseAsset
         // We'll skip this test since it requires a more complex setup with mocking
         // In a real scenario, we would use a mocking framework to mock the wrapper's behavior
@@ -416,7 +416,7 @@ contract PerpetualPositionAdapterTest is Test {
     }
     
     // Test ERC20 metadata functions
-    function testERC20Metadata() public {
+    function testERC20Metadata() public view {
         // Check name
         assertEq(adapter.name(), "ETH Perpetual Position", "Name mismatch");
         
