@@ -333,6 +333,15 @@ contract MockRWASyntheticTokenAdvanced is IRWASyntheticToken {
     function totalSupply() external view override returns (uint256) {
         return _tokenTotalSupply;
     }
+    
+    /**
+     * @dev Gets the current leverage ratio for the position
+     * @return leverage The current leverage ratio (scaled by 100, e.g., 300 = 3x)
+     */
+    function getCurrentLeverage() external pure returns (uint256 leverage) {
+        // Mock implementation returns a fixed leverage ratio
+        return 100; // 1x leverage
+    }
 }
 
 /**
