@@ -21,10 +21,21 @@ import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
 contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    // Allocation constants
-    uint256 public constant RWA_ALLOCATION = 2000; // 20% in basis points
-    uint256 public constant YIELD_ALLOCATION = 8000; // 80% in basis points
+    // Allocation parameters (configurable)
+    uint256 public rwaAllocation = 2000; // 20% in basis points (default)
+    uint256 public yieldAllocation = 8000; // 80% in basis points (default)
     uint256 public constant BASIS_POINTS = 10000; // 100% in basis points
+    
+    // Risk management parameters
+    uint256 public maxLeverageRatio = 300; // 3x max leverage (in 0.01x)
+    uint256 public maxPositionSizePercent = 5000; // 50% of total value (in basis points)
+    uint256 public slippageTolerancePercent = 100; // 1% slippage tolerance (in basis points)
+    uint256 public rebalanceThreshold = 500; // 5% deviation before rebalancing (in basis points)
+    
+    // Circuit breaker parameters
+    bool public circuitBreakerActive = false;
+    uint256 public lastRebalanceTimestamp;
+    uint256 public minRebalanceInterval = 1 days; // Minimum time between rebalances
 
     // The RWA synthetic token
     IRWASyntheticToken public rwaToken;
@@ -49,8 +60,19 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
 
     // Events
     event CapitalAllocated(uint256 totalAmount, uint256 rwaAmount, uint256 yieldAmount);
+    event RebalancePerformed(uint256 currentRwaValue, uint256 targetRwaValue, uint256 totalValue);
+    event RebalanceFailed(string reason);
     event CapitalWithdrawn(uint256 requestedAmount, uint256 actualAmount);
     event YieldHarvested(uint256 amount);
+    event AllocationRatioUpdated(uint256 rwaAllocation, uint256 yieldAllocation);
+    event RiskParametersUpdated(
+        uint256 maxLeverageRatio,
+        uint256 maxPositionSizePercent,
+        uint256 slippageTolerancePercent,
+        uint256 rebalanceThreshold
+    );
+    event CircuitBreakerUpdated(bool active);
+    event RebalanceIntervalUpdated(uint256 interval);
 
     /**
      * @dev Constructor
@@ -245,41 +267,189 @@ contract RWAAssetWrapper is IAssetWrapper, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Rebalance the allocation between RWA and yield
-     * This ensures the 20/80 split is maintained
+     * @dev Sets the allocation ratio between RWA and yield strategy
+     * @param _rwaAllocation New RWA allocation in basis points
+     * @param _yieldAllocation New yield allocation in basis points
      */
-    function rebalance() external nonReentrant onlyOwner {
+    function setAllocationRatio(uint256 _rwaAllocation, uint256 _yieldAllocation) external onlyOwner {
+        // Validate parameters
+        if (_rwaAllocation + _yieldAllocation != BASIS_POINTS) {
+            revert CommonErrors.InvalidParameters();
+        }
+        
+        // Update allocations
+        rwaAllocation = _rwaAllocation;
+        yieldAllocation = _yieldAllocation;
+        
+        emit AllocationRatioUpdated(_rwaAllocation, _yieldAllocation);
+    }
+    
+    /**
+     * @dev Sets risk management parameters
+     * @param _maxLeverageRatio Maximum leverage ratio (in 0.01x)
+     * @param _maxPositionSizePercent Maximum position size as percentage of total value (in basis points)
+     * @param _slippageTolerancePercent Maximum acceptable slippage (in basis points)
+     * @param _rebalanceThreshold Deviation threshold before rebalancing (in basis points)
+     */
+    function setRiskParameters(
+        uint256 _maxLeverageRatio,
+        uint256 _maxPositionSizePercent,
+        uint256 _slippageTolerancePercent,
+        uint256 _rebalanceThreshold
+    ) external onlyOwner {
+        // Validate parameters
+        if (_maxPositionSizePercent > BASIS_POINTS || 
+            _slippageTolerancePercent > BASIS_POINTS || 
+            _rebalanceThreshold > BASIS_POINTS) {
+            revert CommonErrors.InvalidParameters();
+        }
+        
+        // Update risk parameters
+        maxLeverageRatio = _maxLeverageRatio;
+        maxPositionSizePercent = _maxPositionSizePercent;
+        slippageTolerancePercent = _slippageTolerancePercent;
+        rebalanceThreshold = _rebalanceThreshold;
+        
+        emit RiskParametersUpdated(
+            _maxLeverageRatio,
+            _maxPositionSizePercent,
+            _slippageTolerancePercent,
+            _rebalanceThreshold
+        );
+    }
+    
+    /**
+     * @dev Sets the circuit breaker state
+     * @param _active Whether the circuit breaker should be active
+     */
+    function setCircuitBreaker(bool _active) external onlyOwner {
+        circuitBreakerActive = _active;
+        emit CircuitBreakerUpdated(_active);
+    }
+    
+    /**
+     * @dev Sets the minimum time between rebalances
+     * @param _interval Minimum interval in seconds
+     */
+    function setRebalanceInterval(uint256 _interval) external onlyOwner {
+        minRebalanceInterval = _interval;
+        emit RebalanceIntervalUpdated(_interval);
+    }
+    
+    /**
+     * @dev Rebalances the allocation between RWA token and yield strategy
+     * Implements risk management controls and circuit breakers
+     * @return success True if rebalance was successful
+     */
+    function rebalance() external nonReentrant onlyOwner returns (bool success) {
+        // Check circuit breaker
+        if (circuitBreakerActive) {
+            emit RebalanceFailed("Circuit breaker active");
+            return false;
+        }
+        
+        // Check rebalance interval
+        if (block.timestamp < lastRebalanceTimestamp + minRebalanceInterval) {
+            emit RebalanceFailed("Rebalance interval too short");
+            return false;
+        }
+        
+        // Calculate current values
         uint256 totalValue = getRWAValue() + getYieldValue();
-        if (totalValue == 0) return;
-
+        if (totalValue == 0) return false;
+        
         uint256 currentRwaValue = getRWAValue();
-        uint256 targetRwaValue = (totalValue * RWA_ALLOCATION) / BASIS_POINTS;
-
+        uint256 targetRwaValue = (totalValue * rwaAllocation) / BASIS_POINTS;
+        
+        // Check if rebalance is needed (threshold check)
+        uint256 currentRwaPercent = (currentRwaValue * BASIS_POINTS) / totalValue;
+        if (currentRwaPercent > rwaAllocation) {
+            // RWA allocation is too high
+            if (currentRwaPercent - rwaAllocation < rebalanceThreshold) {
+                // Within threshold, no rebalance needed
+                return true;
+            }
+        } else {
+            // RWA allocation is too low
+            if (rwaAllocation - currentRwaPercent < rebalanceThreshold) {
+                // Within threshold, no rebalance needed
+                return true;
+            }
+        }
+        
+        // Enforce position size limits
+        if (targetRwaValue > (totalValue * maxPositionSizePercent) / BASIS_POINTS) {
+            targetRwaValue = (totalValue * maxPositionSizePercent) / BASIS_POINTS;
+        }
+        
+        // Check if we need to increase or decrease RWA allocation
         if (currentRwaValue < targetRwaValue) {
             // Need to allocate more to RWA
             uint256 amountToMove = targetRwaValue - currentRwaValue;
-
+            
             // Calculate shares to withdraw based on value proportion
             uint256 yieldValue = getYieldValue();
             uint256 sharesToWithdraw = yieldValue > 0 ? (amountToMove * yieldShares) / yieldValue : 0;
-
+            
             if (sharesToWithdraw > 0) {
-                yieldStrategy.withdraw(sharesToWithdraw);
-                yieldShares -= sharesToWithdraw;
-
-                // Allocate to RWA token
-                rwaToken.mint(address(this), amountToMove);
+                try yieldStrategy.withdraw(sharesToWithdraw) returns (uint256 withdrawnAmount) {
+                    // Check for excessive slippage
+                    uint256 expectedAmount = (yieldValue * sharesToWithdraw) / yieldShares;
+                    uint256 slippagePercent = expectedAmount > withdrawnAmount ? 
+                        ((expectedAmount - withdrawnAmount) * BASIS_POINTS) / expectedAmount : 0;
+                    
+                    if (slippagePercent > slippageTolerancePercent) {
+                        emit RebalanceFailed("Excessive slippage on yield withdrawal");
+                        return false;
+                    }
+                    
+                    yieldShares -= sharesToWithdraw;
+                    
+                    // Allocate to RWA token with actual withdrawn amount
+                    try rwaToken.mint(address(this), withdrawnAmount) {
+                        // Success
+                    } catch {
+                        emit RebalanceFailed("RWA mint failed");
+                        return false;
+                    }
+                } catch {
+                    emit RebalanceFailed("Yield withdrawal failed");
+                    return false;
+                }
             }
         } else if (currentRwaValue > targetRwaValue) {
             // Need to allocate more to yield
             uint256 amountToMove = currentRwaValue - targetRwaValue;
-
+            
+            // Check leverage limits for RWA (if it's a perpetual position)
+            try IRWASyntheticToken(address(rwaToken)).getCurrentLeverage() returns (uint256 currentLeverage) {
+                if (currentLeverage > maxLeverageRatio) {
+                    emit RebalanceFailed("Leverage limit exceeded");
+                    return false;
+                }
+            } catch {
+                // Not a leveraged position or doesn't support the interface
+            }
+            
             // Withdraw from RWA token
-            rwaToken.burn(address(this), amountToMove);
-
-            // Allocate to yield strategy
-            uint256 shares = yieldStrategy.deposit(amountToMove);
-            yieldShares += shares;
+            try rwaToken.burn(address(this), amountToMove) {
+                // Allocate to yield strategy
+                try yieldStrategy.deposit(amountToMove) returns (uint256 shares) {
+                    yieldShares += shares;
+                } catch {
+                    emit RebalanceFailed("Yield deposit failed");
+                    return false;
+                }
+            } catch {
+                emit RebalanceFailed("RWA burn failed");
+                return false;
+            }
         }
+        
+        // Update last rebalance timestamp
+        lastRebalanceTimestamp = block.timestamp;
+        
+        emit RebalancePerformed(currentRwaValue, targetRwaValue, totalValue);
+        return true;
     }
 }
