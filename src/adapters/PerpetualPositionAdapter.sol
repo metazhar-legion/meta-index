@@ -358,4 +358,12 @@ contract PerpetualPositionAdapter is IRWASyntheticToken, Ownable, ReentrancyGuar
     function recoverToken(address token, address to, uint256 amount) external onlyOwner {
         IERC20(token).safeTransfer(to, amount);
     }
+    
+    /**
+     * @dev Gets the current leverage ratio for the position
+     * @return leverage The current leverage ratio (scaled by 100, e.g., 300 = 3x)
+     */
+    function getCurrentLeverage() external view override returns (uint256 leverage) {
+        return perpWrapper.getLeverage();
+    }
 }
