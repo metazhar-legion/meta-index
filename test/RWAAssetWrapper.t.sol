@@ -225,6 +225,14 @@ contract RWAAssetWrapperTest is Test {
         wrapper.allocateCapital(ALLOCATION_AMOUNT);
         vm.stopPrank();
 
+        // Set the rebalance threshold to 0 to ensure rebalancing happens
+        // and set the rebalance interval to 0 to bypass the time check
+        vm.startPrank(owner);
+        wrapper.setRiskParameters(300, 5000, 100, 0); // 0% threshold means always rebalance
+        wrapper.setRebalanceInterval(0); // No minimum interval between rebalances
+        wrapper.setCircuitBreaker(false); // Ensure circuit breaker is off
+        vm.stopPrank();
+
         // Simulate price change in RWA token
         vm.startPrank(owner);
         priceOracle.setPrice(address(rwaToken), 2e18); // 100% increase
@@ -235,9 +243,16 @@ contract RWAAssetWrapperTest is Test {
         uint256 yieldValueBefore = wrapper.getYieldValue();
         uint256 totalValueBefore = wrapper.getValueInBaseAsset();
 
+        console.log("Before rebalance - RWA Value:", rwaValueBefore);
+        console.log("Before rebalance - Yield Value:", yieldValueBefore);
+        console.log("Before rebalance - Total Value:", totalValueBefore);
+
         // Calculate allocation percentages before rebalance
         uint256 rwaPercentBefore = (rwaValueBefore * BASIS_POINTS) / totalValueBefore;
         uint256 yieldPercentBefore = (yieldValueBefore * BASIS_POINTS) / totalValueBefore;
+
+        console.log("Before rebalance - RWA Percent:", rwaPercentBefore);
+        console.log("Before rebalance - Yield Percent:", yieldPercentBefore);
 
         // The RWA percentage should be higher than the target due to price increase
         assertGt(rwaPercentBefore, RWA_ALLOCATION);
@@ -245,22 +260,33 @@ contract RWAAssetWrapperTest is Test {
 
         // Rebalance
         vm.startPrank(owner);
-        wrapper.rebalance();
+        bool success = wrapper.rebalance();
         vm.stopPrank();
+
+        console.log("Rebalance success:", success);
+
+        // Verify rebalance was successful
+        assertTrue(success, "Rebalance should succeed");
 
         // Check values after rebalance
         uint256 rwaValueAfter = wrapper.getRWAValue();
         uint256 yieldValueAfter = wrapper.getYieldValue();
         uint256 totalValueAfter = wrapper.getValueInBaseAsset();
 
-        // Calculate allocation percentages after rebalance - commented out as these are not used
-        // uint256 rwaPercentAfter = (rwaValueAfter * BASIS_POINTS) / totalValueAfter;
-        // uint256 yieldPercentAfter = (yieldValueAfter * BASIS_POINTS) / totalValueAfter;
+        console.log("After rebalance - RWA Value:", rwaValueAfter);
+        console.log("After rebalance - Yield Value:", yieldValueAfter);
+        console.log("After rebalance - Total Value:", totalValueAfter);
 
-        // Instead of checking exact percentages, just verify the direction of rebalancing
-        // After price increase, RWA should decrease and yield should increase
-        assertLt(rwaValueAfter, rwaValueBefore, "RWA value should decrease after rebalance");
-        assertGt(yieldValueAfter, yieldValueBefore, "Yield value should increase after rebalance");
+        // Calculate allocation percentages after rebalance
+        uint256 rwaPercentAfter = (rwaValueAfter * BASIS_POINTS) / totalValueAfter;
+        uint256 yieldPercentAfter = (yieldValueAfter * BASIS_POINTS) / totalValueAfter;
+
+        console.log("After rebalance - RWA Percent:", rwaPercentAfter);
+        console.log("After rebalance - Yield Percent:", yieldPercentAfter);
+
+        // Verify the allocation percentages are closer to the target after rebalancing
+        assertLt(rwaPercentAfter, rwaPercentBefore, "RWA percentage should decrease after rebalance");
+        assertGt(yieldPercentAfter, yieldPercentBefore, "Yield percentage should increase after rebalance");
 
         // Verify total value is maintained
         assertApproxEqRel(totalValueAfter, totalValueBefore, 0.15e18); // Allow 15% deviation due to implementation details
