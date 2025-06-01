@@ -221,7 +221,8 @@ contract IndexFundVaultV2 is BaseVault {
                 // Only approve what we can actually allocate
                 uint256 actualAllocation = amountToAllocate > baseAssetBalance ? baseAssetBalance : amountToAllocate;
                 if (actualAllocation > 0) {
-                    baseAsset.approve(assetAddress, actualAllocation);
+                    // Approve the wrapper contract address, not the asset address
+                    baseAsset.approve(address(assetInfo.wrapper), actualAllocation);
                     assetInfo.wrapper.allocateCapital(actualAllocation);
                     baseAssetBalance -= actualAllocation;
                 }
