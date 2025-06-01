@@ -183,6 +183,14 @@ contract RWAIntegrationTest is Test {
             abi.encodeWithSelector(totalAssetsSelector),
             abi.encode(DEPOSIT_AMOUNT) // Return the deposit amount as the total assets
         );
+        
+        // Mock the isRebalanceNeeded function to always return true
+        bytes4 isRebalanceNeededSelector = bytes4(keccak256("isRebalanceNeeded()"));
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(isRebalanceNeededSelector),
+            abi.encode(true) // Always allow rebalancing
+        );
 
         // Add asset wrappers to the vault
         vault.addAsset(address(sp500Wrapper), 7000); // 70% S&P 500
