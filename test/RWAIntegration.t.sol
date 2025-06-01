@@ -150,6 +150,45 @@ contract RWAIntegrationTest is Test {
             abi.encode()
         );
         
+        // Mock the positionOpen function in PerpetualPositionWrapper to return true
+        bytes4 positionOpenSelector = bytes4(keccak256("positionOpen()"));
+        vm.mockCall(
+            address(sp500PerpWrapper),
+            abi.encodeWithSelector(positionOpenSelector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(btcPerpWrapper),
+            abi.encodeWithSelector(positionOpenSelector),
+            abi.encode(true)
+        );
+        
+        // Mock the leverage function in PerpetualPositionWrapper to return the leverage value
+        bytes4 leverageSelector = bytes4(keccak256("leverage()"));
+        vm.mockCall(
+            address(sp500PerpWrapper),
+            abi.encodeWithSelector(leverageSelector),
+            abi.encode(3) // 3x leverage
+        );
+        vm.mockCall(
+            address(btcPerpWrapper),
+            abi.encodeWithSelector(leverageSelector),
+            abi.encode(2) // 2x leverage
+        );
+        
+        // Mock the getCurrentLeverage function in PerpetualPositionAdapter to return the leverage value
+        bytes4 getCurrentLeverageSelector = bytes4(keccak256("getCurrentLeverage()"));
+        vm.mockCall(
+            address(sp500Adapter),
+            abi.encodeWithSelector(getCurrentLeverageSelector),
+            abi.encode(300) // 3x leverage (300 basis points)
+        );
+        vm.mockCall(
+            address(btcAdapter),
+            abi.encodeWithSelector(getCurrentLeverageSelector),
+            abi.encode(200) // 2x leverage (200 basis points)
+        );
+        
         // Mock the getPositionValue function to return values that match our expected allocation percentages
         bytes4 getPositionValueSelector = bytes4(keccak256("getPositionValue()"));
         vm.mockCall(
