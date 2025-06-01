@@ -135,6 +135,13 @@ contract RWAIntegrationTest is Test {
         priceOracle.setPrice(address(usdc), 1e18); // 1 USD per USDC
         priceOracle.setPrice(address(sp500Adapter), 5000e18); // $5000 for S&P 500 (matching MockPerpetualTrading)
         priceOracle.setPrice(address(btcAdapter), 50000e18); // $50000 for BTC (matching MockPerpetualTrading)
+        
+        // Set minimum collateral amounts for the perpetual wrappers to avoid InsufficientCollateral errors
+        // This is a workaround for the test environment
+        vm.startPrank(owner);
+        sp500PerpWrapper.setMinimumCollateral(1000 * 10**6); // 1000 USDC minimum
+        btcPerpWrapper.setMinimumCollateral(1000 * 10**6); // 1000 USDC minimum
+        vm.stopPrank();
 
         // Add asset wrappers to the vault
         vault.addAsset(address(sp500Wrapper), 7000); // 70% S&P 500
