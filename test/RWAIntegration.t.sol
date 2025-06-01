@@ -56,10 +56,10 @@ contract RWAIntegrationTest is Test {
         // Deploy mock contracts
         usdc = new MockERC20("USD Coin", "USDC", 6);
         priceOracle = new MockPriceOracle(address(usdc));
-        dex = new MockDEX();
+        dex = new MockDEX(address(priceOracle));
         feeManager = new MockFeeManager();
         yieldStrategy = new MockYieldStrategy(IERC20(address(usdc)), "USDC Lending Strategy");
-        perpetualTrading = new MockPerpetualTrading();
+        perpetualTrading = new MockPerpetualTrading(address(usdc));
 
         // Deploy vault
         vault = new IndexFundVaultV2(
@@ -72,22 +72,24 @@ contract RWAIntegrationTest is Test {
         // Deploy perpetual position wrappers
         bytes32 sp500MarketId = keccak256("SP500");
         sp500PerpWrapper = new PerpetualPositionWrapper(
-            IERC20(address(usdc)),
-            IPriceOracle(address(priceOracle)),
-            IPerpetualTrading(address(perpetualTrading)),
+            address(perpetualTrading), // perpetualRouter
+            address(usdc),
+            address(priceOracle),
             sp500MarketId,
-            "SPX",
-            300 // 3x leverage
+            300, // 3x leverage
+            true, // isLong
+            "SPX"
         );
 
         bytes32 btcMarketId = keccak256("BTC");
         btcPerpWrapper = new PerpetualPositionWrapper(
-            IERC20(address(usdc)),
-            IPriceOracle(address(priceOracle)),
-            IPerpetualTrading(address(perpetualTrading)),
+            address(perpetualTrading), // perpetualRouter
+            address(usdc),
+            address(priceOracle),
             btcMarketId,
-            "BTC",
-            200 // 2x leverage
+            200, // 2x leverage
+            true, // isLong
+            "BTC"
         );
 
         // Deploy perpetual position adapters
