@@ -76,7 +76,7 @@ contract RWAIntegrationTest is Test {
             address(usdc),
             address(priceOracle),
             sp500MarketId,
-            300, // 3x leverage
+            3, // 3x leverage
             true, // isLong
             "SPX"
         );
@@ -87,7 +87,7 @@ contract RWAIntegrationTest is Test {
             address(usdc),
             address(priceOracle),
             btcMarketId,
-            200, // 2x leverage
+            2, // 2x leverage
             true, // isLong
             "BTC"
         );
@@ -284,6 +284,7 @@ contract RWAIntegrationTest is Test {
         // Verify the leverage values match what we set
         assertEq(sp500Leverage, 300, "S&P 500 leverage should be 3x (300)");
         assertEq(btcLeverage, 200, "BTC leverage should be 2x (200)");
+        // Note: The PerpetualPositionWrapper uses raw multipliers (3, 2) but the adapter returns basis points (300, 200)
     }
 
     function test_RiskManagement() public {
