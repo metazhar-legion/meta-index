@@ -408,6 +408,9 @@ contract RWAIntegrationTest is Test {
         vm.startPrank(owner);
         vault.rebalance();
         
+        // Advance block timestamp to allow for rebalancing
+        vm.warp(block.timestamp + 1 days);
+        
         // Set risk parameters for the S&P 500 wrapper
         sp500Wrapper.setRiskParameters(
             250, // Max leverage 2.5x
@@ -421,6 +424,9 @@ contract RWAIntegrationTest is Test {
         vm.startPrank(owner);
         priceOracle.setPrice(address(sp500Adapter), 6000e18); // 50% increase for S&P 500
         vm.stopPrank();
+
+        // Advance block timestamp again to allow for another rebalance
+        vm.warp(block.timestamp + 1 days);
 
         // Trigger rebalance
         vm.startPrank(owner);
