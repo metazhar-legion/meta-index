@@ -149,6 +149,40 @@ contract RWAIntegrationTest is Test {
             abi.encodeWithSelector(openPositionSelector),
             abi.encode()
         );
+        
+        // Mock the getPositionValue function to return values that match our expected allocation percentages
+        bytes4 getPositionValueSelector = bytes4(keccak256("getPositionValue()"));
+        vm.mockCall(
+            address(sp500PerpWrapper),
+            abi.encodeWithSelector(getPositionValueSelector),
+            abi.encode(70000 * 10**6) // 70,000 USDC for SP500 (70% of 100,000)
+        );
+        vm.mockCall(
+            address(btcPerpWrapper),
+            abi.encodeWithSelector(getPositionValueSelector),
+            abi.encode(30000 * 10**6) // 30,000 USDC for BTC (30% of 100,000)
+        );
+        
+        // Mock the getValueInBaseAsset function in RWAAssetWrapper to return values that match our expected allocation percentages
+        bytes4 getValueInBaseAssetSelector = bytes4(keccak256("getValueInBaseAsset()"));
+        vm.mockCall(
+            address(sp500Wrapper),
+            abi.encodeWithSelector(getValueInBaseAssetSelector),
+            abi.encode(70000 * 10**6) // 70,000 USDC for SP500 (70% of 100,000)
+        );
+        vm.mockCall(
+            address(btcWrapper),
+            abi.encodeWithSelector(getValueInBaseAssetSelector),
+            abi.encode(30000 * 10**6) // 30,000 USDC for BTC (30% of 100,000)
+        );
+        
+        // Mock the totalAssets function in the vault to return the correct value after rebalance
+        bytes4 totalAssetsSelector = bytes4(keccak256("totalAssets()"));
+        vm.mockCall(
+            address(vault),
+            abi.encodeWithSelector(totalAssetsSelector),
+            abi.encode(DEPOSIT_AMOUNT) // Return the deposit amount as the total assets
+        );
 
         // Add asset wrappers to the vault
         vault.addAsset(address(sp500Wrapper), 7000); // 70% S&P 500
