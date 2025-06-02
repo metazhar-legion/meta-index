@@ -9,4 +9,15 @@ remappings = [
   "forge-std/=lib/forge-std/src/"
 ]
 
+# Forked testing configuration
+[rpc_endpoints]
+mainnet = "${ETH_RPC_URL}"
+polygon = "${POLYGON_RPC_URL}"
+arbitrum = "${ARBITRUM_RPC_URL}"
+
+# Enable via-ir for optimizations
+via_ir = true
+optimizer = true
+optimizer_runs = 20000
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
