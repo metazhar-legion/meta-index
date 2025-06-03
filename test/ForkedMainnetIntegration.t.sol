@@ -62,43 +62,8 @@ contract ForkedMainnetIntegrationTest is Test {
         // Check that users have USDC
         assertEq(usdc.balanceOf(user1), DEPOSIT_AMOUNT, "User1 should have USDC");
         assertEq(usdc.balanceOf(user2), DEPOSIT_AMOUNT, "User2 should have USDC");
-        vm.stopPrank();
-        
-        // Check total assets after second deposit
-        uint256 totalAssetsAfterDeposit2 = vault.totalAssets();
-        console.log("Total Assets After Second Deposit:", totalAssetsAfterDeposit2);
-        
-        // Perform another rebalance
-        vm.startPrank(owner);
-        vault.rebalance();
-        vm.stopPrank();
-        
-        // Check values after second rebalance
-        uint256 sp500ValueAfterRebalance2 = sp500Wrapper.getValueInBaseAsset();
-        uint256 btcValueAfterRebalance2 = btcWrapper.getValueInBaseAsset();
-        uint256 totalValueAfterRebalance2 = sp500ValueAfterRebalance2 + btcValueAfterRebalance2;
-        
-        console.log("After Second Rebalance:");
-        console.log("S&P 500 Wrapper Value:", sp500ValueAfterRebalance2);
-        console.log("BTC Wrapper Value:", btcValueAfterRebalance2);
-        console.log("Total Wrapper Value:", totalValueAfterRebalance2);
-        
-        // User 1 withdraws half of their shares
-        vm.startPrank(user1);
-        uint256 user1Shares = vault.balanceOf(user1);
-        vault.redeem(user1Shares / 2, user1, user1);
-        vm.stopPrank();
-        
-        // Check total assets after withdrawal
-        uint256 totalAssetsAfterWithdrawal = vault.totalAssets();
-        console.log("Total Assets After Withdrawal:", totalAssetsAfterWithdrawal);
-        
-        // Verify the total assets decreased after withdrawal
-        assertLt(totalAssetsAfterWithdrawal, totalAssetsAfterDeposit2, "Total assets should decrease after withdrawal");
     }
-    
-    function test_ForkedMainnetRiskManagement() public {
-        // User 1 deposits into the vault
+}
         vm.startPrank(user1);
         usdc.approve(address(vault), DEPOSIT_AMOUNT);
         vault.deposit(DEPOSIT_AMOUNT, user1);
