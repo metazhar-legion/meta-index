@@ -99,6 +99,9 @@ contract MockERC20 is IERC20, IERC20Metadata {
 }
 
 contract MockIndexFundVault is IERC20 {
+    // Constants
+    uint256 constant BASIS_POINTS = 10000; // 100% in basis points
+    
     address public baseAsset;
     address public feeManager;
     address public allocationManager;
@@ -319,6 +322,10 @@ contract MockRWAAssetWrapper {
     
     function getValueInBaseAsset() external view returns (uint256) {
         return _valueInBaseAsset;
+    }
+    
+    function setValueForTesting(uint256 value) external {
+        _valueInBaseAsset = value;
     }
 }
 
