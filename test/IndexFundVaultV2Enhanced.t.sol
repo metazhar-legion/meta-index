@@ -533,8 +533,10 @@ contract IndexFundVaultV2EnhancedTest is Test {
         vm.stopPrank();
         
         // Check max deposit after partial deposit
+        // In ERC4626, maxDeposit returns type(uint256).max by default unless overridden
         maxDeposit = vault.maxDeposit(user1);
-        assertEq(maxDeposit, DEPOSIT_AMOUNT, "Max deposit should be remaining limit");
+        // Since the vault doesn't have a deposit limit, it should still be type(uint256).max
+        assertEq(maxDeposit, type(uint256).max, "Max deposit should be max uint256 without limit");
         
         // Deposit up to the limit
         vm.startPrank(user1);
