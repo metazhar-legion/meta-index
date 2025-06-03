@@ -64,4 +64,3 @@ contract ForkedMainnetIntegrationTest is Test {
         assertEq(usdc.balanceOf(user2), DEPOSIT_AMOUNT, "User2 should have USDC");
     }
 }
-}
