@@ -192,7 +192,35 @@ contract MockIndexFundVault is IERC20 {
     
     function rebalance() external {
         require(msg.sender == owner, "Unauthorized");
-        // Mock implementation - in real contract this would rebalance assets
+        // Mock implementation of rebalance
+        
+        // Get allocation targets from allocation manager
+        MockCapitalAllocationManager caManager = MockCapitalAllocationManager(allocationManager);
+        uint256[] memory targets = caManager.getAllocationTargets();
+        
+        // Get wrappers from index registry
+        MockIndexRegistry registry = MockIndexRegistry(indexRegistry);
+        address[] memory wrappers = registry.getWrappers();
+        
+        // Ensure we have assets and targets
+        require(wrappers.length == targets.length, "Mismatched wrappers and targets");
+        require(wrappers.length > 0, "No wrappers registered");
+        
+        // Get total assets
+        uint256 totalAssetValue = _totalAssets;
+        require(totalAssetValue > 0, "No assets to rebalance");
+        
+        // Calculate target amounts for each wrapper
+        for (uint256 i = 0; i < wrappers.length; i++) {
+            // Calculate target amount based on allocation percentage
+            uint256 targetAmount = (totalAssetValue * targets[i]) / BASIS_POINTS;
+            
+            // Simulate deposit to wrapper
+            MockRWAAssetWrapper wrapper = MockRWAAssetWrapper(wrappers[i]);
+            
+            // Set the value in the wrapper directly for testing
+            wrapper.setValueForTesting(targetAmount);
+        }
     }
     
     function setFeeManager(address _feeManager) external {
