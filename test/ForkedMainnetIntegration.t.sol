@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
  * @title ForkedMainnetIntegrationTest
@@ -31,6 +32,7 @@ contract ForkedMainnetIntegrationTest is Test {
     
     // Contract instances
     IERC20 usdc;
+    IERC20Metadata usdcMetadata;
     
     function setUp() public {
         // Fork mainnet
@@ -48,6 +50,7 @@ contract ForkedMainnetIntegrationTest is Test {
         
         // Get USDC contract
         usdc = IERC20(USDC_ADDRESS);
+        usdcMetadata = IERC20Metadata(USDC_ADDRESS);
         
         // Fund users with USDC (using deal cheat code)
         deal(address(usdc), user1, DEPOSIT_AMOUNT);
@@ -57,7 +60,7 @@ contract ForkedMainnetIntegrationTest is Test {
     // Simple test function that should compile
     function test_ForkedMainnetBasic() public {
         // Check that we can access USDC
-        assertEq(usdc.decimals(), 6, "USDC should have 6 decimals");
+        assertEq(usdcMetadata.decimals(), 6, "USDC should have 6 decimals");
         
         // Check that users have USDC
         assertEq(usdc.balanceOf(user1), DEPOSIT_AMOUNT, "User1 should have USDC");
