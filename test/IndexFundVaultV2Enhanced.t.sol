@@ -611,19 +611,19 @@ contract IndexFundVaultV2EnhancedTest is Test {
         MockDEX newDEX = new MockDEX(address(newOracle));
         
         // Update price oracle
-        vault.setPriceOracle(newOracle);
+        vault.updatePriceOracle(newOracle);
         assertEq(address(vault.priceOracle()), address(newOracle), "Price oracle not updated");
         
         // Update DEX
-        vault.setDEX(newDEX);
+        vault.updateDEX(newDEX);
         assertEq(address(vault.dex()), address(newDEX), "DEX not updated");
         
         // Test with zero address
         vm.expectRevert(CommonErrors.ZeroAddress.selector);
-        vault.setPriceOracle(IPriceOracle(address(0)));
+        vault.updatePriceOracle(IPriceOracle(address(0)));
         
         vm.expectRevert(CommonErrors.ZeroAddress.selector);
-        vault.setDEX(IDEX(address(0)));
+        vault.updateDEX(IDEX(address(0)));
         
         vm.stopPrank();
     }
