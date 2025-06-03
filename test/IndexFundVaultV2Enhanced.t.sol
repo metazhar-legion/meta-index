@@ -141,6 +141,10 @@ contract VolatileAssetWrapper is MockAssetWrapper {
     function getValueInBaseAsset() external view virtual override returns (uint256) {
         return (_valueInBaseAsset * _priceMultiplier) / 1e18;
     }
+    
+    function getBaseValue() external view returns (uint256) {
+        return _valueInBaseAsset;
+    }
 }
 
 /**
@@ -201,9 +205,9 @@ contract IndexFundVaultV2EnhancedTest is Test {
             mockDEX
         );
         
-        // Set up roles
-        bytes32 managerRole = vault.MANAGER_ROLE();
-        vault.grantRole(managerRole, dao);
+        // The vault uses Ownable pattern, not AccessControl with roles
+        // In a real setup, we might want to transfer ownership
+        // vault.transferOwnership(dao);
         
         // Mint initial tokens
         mockUSDC.mint(address(this), INITIAL_SUPPLY);
@@ -289,8 +293,10 @@ contract IndexFundVaultV2EnhancedTest is Test {
         
         // Check total weight is 100%
         uint256 totalWeight = 0;
-        for (uint256 i = 0; i < vault.getAssetCount(); i++) {
-            address assetAddr = vault.assetList(i);
+        // Get active assets using the getActiveAssets method
+        address[] memory activeAssets = vault.getActiveAssets();
+        for (uint256 i = 0; i < activeAssets.length; i++) {
+            address assetAddr = activeAssets[i];
             (,uint256 weight,) = vault.getAssetInfo(assetAddr);
             totalWeight += weight;
         }
