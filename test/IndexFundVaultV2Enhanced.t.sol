@@ -183,8 +183,8 @@ contract IndexFundVaultV2EnhancedTest is Test {
         
         // Deploy mock contracts
         mockUSDC = new MockERC20("USD Coin", "USDC", 6);
-        mockPriceOracle = new MockPriceOracle();
-        mockDEX = new MockDEX();
+        mockPriceOracle = new MockPriceOracle(address(mockUSDC));
+        mockDEX = new MockDEX(address(mockPriceOracle));
         mockFeeManager = new MockFeeManager();
         
         // Deploy asset wrappers

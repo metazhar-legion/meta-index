@@ -13,6 +13,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IRWASyntheticToken} from "../src/interfaces/IRWASyntheticToken.sol";
 import {IYieldStrategy} from "../src/interfaces/IYieldStrategy.sol";
 import {IPriceOracle} from "../src/interfaces/IPriceOracle.sol";
+import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
+import {IDEX} from "../src/interfaces/IDEX.sol";
 
 /**
  * @title SetupLocalFork
@@ -117,23 +119,24 @@ contract SetupLocalFork is Script {
         // Note: In a real setup, we would need to implement this properly
         // For now, we're just deploying the contracts without setting allocations
         
-        // Deploy vault
+        // Create a mock DEX for the vault constructor
+        address mockDEX = address(0x5678); // Mock DEX address
+        
+        // Deploy vault with correct constructor parameters
         vault = new IndexFundVaultV2(
-            "Web3 Index Fund",
-            "W3IF",
-            USDC_ADDRESS,
-            address(feeManager),
-            address(allocationManager),
-            address(indexRegistry)
+            IERC20(USDC_ADDRESS),
+            IFeeManager(address(feeManager)),
+            IPriceOracle(address(priceOracle)),
+            IDEX(mockDEX)
         );
         
-        // Set vault as approved for wrappers
-        sp500Wrapper.setVault(address(vault));
-        btcWrapper.setVault(address(vault));
+        // Add assets to the vault
+        vault.addAsset(address(sp500Wrapper), 7000); // 70% weight
+        vault.addAsset(address(btcWrapper), 3000);   // 30% weight
         
-        // Grant roles
-        bytes32 managerRole = vault.MANAGER_ROLE();
-        vault.grantRole(managerRole, daoMember);
+        // The vault uses Ownable pattern, not AccessControl with roles
+        // In a real setup, we might want to transfer ownership or set up a governance mechanism
+        // vault.transferOwnership(daoMember);
         
         // Stop broadcasting
         vm.stopBroadcast();
