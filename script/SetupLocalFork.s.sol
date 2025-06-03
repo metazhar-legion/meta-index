@@ -77,7 +77,7 @@ contract SetupLocalFork is Script {
         feeManager.setPerformanceFeePercentage(1000); // 10% performance fee (in basis points)
         
         // Deploy capital allocation manager
-        allocationManager = new CapitalAllocationManager();
+        allocationManager = new CapitalAllocationManager(USDC_ADDRESS);
         
         // Deploy index registry
         indexRegistry = new IndexRegistry();
