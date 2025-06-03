@@ -28,44 +28,32 @@ contract ForkedMainnetIntegrationTest is Test {
     address owner;
     address user1;
     address user2;
-    address treasury;
     
-    // Contracts
+    // Contract instances
     IERC20 usdc;
-    IndexFundVaultV2 vault;
-    RWAAssetWrapper sp500Wrapper;
-    RWAAssetWrapper btcWrapper;
-    PerpetualPositionAdapter sp500Adapter;
-    PerpetualPositionAdapter btcAdapter;
-    PerpetualPositionWrapper sp500PerpWrapper;
-    PerpetualPositionWrapper btcPerpWrapper;
-    
-    // Fork ID
-    uint256 mainnetFork;
     
     function setUp() public {
-        // Create a fork of mainnet
-        mainnetFork = vm.createFork("mainnet");
-        vm.selectFork(mainnetFork);
+        // Fork mainnet
+        vm.createSelectFork(vm.envString("ETH_RPC_URL"));
         
         // Set up test accounts
         owner = makeAddr("owner");
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
-        treasury = makeAddr("treasury");
         
-        // Deal USDC to test accounts
-        vm.startPrank(address(0)); // Use address(0) as the sender for deal
+        // Fund test accounts
+        vm.deal(owner, 100 ether);
+        vm.deal(user1, 100 ether);
+        vm.deal(user2, 100 ether);
+        
+        // Get USDC contract
         usdc = IERC20(USDC_ADDRESS);
-        deal(address(usdc), user1, DEPOSIT_AMOUNT * 2);
-        deal(address(usdc), user2, DEPOSIT_AMOUNT * 2);
-        deal(address(usdc), owner, DEPOSIT_AMOUNT);
-        vm.stopPrank();
         
-        // Deploy the contracts
-        _deployContracts();
+        // Fund users with USDC (using deal cheat code)
+        deal(address(usdc), user1, DEPOSIT_AMOUNT);
+        deal(address(usdc), user2, DEPOSIT_AMOUNT);
     }
-    
+}
     function _deployContracts() internal {
         vm.startPrank(owner);
         
