@@ -50,7 +50,7 @@ contract MockAssetWrapper is IAssetWrapper {
         return amount;
     }
 
-    function getValueInBaseAsset() external view override returns (uint256) {
+    function getValueInBaseAsset() external view virtual override returns (uint256) {
         return _valueInBaseAsset;
     }
 
