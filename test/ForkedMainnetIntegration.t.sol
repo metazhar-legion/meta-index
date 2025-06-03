@@ -98,6 +98,243 @@ contract MockERC20 is IERC20, IERC20Metadata {
     }
 }
 
+contract MockIndexFundVault is IERC20 {
+    address public baseAsset;
+    address public feeManager;
+    address public allocationManager;
+    address public indexRegistry;
+    uint256 private _totalSupply;
+    uint256 private _totalAssets;
+    mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowances;
+    address public owner;
+    
+    constructor(address _baseAsset, address _feeManager, address _allocationManager, address _indexRegistry) {
+        baseAsset = _baseAsset;
+        feeManager = _feeManager;
+        allocationManager = _allocationManager;
+        indexRegistry = _indexRegistry;
+        owner = msg.sender;
+    }
+    
+    function totalSupply() external view override returns (uint256) {
+        return _totalSupply;
+    }
+    
+    function balanceOf(address account) external view override returns (uint256) {
+        return _balances[account];
+    }
+    
+    function allowance(address owner, address spender) external view override returns (uint256) {
+        return _allowances[owner][spender];
+    }
+    
+    function transfer(address to, uint256 amount) external override returns (bool) {
+        _transfer(msg.sender, to, amount);
+        return true;
+    }
+    
+    function approve(address spender, uint256 amount) external override returns (bool) {
+        _approve(msg.sender, spender, amount);
+        return true;
+    }
+    
+    function transferFrom(address from, address to, uint256 amount) external override returns (bool) {
+        _spendAllowance(from, msg.sender, amount);
+        _transfer(from, to, amount);
+        return true;
+    }
+    
+    function totalAssets() external view returns (uint256) {
+        return _totalAssets;
+    }
+    
+    function deposit(uint256 assets, address receiver) external returns (uint256) {
+        require(assets > 0, "Cannot deposit 0");
+        
+        // Transfer assets from sender to vault
+        IERC20(baseAsset).transferFrom(msg.sender, address(this), assets);
+        
+        // Calculate shares to mint (1:1 for simplicity in mock)
+        uint256 shares = assets;
+        
+        // Mint shares to receiver
+        _mint(receiver, shares);
+        
+        // Update total assets
+        _totalAssets += assets;
+        
+        return shares;
+    }
+    
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256) {
+        require(shares > 0, "Cannot redeem 0");
+        
+        // If caller is not the owner, check allowance
+        if (msg.sender != owner) {
+            _spendAllowance(owner, msg.sender, shares);
+        }
+        
+        // Calculate assets to withdraw (1:1 for simplicity in mock)
+        uint256 assets = shares;
+        
+        // Burn shares from owner
+        _burn(owner, shares);
+        
+        // Transfer assets to receiver
+        IERC20(baseAsset).transfer(receiver, assets);
+        
+        // Update total assets
+        _totalAssets -= assets;
+        
+        return assets;
+    }
+    
+    function rebalance() external {
+        require(msg.sender == owner, "Unauthorized");
+        // Mock implementation - in real contract this would rebalance assets
+    }
+    
+    function setFeeManager(address _feeManager) external {
+        require(msg.sender == owner, "Unauthorized");
+        feeManager = _feeManager;
+    }
+    
+    function setAllocationManager(address _allocationManager) external {
+        require(msg.sender == owner, "Unauthorized");
+        allocationManager = _allocationManager;
+    }
+    
+    function setIndexRegistry(address _indexRegistry) external {
+        require(msg.sender == owner, "Unauthorized");
+        indexRegistry = _indexRegistry;
+    }
+    
+    function _transfer(address from, address to, uint256 amount) internal {
+        require(from != address(0), "ERC20: transfer from the zero address");
+        require(to != address(0), "ERC20: transfer to the zero address");
+        
+        uint256 fromBalance = _balances[from];
+        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+        
+        _balances[from] = fromBalance - amount;
+        _balances[to] += amount;
+    }
+    
+    function _mint(address account, uint256 amount) internal {
+        require(account != address(0), "ERC20: mint to the zero address");
+        
+        _totalSupply += amount;
+        _balances[account] += amount;
+    }
+    
+    function _burn(address account, uint256 amount) internal {
+        require(account != address(0), "ERC20: burn from the zero address");
+        
+        uint256 accountBalance = _balances[account];
+        require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
+        
+        _balances[account] = accountBalance - amount;
+        _totalSupply -= amount;
+    }
+    
+    function _approve(address owner, address spender, uint256 amount) internal {
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+        
+        _allowances[owner][spender] = amount;
+    }
+    
+    function _spendAllowance(address owner, address spender, uint256 amount) internal {
+        uint256 currentAllowance = _allowances[owner][spender];
+        if (currentAllowance != type(uint256).max) {
+            require(currentAllowance >= amount, "ERC20: insufficient allowance");
+            _approve(owner, spender, currentAllowance - amount);
+        }
+    }
+}
+
+contract MockRWAAssetWrapper {
+    string public name;
+    string public symbol;
+    address public baseAsset;
+    address public vault;
+    uint256 private _valueInBaseAsset;
+    
+    constructor(string memory _name, string memory _symbol, address _baseAsset) {
+        name = _name;
+        symbol = _symbol;
+        baseAsset = _baseAsset;
+        _valueInBaseAsset = 0;
+    }
+    
+    function setVault(address _vault) external {
+        vault = _vault;
+    }
+    
+    function deposit(uint256 amount) external returns (bool) {
+        require(msg.sender == vault, "Only vault can deposit");
+        // In a real implementation, this would handle the deposit logic
+        // For mock, just update the value
+        _valueInBaseAsset += amount;
+        return true;
+    }
+    
+    function withdraw(uint256 amount) external returns (bool) {
+        require(msg.sender == vault, "Only vault can withdraw");
+        require(_valueInBaseAsset >= amount, "Insufficient balance");
+        // In a real implementation, this would handle the withdrawal logic
+        // For mock, just update the value
+        _valueInBaseAsset -= amount;
+        return true;
+    }
+    
+    function getValueInBaseAsset() external view returns (uint256) {
+        return _valueInBaseAsset;
+    }
+}
+
+contract MockFeeManager {
+    uint256 public managementFee = 200; // 2% annual fee (in basis points)
+    uint256 public performanceFee = 1000; // 10% performance fee (in basis points)
+    
+    function calculateFees(uint256 assets, uint256 profit) external view returns (uint256, uint256) {
+        uint256 mgmtFee = (assets * managementFee) / 10000; // Simplified annual fee calculation
+        uint256 perfFee = (profit * performanceFee) / 10000;
+        return (mgmtFee, perfFee);
+    }
+}
+
+contract MockCapitalAllocationManager {
+    uint256[] public allocationTargets;
+    
+    function setAllocationTargets(uint256[] memory targets) external {
+        delete allocationTargets;
+        for (uint256 i = 0; i < targets.length; i++) {
+            allocationTargets.push(targets[i]);
+        }
+    }
+    
+    function getAllocationTargets() external view returns (uint256[] memory) {
+        return allocationTargets;
+    }
+}
+
+contract MockIndexRegistry {
+    address[] public wrappers;
+    
+    function setWrappers(address[] memory _wrappers) external {
+        delete wrappers;
+        for (uint256 i = 0; i < _wrappers.length; i++) {
+            wrappers.push(_wrappers[i]);
+        }
+    }
+    
+    function getWrappers() external view returns (address[] memory) {
+        return wrappers;
+    }
+}
+
 /**
  * @title ForkedMainnetIntegrationTest
  * @notice Integration tests for the Index Fund Vault using a forked mainnet environment
@@ -109,7 +346,7 @@ contract ForkedMainnetIntegrationTest is Test {
     uint256 constant DEPOSIT_AMOUNT = 100_000 * 10**6; // 100,000 USDC
     
     // Mainnet contract addresses
-    address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; // USDC on mainnet
     address constant AAVE_LENDING_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2; // Aave V3 Pool
     address constant UNISWAP_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564; // Uniswap V3 Router
     
@@ -190,6 +427,9 @@ contract ForkedMainnetIntegrationTest is Test {
     
     // Additional setup for vault tests
     function _setupVaultEnvironment() internal {
+        // Set owner as the deployer of all contracts
+        vm.startPrank(owner);
+        
         // Deploy mock contracts
         feeManager = new MockFeeManager();
         allocationManager = new MockCapitalAllocationManager();
@@ -222,6 +462,8 @@ contract ForkedMainnetIntegrationTest is Test {
         // Set vault as approved for wrappers
         sp500Wrapper.setVault(address(vault));
         btcWrapper.setVault(address(vault));
+        
+        vm.stopPrank();
         
         // Approve vault to spend user USDC
         vm.startPrank(user1);
