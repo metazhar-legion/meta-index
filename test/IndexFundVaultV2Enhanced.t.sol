@@ -424,6 +424,9 @@ contract IndexFundVaultV2EnhancedTest is Test {
         vault.deposit(DEPOSIT_AMOUNT, user1);
         vm.stopPrank();
         
+        // Manually set the value in the yield wrapper since rebalance might not be triggered automatically
+        yieldWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT);
+        
         // Set yield rate to 10% APY
         yieldWrapper.setYieldRate(1000); // 10% in basis points
         
