@@ -138,7 +138,7 @@ contract VolatileAssetWrapper is MockAssetWrapper {
         _priceMultiplier = multiplier;
     }
     
-    function getValueInBaseAsset() external view override returns (uint256) {
+    function getValueInBaseAsset() external view virtual override returns (uint256) {
         return (_valueInBaseAsset * _priceMultiplier) / 1e18;
     }
 }
