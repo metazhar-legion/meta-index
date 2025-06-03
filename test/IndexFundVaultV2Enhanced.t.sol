@@ -441,6 +441,11 @@ contract IndexFundVaultV2EnhancedTest is Test {
         // Manually set the value in the yield wrapper since rebalance might not be triggered automatically
         yieldWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT);
         
+        // We need to mint tokens to the wrapper to simulate it having actual tokens
+        vm.startPrank(owner);
+        mockUSDC.mint(address(yieldWrapper), DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
         // Set yield rate to 10% APY
         yieldWrapper.setYieldRate(1000); // 10% in basis points
         
