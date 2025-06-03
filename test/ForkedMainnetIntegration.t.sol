@@ -180,6 +180,59 @@ contract ForkedMainnetIntegrationTest is Test {
         mockUsdc.mint(user2, DEPOSIT_AMOUNT);
     }
     
+    // Mock contracts for testing
+    MockIndexFundVault vault;
+    MockRWAAssetWrapper sp500Wrapper;
+    MockRWAAssetWrapper btcWrapper;
+    MockFeeManager feeManager;
+    MockCapitalAllocationManager allocationManager;
+    MockIndexRegistry indexRegistry;
+    
+    // Additional setup for vault tests
+    function _setupVaultEnvironment() internal {
+        // Deploy mock contracts
+        feeManager = new MockFeeManager();
+        allocationManager = new MockCapitalAllocationManager();
+        indexRegistry = new MockIndexRegistry();
+        
+        // Deploy asset wrappers
+        sp500Wrapper = new MockRWAAssetWrapper("S&P 500", "SP500", address(usdc));
+        btcWrapper = new MockRWAAssetWrapper("Bitcoin", "BTC", address(usdc));
+        
+        // Register wrappers with index registry
+        address[] memory wrappers = new address[](2);
+        wrappers[0] = address(sp500Wrapper);
+        wrappers[1] = address(btcWrapper);
+        indexRegistry.setWrappers(wrappers);
+        
+        // Set allocation targets
+        uint256[] memory targets = new uint256[](2);
+        targets[0] = 6000; // 60% S&P 500
+        targets[1] = 4000; // 40% BTC
+        allocationManager.setAllocationTargets(targets);
+        
+        // Deploy vault
+        vault = new MockIndexFundVault(
+            address(usdc),
+            address(feeManager),
+            address(allocationManager),
+            address(indexRegistry)
+        );
+        
+        // Set vault as approved for wrappers
+        sp500Wrapper.setVault(address(vault));
+        btcWrapper.setVault(address(vault));
+        
+        // Approve vault to spend user USDC
+        vm.startPrank(user1);
+        usdc.approve(address(vault), DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
+        vm.startPrank(user2);
+        usdc.approve(address(vault), DEPOSIT_AMOUNT);
+        vm.stopPrank();
+    }
+    
     // Test basic USDC functionality
     function test_USDCBasicFunctionality() public {
         // Check that we can access USDC
@@ -221,5 +274,170 @@ contract ForkedMainnetIntegrationTest is Test {
         
         // Check remaining allowance
         assertEq(usdc.allowance(user1, user2), DEPOSIT_AMOUNT - (DEPOSIT_AMOUNT / 4), "Allowance should be reduced");
+    }
+    
+    // Test vault deposit and withdrawal functionality
+    function test_VaultDepositAndWithdraw() public {
+        // Set up vault environment
+        _setupVaultEnvironment();
+        
+        // User1 deposits into the vault
+        vm.startPrank(user1);
+        uint256 sharesMinted = vault.deposit(DEPOSIT_AMOUNT / 2, user1);
+        vm.stopPrank();
+        
+        // Verify shares minted and vault state
+        assertGt(sharesMinted, 0, "Should mint shares on deposit");
+        assertEq(vault.balanceOf(user1), sharesMinted, "User1 should have shares");
+        assertEq(vault.totalSupply(), sharesMinted, "Total supply should match shares minted");
+        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT / 2, "Total assets should match deposit");
+        
+        // User2 deposits into the vault
+        vm.startPrank(user2);
+        uint256 sharesMinted2 = vault.deposit(DEPOSIT_AMOUNT / 2, user2);
+        vm.stopPrank();
+        
+        // Verify shares minted and vault state after second deposit
+        assertGt(sharesMinted2, 0, "Should mint shares on second deposit");
+        assertEq(vault.balanceOf(user2), sharesMinted2, "User2 should have shares");
+        assertEq(vault.totalSupply(), sharesMinted + sharesMinted2, "Total supply should include both deposits");
+        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT, "Total assets should match both deposits");
+        
+        // User1 withdraws half their shares
+        vm.startPrank(user1);
+        uint256 assetsWithdrawn = vault.redeem(sharesMinted / 2, user1, user1);
+        vm.stopPrank();
+        
+        // Verify withdrawal and vault state
+        assertGt(assetsWithdrawn, 0, "Should withdraw assets");
+        assertEq(vault.balanceOf(user1), sharesMinted / 2, "User1 should have half shares left");
+        assertEq(vault.totalSupply(), (sharesMinted / 2) + sharesMinted2, "Total supply should be reduced");
+        assertEq(vault.totalAssets(), DEPOSIT_AMOUNT - assetsWithdrawn, "Total assets should be reduced");
+    }
+    
+    // Test vault rebalancing functionality
+    function test_VaultRebalance() public {
+        // Set up vault environment
+        _setupVaultEnvironment();
+        
+        // User1 deposits into the vault
+        vm.startPrank(user1);
+        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        
+        // Perform initial rebalance
+        vm.startPrank(owner);
+        vault.rebalance();
+        vm.stopPrank();
+        
+        // Check wrapper allocations after rebalance
+        uint256 sp500Value = sp500Wrapper.getValueInBaseAsset();
+        uint256 btcValue = btcWrapper.getValueInBaseAsset();
+        uint256 totalValue = sp500Value + btcValue;
+        
+        // Calculate allocation percentages
+        uint256 sp500Percent = (sp500Value * BASIS_POINTS) / totalValue;
+        uint256 btcPercent = (btcValue * BASIS_POINTS) / totalValue;
+        
+        // Verify allocations match targets (with small tolerance for rounding)
+        assertApproxEqRel(sp500Percent, 6000, 1e16, "S&P 500 allocation should be close to 60%");
+        assertApproxEqRel(btcPercent, 4000, 1e16, "BTC allocation should be close to 40%");
+        
+        // Change allocation targets
+        uint256[] memory newTargets = new uint256[](2);
+        newTargets[0] = 7000; // 70% S&P 500
+        newTargets[1] = 3000; // 30% BTC
+        
+        vm.startPrank(owner);
+        allocationManager.setAllocationTargets(newTargets);
+        vault.rebalance();
+        vm.stopPrank();
+        
+        // Check wrapper allocations after second rebalance
+        sp500Value = sp500Wrapper.getValueInBaseAsset();
+        btcValue = btcWrapper.getValueInBaseAsset();
+        totalValue = sp500Value + btcValue;
+        
+        // Calculate new allocation percentages
+        sp500Percent = (sp500Value * BASIS_POINTS) / totalValue;
+        btcPercent = (btcValue * BASIS_POINTS) / totalValue;
+        
+        // Verify allocations match new targets
+        assertApproxEqRel(sp500Percent, 7000, 1e16, "S&P 500 allocation should be close to 70%");
+        assertApproxEqRel(btcPercent, 3000, 1e16, "BTC allocation should be close to 30%");
+    }
+    
+    // Test access control for vault functions
+    function test_VaultAccessControl() public {
+        // Set up vault environment
+        _setupVaultEnvironment();
+        
+        // Test rebalance access control
+        vm.startPrank(user1);
+        vm.expectRevert("Unauthorized"); // Assuming this is the error message
+        vault.rebalance();
+        vm.stopPrank();
+        
+        // Test setFeeManager access control
+        vm.startPrank(user1);
+        vm.expectRevert("Unauthorized");
+        vault.setFeeManager(address(0x123));
+        vm.stopPrank();
+        
+        // Test setAllocationManager access control
+        vm.startPrank(user1);
+        vm.expectRevert("Unauthorized");
+        vault.setAllocationManager(address(0x123));
+        vm.stopPrank();
+        
+        // Test setIndexRegistry access control
+        vm.startPrank(user1);
+        vm.expectRevert("Unauthorized");
+        vault.setIndexRegistry(address(0x123));
+        vm.stopPrank();
+        
+        // Verify owner can call these functions
+        vm.startPrank(owner);
+        vault.setFeeManager(address(0x123)); // Should not revert
+        vault.setAllocationManager(address(0x456)); // Should not revert
+        vault.setIndexRegistry(address(0x789)); // Should not revert
+        vm.stopPrank();
+    }
+    
+    // Test edge cases for vault operations
+    function test_VaultEdgeCases() public {
+        // Set up vault environment
+        _setupVaultEnvironment();
+        
+        // Test zero deposit
+        vm.startPrank(user1);
+        vm.expectRevert("Cannot deposit 0"); // Assuming this is the error message
+        vault.deposit(0, user1);
+        vm.stopPrank();
+        
+        // Test deposit to different receiver
+        vm.startPrank(user1);
+        uint256 sharesMinted = vault.deposit(DEPOSIT_AMOUNT / 2, user2);
+        vm.stopPrank();
+        
+        // Verify shares went to user2
+        assertEq(vault.balanceOf(user1), 0, "User1 should have no shares");
+        assertEq(vault.balanceOf(user2), sharesMinted, "User2 should have received shares");
+        
+        // Test withdraw with insufficient shares
+        vm.startPrank(user1);
+        vm.expectRevert("ERC20: burn amount exceeds balance"); // Standard ERC20 error
+        vault.redeem(1, user1, user1);
+        vm.stopPrank();
+        
+        // Test withdraw to different receiver
+        vm.startPrank(user2);
+        uint256 assetsWithdrawn = vault.redeem(sharesMinted / 2, user1, user2);
+        vm.stopPrank();
+        
+        // Verify assets went to user1 but shares were burned from user2
+        assertGt(assetsWithdrawn, 0, "Should withdraw assets");
+        assertEq(vault.balanceOf(user2), sharesMinted / 2, "User2 should have half shares left");
+        assertEq(usdc.balanceOf(user1), DEPOSIT_AMOUNT / 2 + assetsWithdrawn, "User1 should receive assets");
     }
 }
