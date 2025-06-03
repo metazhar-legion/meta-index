@@ -8,9 +8,16 @@ import {RWAAssetWrapper} from "../src/RWAAssetWrapper.sol";
 import {PerpetualPositionWrapper} from "../src/PerpetualPositionWrapper.sol";
 import {PerpetualPositionAdapter} from "../src/adapters/PerpetualPositionAdapter.sol";
 import {IPriceOracle} from "../src/interfaces/IPriceOracle.sol";
+import {ChainlinkPriceOracle} from "../src/ChainlinkPriceOracle.sol";
 import {IYieldStrategy} from "../src/interfaces/IYieldStrategy.sol";
 import {ISwapRouter} from "../src/interfaces/ISwapRouter.sol";
+import {IRWASyntheticToken} from "../src/interfaces/IRWASyntheticToken.sol";
 import {CommonErrors} from "../src/libraries/CommonErrors.sol";
+
+// Import mock contracts
+import {MockPerpetualRouter} from "./mocks/MockPerpetualRouter.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockYieldStrategy} from "./mocks/MockYieldStrategy.sol";
 
 /**
  * @title ForkedMainnetIntegrationTest
@@ -77,37 +84,50 @@ contract ForkedMainnetIntegrationTest is Test {
     function _deployContracts() internal {
         vm.startPrank(owner);
         
-        // Deploy the perpetual position wrappers
+        // Deploy a mock perpetual router for testing
+        MockPerpetualRouter perpRouter = new MockPerpetualRouter(USDC_ADDRESS);
+        
+        // Deploy price oracles
+        ChainlinkPriceOracle sp500Oracle = new ChainlinkPriceOracle(SP500_USD_FEED);
+        ChainlinkPriceOracle btcOracle = new ChainlinkPriceOracle(BTC_USD_FEED);
+        
+        // Deploy the perpetual position wrappers with correct parameters
         sp500PerpWrapper = new PerpetualPositionWrapper(
-            "S&P 500 Perpetual Position",
-            USDC_ADDRESS
+            address(perpRouter),
+            USDC_ADDRESS,
+            address(sp500Oracle),
+            bytes32("SP500"),  // Market ID for S&P 500
+            2,                  // 2x leverage
+            true,               // Long position
+            "SP500"             // Asset symbol
         );
         
         btcPerpWrapper = new PerpetualPositionWrapper(
-            "BTC Perpetual Position",
-            USDC_ADDRESS
+            address(perpRouter),
+            USDC_ADDRESS,
+            address(btcOracle),
+            bytes32("BTC"),     // Market ID for BTC
+            2,                  // 2x leverage
+            true,               // Long position
+            "BTC"               // Asset symbol
         );
         
-        // Deploy the perpetual position adapters
+        // Deploy the perpetual position adapters with correct parameters
         sp500Adapter = new PerpetualPositionAdapter(
             address(sp500PerpWrapper),
-            SP500_USD_FEED, // S&P 500 price feed
-            USDC_ADDRESS,
             "S&P 500 Index",
-            owner
+            IRWASyntheticToken.AssetType.EQUITY_INDEX
         );
         
         btcAdapter = new PerpetualPositionAdapter(
             address(btcPerpWrapper),
-            BTC_USD_FEED, // BTC price feed
-            USDC_ADDRESS,
             "Bitcoin",
-            owner
+            IRWASyntheticToken.AssetType.COMMODITY // Using COMMODITY for crypto as there's no CRYPTO type
         );
         
-        // Set up the adapters in the wrappers
-        sp500PerpWrapper.setAdapter(address(sp500Adapter));
-        btcPerpWrapper.setAdapter(address(btcAdapter));
+        // Transfer ownership of wrappers to the adapters
+        sp500PerpWrapper.transferOwnership(address(sp500Adapter));
+        btcPerpWrapper.transferOwnership(address(btcAdapter));
         
         // Deploy the asset wrappers
         sp500Wrapper = new RWAAssetWrapper(
