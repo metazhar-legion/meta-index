@@ -559,13 +559,13 @@ contract IndexFundVaultV2EnhancedTest is Test {
         
         // Try to deposit while paused
         vm.startPrank(user1);
-        vm.expectRevert("Pausable: paused");
+        vm.expectRevert(CommonErrors.OperationPaused.selector);
         vault.deposit(DEPOSIT_AMOUNT, user1);
         vm.stopPrank();
         
         // Try to withdraw while paused
         vm.startPrank(user1);
-        vm.expectRevert("Pausable: paused");
+        vm.expectRevert(CommonErrors.OperationPaused.selector);
         vault.withdraw(DEPOSIT_AMOUNT, user1, user1);
         vm.stopPrank();
         
