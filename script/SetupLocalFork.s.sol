@@ -64,12 +64,12 @@ contract SetupLocalFork is Script {
         // Start broadcasting transactions from deployer
         vm.startBroadcast(deployer);
         
-        // Deploy price oracle
-        priceOracle = new ChainlinkPriceOracle();
+        // Deploy price oracle with USDC as base asset
+        priceOracle = new ChainlinkPriceOracle(USDC_ADDRESS);
         
-        // Configure price feeds
-        priceOracle.setPriceFeed("ETH", ETH_USD_PRICE_FEED);
-        priceOracle.setPriceFeed("BTC", BTC_USD_PRICE_FEED);
+        // Set price feeds for assets
+        priceOracle.setPriceFeed(address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2), ETH_USD_PRICE_FEED); // WETH
+        priceOracle.setPriceFeed(address(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599), BTC_USD_PRICE_FEED); // WBTC
         
         // Deploy fee manager
         feeManager = new FeeManager();
