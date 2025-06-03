@@ -607,8 +607,8 @@ contract IndexFundVaultV2EnhancedTest is Test {
         vm.startPrank(owner);
         
         // Deploy new instances
-        MockPriceOracle newOracle = new MockPriceOracle();
-        MockDEX newDEX = new MockDEX();
+        MockPriceOracle newOracle = new MockPriceOracle(address(mockUSDC));
+        MockDEX newDEX = new MockDEX(address(newOracle));
         
         // Update price oracle
         vault.setPriceOracle(newOracle);
