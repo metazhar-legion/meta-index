@@ -10,6 +10,9 @@ import {RWAAssetWrapper} from "../src/RWAAssetWrapper.sol";
 import {RWASyntheticSP500} from "../src/RWASyntheticSP500.sol";
 import {ChainlinkPriceOracle} from "../src/ChainlinkPriceOracle.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IRWASyntheticToken} from "../src/interfaces/IRWASyntheticToken.sol";
+import {IYieldStrategy} from "../src/interfaces/IYieldStrategy.sol";
+import {IPriceOracle} from "../src/interfaces/IPriceOracle.sol";
 
 /**
  * @title SetupLocalFork
@@ -82,26 +85,33 @@ contract SetupLocalFork is Script {
         // Deploy index registry
         indexRegistry = new IndexRegistry();
         
-        // Deploy asset wrappers
-        sp500Wrapper = new RWASyntheticSP500(
-            "S&P 500 Index",
-            "SP500",
-            USDC_ADDRESS,
-            address(priceOracle)
-        );
+        // Mock addresses for dependencies we don't have in the fork
+        address mockPerpetualTrading = address(0x1234); // Mock address
+        address mockRWAToken = address(0x2345); // Mock address
+        address mockYieldStrategy = address(0x3456); // Mock address
         
+        // Deploy S&P 500 wrapper as a RWAAssetWrapper
+        RWAAssetWrapper tempSP500Wrapper = new RWAAssetWrapper(
+            "S&P 500 Index Wrapper",
+            IERC20(USDC_ADDRESS),
+            IRWASyntheticToken(mockRWAToken),
+            IYieldStrategy(mockYieldStrategy),
+            IPriceOracle(address(priceOracle))
+        );
+        sp500Wrapper = tempSP500Wrapper;
+        
+        // Deploy Bitcoin wrapper
         btcWrapper = new RWAAssetWrapper(
-            "Bitcoin",
-            "BTC",
-            USDC_ADDRESS,
-            address(priceOracle)
+            "Bitcoin Wrapper",
+            IERC20(USDC_ADDRESS),
+            IRWASyntheticToken(mockRWAToken),
+            IYieldStrategy(mockYieldStrategy),
+            IPriceOracle(address(priceOracle))
         );
         
         // Register wrappers with index registry
-        address[] memory wrappers = new address[](2);
-        wrappers[0] = address(sp500Wrapper);
-        wrappers[1] = address(btcWrapper);
-        indexRegistry.addWrappers(wrappers);
+        indexRegistry.addToken(address(sp500Wrapper), 7000); // 70% weight
+        indexRegistry.addToken(address(btcWrapper), 3000);   // 30% weight
         
         // Set allocation targets
         uint256[] memory targets = new uint256[](2);
