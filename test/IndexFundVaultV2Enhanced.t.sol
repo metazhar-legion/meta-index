@@ -737,6 +737,11 @@ contract IndexFundVaultV2EnhancedTest is Test {
         
         // Check total assets after yield
         totalAssets = vault.totalAssets();
-        assertEq(totalAssets, DEPOSIT_AMOUNT * 11 / 10, "Total assets should include yield");
+        // Total assets should include: 
+        // 1. Original deposit amount in the vault
+        // 2. The yield amount that was just harvested (DEPOSIT_AMOUNT / 10)
+        // 3. The wrapper values (which remain unchanged)
+        uint256 expectedTotalAfterYield = DEPOSIT_AMOUNT + (DEPOSIT_AMOUNT / 10) + wrapperTotal;
+        assertEq(totalAssets, expectedTotalAfterYield, "Total assets should include vault balance, yield, and wrapper values");
     }
 }
