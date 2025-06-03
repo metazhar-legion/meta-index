@@ -332,6 +332,11 @@ contract IndexFundVaultV2EnhancedTest is Test {
         // Manually set the value in the wrapper since rebalance might not be triggered automatically
         wrapper1.setValueInBaseAsset(DEPOSIT_AMOUNT);
         
+        // We need to mint tokens to the wrapper to simulate it having actual tokens to withdraw
+        vm.startPrank(owner);
+        mockUSDC.mint(address(wrapper1), DEPOSIT_AMOUNT);
+        vm.stopPrank();
+        
         // Verify asset has balance
         assertEq(wrapper1.getValueInBaseAsset(), DEPOSIT_AMOUNT, "Wrapper should have balance");
         
@@ -378,6 +383,12 @@ contract IndexFundVaultV2EnhancedTest is Test {
         // Manually set the initial values in the wrappers since rebalance might not be triggered automatically
         wrapper1.setValueInBaseAsset(DEPOSIT_AMOUNT / 2);
         volatileWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT / 2);
+        
+        // We need to mint tokens to the wrappers to simulate them having actual tokens
+        vm.startPrank(owner);
+        mockUSDC.mint(address(wrapper1), DEPOSIT_AMOUNT / 2);
+        mockUSDC.mint(address(volatileWrapper), DEPOSIT_AMOUNT / 2);
+        vm.stopPrank();
         
         // Initial balance check
         uint256 wrapper1Value = wrapper1.getValueInBaseAsset();
@@ -679,6 +690,13 @@ contract IndexFundVaultV2EnhancedTest is Test {
         wrapper1.setValueInBaseAsset(DEPOSIT_AMOUNT * 3000 / 10000);
         wrapper2.setValueInBaseAsset(DEPOSIT_AMOUNT * 3000 / 10000);
         yieldWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 4000 / 10000);
+        
+        // We need to mint tokens to the wrappers to simulate them having actual tokens
+        vm.startPrank(owner);
+        mockUSDC.mint(address(wrapper1), DEPOSIT_AMOUNT * 3000 / 10000);
+        mockUSDC.mint(address(wrapper2), DEPOSIT_AMOUNT * 3000 / 10000);
+        mockUSDC.mint(address(yieldWrapper), DEPOSIT_AMOUNT * 4000 / 10000);
+        vm.stopPrank();
         
         // Check total assets
         uint256 totalAssets = vault.totalAssets();
