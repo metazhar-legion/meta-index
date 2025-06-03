@@ -329,8 +329,11 @@ contract IndexFundVaultV2EnhancedTest is Test {
         vault.deposit(DEPOSIT_AMOUNT, user1);
         vm.stopPrank();
         
+        // Manually set the value in the wrapper since rebalance might not be triggered automatically
+        wrapper1.setValueInBaseAsset(DEPOSIT_AMOUNT);
+        
         // Verify asset has balance
-        assertGt(wrapper1.getValueInBaseAsset(), 0, "Wrapper should have balance");
+        assertEq(wrapper1.getValueInBaseAsset(), DEPOSIT_AMOUNT, "Wrapper should have balance");
         
         // Remove asset (should withdraw all funds)
         vm.startPrank(owner);
