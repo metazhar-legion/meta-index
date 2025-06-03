@@ -675,14 +675,16 @@ contract IndexFundVaultV2EnhancedTest is Test {
         vault.deposit(DEPOSIT_AMOUNT, user1);
         vm.stopPrank();
         
-        // Set some values in the wrappers
+        // Set some values in the wrappers to match the weights
         wrapper1.setValueInBaseAsset(DEPOSIT_AMOUNT * 3000 / 10000);
         wrapper2.setValueInBaseAsset(DEPOSIT_AMOUNT * 3000 / 10000);
         yieldWrapper.setValueInBaseAsset(DEPOSIT_AMOUNT * 4000 / 10000);
         
         // Check total assets
         uint256 totalAssets = vault.totalAssets();
-        assertEq(totalAssets, DEPOSIT_AMOUNT, "Total assets should match deposit");
+        // The total assets should be the sum of the wrapper values
+        uint256 expectedTotal = (DEPOSIT_AMOUNT * 3000 / 10000) + (DEPOSIT_AMOUNT * 3000 / 10000) + (DEPOSIT_AMOUNT * 4000 / 10000);
+        assertEq(totalAssets, expectedTotal, "Total assets should match sum of wrapper values");
         
         // Generate some yield
         yieldWrapper.setYieldAmount(DEPOSIT_AMOUNT / 10); // 10% yield
