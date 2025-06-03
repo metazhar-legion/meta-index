@@ -73,8 +73,8 @@ contract SetupLocalFork is Script {
         
         // Deploy fee manager
         feeManager = new FeeManager();
-        feeManager.setManagementFee(200); // 2% annual management fee (in basis points)
-        feeManager.setPerformanceFee(2000); // 20% performance fee (in basis points)
+        feeManager.setManagementFeePercentage(200); // 2% annual management fee (in basis points)
+        feeManager.setPerformanceFeePercentage(1000); // 10% performance fee (in basis points)
         
         // Deploy capital allocation manager
         allocationManager = new CapitalAllocationManager();
