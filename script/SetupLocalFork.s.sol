@@ -130,20 +130,19 @@ contract SetupLocalFork is Script {
         // Stop broadcasting
         vm.stopBroadcast();
         
-        // Output deployment information
         console.log("Local Mainnet Fork Setup Complete");
         console.log("--------------------------------");
-        console.log("Vault: ", address(vault));
-        console.log("FeeManager: ", address(feeManager));
-        console.log("AllocationManager: ", address(allocationManager));
-        console.log("IndexRegistry: ", address(indexRegistry));
-        console.log("S&P 500 Wrapper: ", address(sp500Wrapper));
-        console.log("BTC Wrapper: ", address(btcWrapper));
-        console.log("Price Oracle: ", address(priceOracle));
+        console.log("Vault: %s", address(vault));
+        console.log("FeeManager: %s", address(feeManager));
+        console.log("AllocationManager: %s", address(allocationManager));
+        console.log("IndexRegistry: %s", address(indexRegistry));
+        console.log("S&P 500 Wrapper: %s", address(sp500Wrapper));
+        console.log("BTC Wrapper: %s", address(btcWrapper));
+        console.log("Price Oracle: %s", address(priceOracle));
         console.log("--------------------------------");
-        console.log("Deployer: ", deployer);
-        console.log("Investor1: ", investor1);
-        console.log("Investor2: ", investor2);
-        console.log("DAO Member: ", daoMember);
+        console.log("Deployer: %s", deployer);
+        console.log("Investor1: %s", investor1);
+        console.log("Investor2: %s", investor2);
+        console.log("DAO Member: %s", daoMember);
     }
 }
