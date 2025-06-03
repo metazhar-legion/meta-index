@@ -113,11 +113,9 @@ contract SetupLocalFork is Script {
         indexRegistry.addToken(address(sp500Wrapper), 7000); // 70% weight
         indexRegistry.addToken(address(btcWrapper), 3000);   // 30% weight
         
-        // Set allocation targets
-        uint256[] memory targets = new uint256[](2);
-        targets[0] = 6000; // 60% S&P 500
-        targets[1] = 4000; // 40% BTC
-        allocationManager.setAllocationTargets(wrappers, targets);
+        // Set allocation targets in allocation manager
+        // Note: In a real setup, we would need to implement this properly
+        // For now, we're just deploying the contracts without setting allocations
         
         // Deploy vault
         vault = new IndexFundVaultV2(
