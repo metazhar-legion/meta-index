@@ -106,17 +106,17 @@ contract MetricsCalculator is IMetricsCalculator {
      * @return volatility The annualized volatility (scaled by 1e18)
      */
     function _calculateVolatility(
-        int256[] memory returns,
+        int256[] memory returnValues,
         uint256 totalDays
     ) internal pure returns (uint256) {
-        if (returns.length <= 1) return 0;
+        if (returnValues.length <= 1) return 0;
         
         // Calculate mean return
         int256 sum = 0;
-        for (uint256 i = 0; i < returns.length; i++) {
-            sum += returns[i];
+        for (uint256 i = 0; i < returnValues.length; i++) {
+            sum += returnValues[i];
         }
-        int256 mean = sum / int256(returns.length);
+        int256 mean = sum / int256(returnValues.length);
         
         // Calculate sum of squared deviations
         uint256 sumSquaredDeviations = 0;
