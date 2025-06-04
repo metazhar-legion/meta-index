@@ -64,11 +64,12 @@ contract RunBacktest is Script {
         // Create metrics calculator with 2% risk-free rate
         metricsCalculator = new MetricsCalculator(200);
         
-        // Create backtesting framework
-        backtestingFramework = new BacktestingFramework();
-        backtestingFramework.setDataProvider(dataProvider);
-        backtestingFramework.setSimulationEngine(simulationEngine);
-        backtestingFramework.setMetricsCalculator(metricsCalculator);
+        // Create backtesting framework with all dependencies
+        backtestingFramework = new BacktestingFramework(
+            dataProvider,
+            simulationEngine,
+            metricsCalculator
+        );
         
         // Create results exporter
         resultsExporter = new ResultsExporter(backtestingFramework);
@@ -80,7 +81,7 @@ contract RunBacktest is Script {
         simulationEngine.initialize(START_TIMESTAMP);
         
         // Configure and run the backtest
-        backtestingFramework.configureBacktest(
+        backtestingFramework.configure(
             START_TIMESTAMP,
             END_TIMESTAMP,
             TIME_STEP
@@ -96,7 +97,7 @@ contract RunBacktest is Script {
             uint256 maxDrawdown,
             int256 annualizedReturn,
             uint256 volatility
-        ) = metricsCalculator.calculateMetrics(backtestingFramework.getAllResults());
+        ) = backtestingFramework.calculateMetrics();
         
         // Get initial and final values
         BacktestingFramework.BacktestResult memory firstResult = backtestingFramework.getResult(0);

@@ -197,10 +197,10 @@ contract SimplePortfolioBacktest {
         
         // Calculate metrics
         (
-            int256 sharpeRatio,
+            int256 sharpeRatio /* unused */,
             uint256 maxDrawdown,
             int256 annualizedReturn,
-            uint256 volatility
+            uint256 volatility /* unused */
         ) = backtestingFramework.calculateMetrics();
         
         // Get final portfolio value
