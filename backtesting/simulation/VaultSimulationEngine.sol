@@ -3,14 +3,11 @@ pragma solidity ^0.8.20;
 
 import "../BacktestingFramework.sol";
 import "../../src/interfaces/IAssetWrapper.sol";
-import "../../src/interfaces/IYieldStrategy.sol";
-import "../../src/interfaces/IPriceOracle.sol";
-import "../../src/interfaces/IFeeManager.sol";
 
 /**
  * @title VaultSimulationEngine
- * @notice Simulation engine that mimics the behavior of IndexFundVaultV2
- * @dev This contract simulates vault operations without actually executing them
+ * @notice Simulation engine for vault operations
+ * @dev This contract simulates the operations of an investment vault
  */
 contract VaultSimulationEngine is ISimulationEngine {
     // Dependencies
@@ -19,40 +16,42 @@ contract VaultSimulationEngine is ISimulationEngine {
     // Vault configuration
     address public baseAsset;
     uint256 public initialDeposit;
-    uint256 public rebalanceThreshold; // in basis points (e.g., 500 = 5%)
-    uint256 public rebalanceInterval; // in seconds
-    uint256 public managementFeeRate; // in basis points per year
-    uint256 public performanceFeeRate; // in basis points
+    uint256 public rebalanceThreshold; // In basis points (e.g. 500 = 5%)
+    uint256 public rebalanceInterval; // In seconds
+    uint256 public managementFeeRate; // In basis points per year (e.g. 100 = 1%)
+    uint256 public performanceFeeRate; // In basis points (e.g. 1000 = 10%)
+    
+    // Vault state
+    uint256 public lastRebalanceTimestamp;
+    uint256 public highWaterMark; // For performance fee calculation
+    mapping(address => uint256) public assetValues; // Current value in base asset
+    mapping(address => uint256) public assetBaseValues; // Original value in base asset (for yield calculation)
     
     // Asset configuration
-    struct AssetConfig {
-        address assetAddress;
-        address wrapperAddress;
-        uint256 targetWeight; // in basis points (e.g., 5000 = 50%)
-        bool isYieldGenerating;
-    }
     AssetConfig[] public assets;
     
-    // Simulation state
-    uint256 public lastRebalanceTimestamp;
-    uint256 public totalPortfolioValue;
-    uint256 public highWaterMark;
-    mapping(address => uint256) public assetValues;
-    mapping(address => uint256) public assetBaseValues;
+    struct AssetConfig {
+        address tokenAddress;
+        address wrapperAddress;
+        uint256 targetWeight; // In basis points (e.g. 5000 = 50%)
+        bool isYieldGenerating;
+    }
     
     // Events
-    event Rebalanced(uint256 timestamp, uint256 portfolioValue);
-    event YieldHarvested(uint256 timestamp, uint256 yieldAmount);
+    event AssetAdded(address indexed token, address indexed wrapper, uint256 weight, bool isYieldGenerating);
+    event Rebalanced(uint256 timestamp, uint256 totalValue);
+    event YieldHarvested(uint256 timestamp, address indexed strategy, uint256 amount);
+    event FeeCharged(uint256 timestamp, string feeType, uint256 amount);
     
     /**
      * @notice Constructor
      * @param _dataProvider Source of historical price and yield data
-     * @param _baseAsset Address of the base asset (e.g., USDC)
+     * @param _baseAsset Base asset address (e.g. USDC)
      * @param _initialDeposit Initial deposit amount
-     * @param _rebalanceThreshold Threshold for triggering rebalance (in basis points)
-     * @param _rebalanceInterval Minimum time between rebalances (in seconds)
-     * @param _managementFeeRate Annual management fee rate (in basis points)
-     * @param _performanceFeeRate Performance fee rate (in basis points)
+     * @param _rebalanceThreshold Threshold for rebalancing (basis points)
+     * @param _rebalanceInterval Minimum time between rebalances (seconds)
+     * @param _managementFeeRate Annual management fee rate (basis points)
+     * @param _performanceFeeRate Performance fee rate (basis points)
      */
     constructor(
         IHistoricalDataProvider _dataProvider,
@@ -73,48 +72,47 @@ contract VaultSimulationEngine is ISimulationEngine {
     }
     
     /**
-     * @notice Add an asset to the simulation
-     * @param assetAddress Address of the asset
+     * @notice Add an asset to the portfolio
+     * @param tokenAddress Address of the token
      * @param wrapperAddress Address of the asset wrapper
-     * @param targetWeight Target weight for the asset (in basis points)
+     * @param targetWeight Target weight in basis points (e.g. 5000 = 50%)
      * @param isYieldGenerating Whether the asset generates yield
      */
     function addAsset(
-        address assetAddress,
+        address tokenAddress,
         address wrapperAddress,
         uint256 targetWeight,
         bool isYieldGenerating
     ) external {
-        // Ensure total weights don't exceed 10000 (100%)
+        require(tokenAddress != address(0), "Invalid token address");
+        require(wrapperAddress != address(0), "Invalid wrapper address");
+        
+        // Add to assets array
+        assets.push(AssetConfig({
+            tokenAddress: tokenAddress,
+            wrapperAddress: wrapperAddress,
+            targetWeight: targetWeight,
+            isYieldGenerating: isYieldGenerating
+        }));
+        
+        emit AssetAdded(tokenAddress, wrapperAddress, targetWeight, isYieldGenerating);
+    }
+    
+    /**
+     * @notice Initialize the simulation engine
+     * @param timestamp The timestamp to initialize at
+     */
+    function initialize(uint256 timestamp) external override {
+        require(assets.length > 0, "No assets configured");
+        
+        // Check that weights sum to 10000 (100%)
         uint256 totalWeight = 0;
         for (uint256 i = 0; i < assets.length; i++) {
             totalWeight += assets[i].targetWeight;
         }
-        require(totalWeight + targetWeight <= 10000, "Total weight exceeds 100%");
+        require(totalWeight == 10000, "Weights must sum to 100%");
         
-        assets.push(
-            AssetConfig({
-                assetAddress: assetAddress,
-                wrapperAddress: wrapperAddress,
-                targetWeight: targetWeight,
-                isYieldGenerating: isYieldGenerating
-            })
-        );
-    }
-    
-    /**
-     * @notice Initialize the simulation
-     * @param startTimestamp The starting timestamp for the simulation
-     */
-    function initialize(uint256 startTimestamp) external override {
-        require(assets.length > 0, "No assets configured");
-        
-        // Reset simulation state
-        totalPortfolioValue = initialDeposit;
-        highWaterMark = initialDeposit;
-        lastRebalanceTimestamp = startTimestamp;
-        
-        // Initialize asset values based on target weights
+        // Set initial allocation based on target weights
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
             uint256 assetValue = (initialDeposit * asset.targetWeight) / 10000;
@@ -145,102 +143,112 @@ contract VaultSimulationEngine is ISimulationEngine {
         assetValuesArray = new uint256[](assets.length);
         assetWeightsArray = new uint256[](assets.length);
         
-        // Update asset values based on price changes
-        _updateAssetValues(timestamp);
+        // Update asset prices
+        _updateAssetPrices(timestamp);
         
-        // Check if rebalance is needed
-        rebalanced = _isRebalanceNeeded(timestamp);
-        
-        // Harvest yield if available
-        yieldHarvested = _harvestYield(timestamp);
-        
-        // Perform rebalance if needed
-        if (rebalanced) {
-            _rebalance(timestamp);
-            gasCost = 500000; // Estimated gas cost for rebalance
-        } else {
-            gasCost = yieldHarvested > 0 ? 200000 : 50000; // Estimated gas costs
-        }
-        
-        // Calculate current portfolio value
+        // Calculate total portfolio value before fees
         portfolioValue = _calculateTotalPortfolioValue();
         
-        // Update high water mark if needed
-        if (portfolioValue > highWaterMark) {
-            highWaterMark = portfolioValue;
+        // Charge management fee
+        uint256 managementFee = _chargeManagementFee(timestamp, portfolioValue);
+        portfolioValue -= managementFee;
+        
+        // Harvest yield if any
+        yieldHarvested = _harvestYield(timestamp);
+        
+        // Check if rebalancing is needed
+        rebalanced = _shouldRebalance(timestamp);
+        if (rebalanced) {
+            _rebalance(timestamp);
+            gasCost += 100000; // Estimated gas cost for rebalancing
         }
         
-        // Collect management fee (pro-rated for the time step)
-        uint256 timeElapsed = timestamp - lastRebalanceTimestamp;
-        if (timeElapsed > 0) {
-            uint256 annualFee = (portfolioValue * managementFeeRate) / 10000;
-            uint256 feeForPeriod = (annualFee * timeElapsed) / (365 days);
-            portfolioValue -= feeForPeriod;
-        }
+        // Charge performance fee if applicable
+        uint256 performanceFee = _chargePerformanceFee(timestamp, portfolioValue);
+        portfolioValue -= performanceFee;
         
-        // Populate return arrays with current values
+        // Update return arrays with current values
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
-            uint256 value = assetValues[asset.wrapperAddress];
-            assetValuesArray[i] = value;
-            assetWeightsArray[i] = portfolioValue > 0 ? (value * 10000) / portfolioValue : 0;
+            uint256 currentValue = assetValues[asset.wrapperAddress];
+            uint256 currentWeight = (currentValue * 10000) / portfolioValue;
+            
+            assetValuesArray[i] = currentValue;
+            assetWeightsArray[i] = currentWeight;
         }
         
-        return (portfolioValue, assetValuesArray, assetWeightsArray, yieldHarvested, rebalanced, gasCost);
+        // Add base gas cost for the transaction
+        gasCost += 50000;
+        
+        return (
+            portfolioValue,
+            assetValuesArray,
+            assetWeightsArray,
+            yieldHarvested,
+            rebalanced,
+            gasCost
+        );
     }
     
     /**
-     * @notice Update asset values based on price changes
-     * @param timestamp Current timestamp
+     * @notice Update asset prices from data provider
+     * @param timestamp The current timestamp
      */
-    function _updateAssetValues(uint256 timestamp) internal {
+    function _updateAssetPrices(uint256 timestamp) internal {
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
             
-            // Get current price from data provider
-            uint256 price = dataProvider.getAssetPrice(asset.assetAddress, timestamp);
-            if (price == 0) continue; // Skip if no price data available
+            // Get price from data provider
+            uint256 price = dataProvider.getAssetPrice(asset.tokenAddress, timestamp);
             
-            // Calculate new asset value based on price change
-            uint256 previousPrice = dataProvider.getAssetPrice(asset.assetAddress, lastRebalanceTimestamp);
-            if (previousPrice > 0) {
-                uint256 baseValue = assetBaseValues[asset.wrapperAddress];
-                uint256 newValue = (baseValue * price) / previousPrice;
-                assetValues[asset.wrapperAddress] = newValue;
+            // Update asset value based on price change
+            if (price > 0) {
+                uint256 previousPrice = dataProvider.getAssetPrice(asset.tokenAddress, timestamp - 1 days);
+                if (previousPrice > 0) {
+                    assetValues[asset.wrapperAddress] = (assetValues[asset.wrapperAddress] * price) / previousPrice;
+                }
             }
         }
     }
     
     /**
-     * @notice Check if rebalance is needed
-     * @param timestamp Current timestamp
-     * @return isNeeded Whether rebalance is needed
+     * @notice Calculate the total portfolio value
+     * @return totalValue The total portfolio value
      */
-    function _isRebalanceNeeded(uint256 timestamp) internal view returns (bool) {
-        // Check time-based rebalance condition
-        if (timestamp >= lastRebalanceTimestamp + rebalanceInterval) {
-            return true;
+    function _calculateTotalPortfolioValue() internal view returns (uint256 totalValue) {
+        for (uint256 i = 0; i < assets.length; i++) {
+            AssetConfig memory asset = assets[i];
+            totalValue += assetValues[asset.wrapperAddress];
+        }
+        return totalValue;
+    }
+    
+    /**
+     * @notice Determine if rebalancing is needed
+     * @param timestamp The current timestamp
+     * @return shouldRebalance Whether rebalancing is needed
+     */
+    function _shouldRebalance(uint256 timestamp) internal view returns (bool) {
+        // Check if minimum interval has passed
+        if (lastRebalanceTimestamp > 0 && timestamp - lastRebalanceTimestamp < rebalanceInterval) {
+            return false;
         }
         
-        // Check threshold-based rebalance condition
+        // Check if any asset is outside the threshold
         uint256 totalValue = _calculateTotalPortfolioValue();
-        if (totalValue == 0) return false;
-        
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
             uint256 currentValue = assetValues[asset.wrapperAddress];
             uint256 currentWeight = (currentValue * 10000) / totalValue;
             uint256 targetWeight = asset.targetWeight;
             
-            // If any asset's weight deviates by more than the threshold, rebalance is needed
-            if (currentWeight > targetWeight) {
-                if (currentWeight - targetWeight > rebalanceThreshold) {
-                    return true;
-                }
-            } else {
-                if (targetWeight - currentWeight > rebalanceThreshold) {
-                    return true;
-                }
+            // Calculate absolute difference from target weight
+            uint256 weightDiff = currentWeight > targetWeight ? 
+                currentWeight - targetWeight : targetWeight - currentWeight;
+            
+            // If difference exceeds threshold, rebalance
+            if (weightDiff > rebalanceThreshold) {
+                return true;
             }
         }
         
@@ -248,39 +256,8 @@ contract VaultSimulationEngine is ISimulationEngine {
     }
     
     /**
-     * @notice Harvest yield from yield-generating assets
-     * @param timestamp Current timestamp
-     * @return totalYield Total yield harvested
-     */
-    function _harvestYield(uint256 timestamp) internal returns (uint256 totalYield) {
-        for (uint256 i = 0; i < assets.length; i++) {
-            AssetConfig memory asset = assets[i];
-            if (asset.isYieldGenerating) {
-                // Get yield rate from data provider
-                uint256 yieldRate = dataProvider.getYieldRate(asset.wrapperAddress, timestamp);
-                if (yieldRate == 0) continue;
-                
-                // Calculate yield for the period since last update
-                uint256 timeElapsed = timestamp - lastRebalanceTimestamp;
-                uint256 assetValue = assetValues[asset.wrapperAddress];
-                uint256 yieldAmount = (assetValue * yieldRate * timeElapsed) / (10000 * 365 days);
-                
-                // Add yield to asset value
-                assetValues[asset.wrapperAddress] += yieldAmount;
-                totalYield += yieldAmount;
-            }
-        }
-        
-        if (totalYield > 0) {
-            emit YieldHarvested(timestamp, totalYield);
-        }
-        
-        return totalYield;
-    }
-    
-    /**
-     * @notice Perform rebalancing of assets
-     * @param timestamp Current timestamp
+     * @notice Rebalance the portfolio
+     * @param timestamp The current timestamp
      */
     function _rebalance(uint256 timestamp) internal {
         uint256 totalValue = _calculateTotalPortfolioValue();
@@ -290,7 +267,7 @@ contract VaultSimulationEngine is ISimulationEngine {
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
             uint256 targetValue = (totalValue * asset.targetWeight) / 10000;
-            uint256 currentValue = assetValues[asset.wrapperAddress];
+            // uint256 currentValue = assetValues[asset.wrapperAddress]; // Unused variable
             
             // Update asset values to match targets
             assetValues[asset.wrapperAddress] = targetValue;
@@ -302,32 +279,73 @@ contract VaultSimulationEngine is ISimulationEngine {
     }
     
     /**
-     * @notice Calculate total portfolio value
-     * @return totalValue Sum of all asset values
+     * @notice Harvest yield from yield-generating assets
+     * @param timestamp The current timestamp
+     * @return totalYield The total yield harvested
      */
-    function _calculateTotalPortfolioValue() internal view returns (uint256 totalValue) {
+    function _harvestYield(uint256 timestamp) internal returns (uint256 totalYield) {
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
-            totalValue += assetValues[asset.wrapperAddress];
+            if (asset.isYieldGenerating) {
+                // Get yield rate from data provider
+                uint256 yieldRate = dataProvider.getYieldRate(asset.wrapperAddress, timestamp);
+                if (yieldRate > 0) {
+                    // Calculate yield based on base value and time since last harvest
+                    uint256 baseValue = assetBaseValues[asset.wrapperAddress];
+                    uint256 yield = (baseValue * yieldRate) / 10000;
+                    
+                    // Add yield to asset value
+                    assetValues[asset.wrapperAddress] += yield;
+                    totalYield += yield;
+                    
+                    emit YieldHarvested(timestamp, asset.wrapperAddress, yield);
+                }
+            }
         }
-        return totalValue;
+        return totalYield;
     }
     
     /**
-     * @notice Get the number of assets in the simulation
-     * @return count The number of assets
+     * @notice Charge management fee
+     * @param timestamp The current timestamp
+     * @param portfolioValue The current portfolio value
+     * @return fee The management fee charged
      */
-    function getAssetCount() external view returns (uint256) {
-        return assets.length;
+    function _chargeManagementFee(uint256 timestamp, uint256 portfolioValue) internal returns (uint256 fee) {
+        // Calculate daily fee rate (annual rate / 365)
+        uint256 dailyFeeRate = managementFeeRate / 365;
+        
+        // Calculate fee amount
+        fee = (portfolioValue * dailyFeeRate) / 10000;
+        
+        if (fee > 0) {
+            emit FeeCharged(timestamp, "Management", fee);
+        }
+        
+        return fee;
     }
     
     /**
-     * @notice Get asset configuration by index
-     * @param index The index of the asset
-     * @return assetConfig The asset configuration
+     * @notice Charge performance fee
+     * @param timestamp The current timestamp
+     * @param portfolioValue The current portfolio value
+     * @return fee The performance fee charged
      */
-    function getAssetConfig(uint256 index) external view returns (AssetConfig memory) {
-        require(index < assets.length, "Index out of bounds");
-        return assets[index];
+    function _chargePerformanceFee(uint256 timestamp, uint256 portfolioValue) internal returns (uint256 fee) {
+        // Only charge if portfolio value exceeds high water mark
+        if (portfolioValue > highWaterMark) {
+            // Calculate fee on profits above high water mark
+            uint256 profit = portfolioValue - highWaterMark;
+            fee = (profit * performanceFeeRate) / 10000;
+            
+            // Update high water mark
+            highWaterMark = portfolioValue - fee;
+            
+            if (fee > 0) {
+                emit FeeCharged(timestamp, "Performance", fee);
+            }
+        }
+        
+        return fee;
     }
 }
