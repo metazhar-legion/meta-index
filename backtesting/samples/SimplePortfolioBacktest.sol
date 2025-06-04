@@ -189,7 +189,11 @@ contract SimplePortfolioBacktest {
             timeStep
         );
         
-        resultCount = backtestingFramework.runBacktest();
+        bool success = backtestingFramework.runBacktest();
+        require(success, "Backtest failed to run");
+        
+        // Get the number of results
+        resultCount = backtestingFramework.getResultCount();
         
         // Calculate metrics
         (
