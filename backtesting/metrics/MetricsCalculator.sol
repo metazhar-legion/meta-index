@@ -52,16 +52,16 @@ contract MetricsCalculator is IMetricsCalculator {
         require(results.length >= 2, "Insufficient data points");
         
         // Calculate returns for each period
-        int256[] memory returns = new int256[](results.length - 1);
+        int256[] memory returnValues = new int256[](results.length - 1);
         for (uint256 i = 1; i < results.length; i++) {
             uint256 currentValue = results[i].portfolioValue;
             uint256 previousValue = results[i-1].portfolioValue;
             
             if (previousValue > 0) {
                 // Calculate return as percentage (scaled by 1e18)
-                returns[i-1] = int256((currentValue * SCALE) / previousValue) - int256(SCALE);
+                returnValues[i-1] = int256((currentValue * SCALE) / previousValue) - int256(SCALE);
             } else {
-                returns[i-1] = 0;
+                returnValues[i-1] = 0;
             }
         }
         
@@ -85,7 +85,7 @@ contract MetricsCalculator is IMetricsCalculator {
         }
         
         // Calculate volatility (standard deviation of returns)
-        volatility = _calculateVolatility(returns, totalDays);
+        volatility = _calculateVolatility(returnValues, totalDays);
         
         // Calculate Sharpe ratio
         int256 riskFreeRateScaled = int256((riskFreeRate * SCALE) / 10000); // Convert from basis points
@@ -206,15 +206,15 @@ contract MetricsCalculator is IMetricsCalculator {
         require(results.length >= 2, "Insufficient data points");
         
         // Calculate returns for each period
-        int256[] memory returns = new int256[](results.length - 1);
+        int256[] memory returnValues = new int256[](results.length - 1);
         for (uint256 i = 1; i < results.length; i++) {
             uint256 currentValue = results[i].portfolioValue;
             uint256 previousValue = results[i-1].portfolioValue;
             
             if (previousValue > 0) {
-                returns[i-1] = int256((currentValue * SCALE) / previousValue) - int256(SCALE);
+                returnValues[i-1] = int256((currentValue * SCALE) / previousValue) - int256(SCALE);
             } else {
-                returns[i-1] = 0;
+                returnValues[i-1] = 0;
             }
         }
         
