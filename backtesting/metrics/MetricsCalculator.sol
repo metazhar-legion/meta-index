@@ -239,8 +239,8 @@ contract MetricsCalculator is IMetricsCalculator {
         uint256 negativeReturnCount = 0;
         
         for (uint256 i = 0; i < returnValues.length; i++) {
-            if (returns[i] < 0) {
-                sumSquaredNegativeDeviations += uint256(returns[i] * returns[i]) / SCALE;
+            if (returnValues[i] < 0) {
+                sumSquaredNegativeDeviations += uint256(returnValues[i] * returnValues[i]) / SCALE;
                 negativeReturnCount++;
             }
         }
