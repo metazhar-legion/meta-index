@@ -7,7 +7,7 @@ import "../simulation/VaultSimulationEngine.sol";
 import "../metrics/MetricsCalculator.sol";
 import "../scenarios/MarketScenarios.sol";
 import "../visualization/ResultsExporter.sol";
-import "../../src/interfaces/IERC20.sol";
+import "../interfaces/IERC20.sol";
 
 /**
  * @title SimplePortfolioBacktest
