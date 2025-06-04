@@ -101,7 +101,7 @@ contract MetricsCalculator is IMetricsCalculator {
     
     /**
      * @notice Calculate the volatility (standard deviation) of returns
-     * @param returns Array of period returns
+     * @param returnValues Array of period returns
      * @param totalDays Total number of days in the backtest period
      * @return volatility The annualized volatility (scaled by 1e18)
      */
