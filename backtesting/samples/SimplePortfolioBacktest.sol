@@ -201,7 +201,7 @@ contract SimplePortfolioBacktest {
             uint256 maxDrawdown,
             int256 annualizedReturn,
             uint256 volatility
-        ) = metricsCalculator.calculateMetrics(backtestingFramework.getAllResults());
+        ) = backtestingFramework.calculateMetrics();
         
         // Get final portfolio value
         BacktestingFramework.BacktestResult memory finalResult = backtestingFramework.getResult(resultCount - 1);
@@ -256,7 +256,7 @@ contract SimplePortfolioBacktest {
             maxDrawdown,
             annualizedReturn,
             volatility
-        ) = metricsCalculator.calculateMetrics(backtestingFramework.getAllResults());
+        ) = backtestingFramework.calculateMetrics();
         
         return (
             initialValue,
