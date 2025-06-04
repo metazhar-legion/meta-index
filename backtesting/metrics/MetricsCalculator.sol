@@ -120,8 +120,8 @@ contract MetricsCalculator is IMetricsCalculator {
         
         // Calculate sum of squared deviations
         uint256 sumSquaredDeviations = 0;
-        for (uint256 i = 0; i < returns.length; i++) {
-            int256 deviation = returns[i] - mean;
+        for (uint256 i = 0; i < returnValues.length; i++) {
+            int256 deviation = returnValues[i] - mean;
             // Square the deviation (convert to positive first to avoid issues with negative numbers)
             if (deviation < 0) {
                 sumSquaredDeviations += uint256(-deviation * -deviation) / SCALE;
@@ -131,13 +131,13 @@ contract MetricsCalculator is IMetricsCalculator {
         }
         
         // Calculate variance
-        uint256 variance = (sumSquaredDeviations * SCALE) / (returns.length - 1);
+        uint256 variance = (sumSquaredDeviations * SCALE) / (returnValues.length - 1);
         
         // Calculate standard deviation (volatility)
         uint256 stdDev = _sqrt(variance);
         
         // Annualize volatility based on the period frequency
-        uint256 periodsPerYear = totalDays > 0 ? (DAYS_PER_YEAR * returns.length) / totalDays : 0;
+        uint256 periodsPerYear = totalDays > 0 ? (DAYS_PER_YEAR * returnValues.length) / totalDays : 0;
         if (periodsPerYear > 0) {
             return (stdDev * _sqrt(periodsPerYear)) / _sqrt(SCALE);
         }
@@ -238,7 +238,7 @@ contract MetricsCalculator is IMetricsCalculator {
         uint256 sumSquaredNegativeDeviations = 0;
         uint256 negativeReturnCount = 0;
         
-        for (uint256 i = 0; i < returns.length; i++) {
+        for (uint256 i = 0; i < returnValues.length; i++) {
             if (returns[i] < 0) {
                 sumSquaredNegativeDeviations += uint256(returns[i] * returns[i]) / SCALE;
                 negativeReturnCount++;
@@ -252,7 +252,7 @@ contract MetricsCalculator is IMetricsCalculator {
             downsideDeviation = _sqrt(downsideVariance);
             
             // Annualize downside deviation
-            uint256 periodsPerYear = totalDays > 0 ? (DAYS_PER_YEAR * returns.length) / totalDays : 0;
+            uint256 periodsPerYear = totalDays > 0 ? (DAYS_PER_YEAR * returnValues.length) / totalDays : 0;
             if (periodsPerYear > 0) {
                 downsideDeviation = (downsideDeviation * _sqrt(periodsPerYear)) / _sqrt(SCALE);
             }
