@@ -127,8 +127,8 @@ contract VaultSimulationEngine is ISimulationEngine {
      * @notice Run a single simulation step
      * @param timestamp The current timestamp in the simulation
      * @return portfolioValue The total portfolio value
-     * @return assetValues Array of individual asset values
-     * @return assetWeights Array of asset weights (scaled by 10000)
+     * @return assetValuesArray Array of individual asset values
+     * @return assetWeightsArray Array of asset weights (scaled by 10000)
      * @return yieldHarvested Amount of yield harvested in this step
      * @return rebalanced Whether a rebalance occurred in this step
      * @return gasCost Estimated gas cost for operations in this step

@@ -69,8 +69,11 @@ contract SimplePortfolioBacktest {
      * @notice Initialize all backtest components
      */
     function _initializeComponents() internal {
-        // Create data provider
-        dataProvider = new HistoricalDataProvider();
+        // Create data provider with data source information
+        dataProvider = new HistoricalDataProvider(
+            "Historical S&P 500 and RWA price data 2020-2024",
+            "Historical yield rates for RWA strategies 2020-2024"
+        );
         
         // Create simulation engine with configuration
         simulationEngine = new VaultSimulationEngine(
@@ -180,7 +183,7 @@ contract SimplePortfolioBacktest {
         simulationEngine.initialize(startTimestamp);
         
         // Configure and run the backtest
-        backtestingFramework.configureBacktest(
+        backtestingFramework.configure(
             startTimestamp,
             endTimestamp,
             timeStep
