@@ -90,11 +90,12 @@ contract SimplePortfolioBacktest {
         // Create metrics calculator with 2% risk-free rate
         metricsCalculator = new MetricsCalculator(200);
         
-        // Create backtesting framework
-        backtestingFramework = new BacktestingFramework();
-        backtestingFramework.setDataProvider(dataProvider);
-        backtestingFramework.setSimulationEngine(simulationEngine);
-        backtestingFramework.setMetricsCalculator(metricsCalculator);
+        // Create backtesting framework with all dependencies
+        backtestingFramework = new BacktestingFramework(
+            dataProvider,
+            simulationEngine,
+            metricsCalculator
+        );
         
         // Create results exporter
         resultsExporter = new ResultsExporter(backtestingFramework);
