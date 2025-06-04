@@ -414,7 +414,6 @@ contract IndexFundVaultV2EnhancedTest is Test {
         // Check balances after rebalance
         wrapper1Value = wrapper1.getValueInBaseAsset();
         volatileValue = volatileWrapper.getValueInBaseAsset();
-        uint256 volatileBaseValue = volatileWrapper.getBaseValue();
         
         // The volatile asset's base value should be lower since its price doubled
         // However, the MockAssetWrapper implementation might not be properly updating the base value
