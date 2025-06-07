@@ -163,7 +163,7 @@ contract DebugGrowthIssue is Script {
             }
             
             // Move to next day
-            currentTimestamp += TIME_STEP;
+            currentTimestamp = currentTimestamp + TIME_STEP;
         }
         
         vm.stopBroadcast();
