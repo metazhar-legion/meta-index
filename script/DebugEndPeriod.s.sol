@@ -9,6 +9,11 @@ import "../backtesting/simulation/VaultSimulationEngine.sol";
 import "../backtesting/metrics/MetricsCalculator.sol";
 import "../data/historical/HistoricalPriceData.sol";
 
+// Import interfaces
+import "../backtesting/interfaces/IHistoricalDataProvider.sol";
+import "../backtesting/interfaces/ISimulationEngine.sol";
+import "../backtesting/interfaces/IMetricsCalculator.sol";
+
 /**
  * @title DebugEndPeriod
  * @notice Script to debug portfolio values during the last few months of the backtest
