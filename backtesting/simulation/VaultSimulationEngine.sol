@@ -267,7 +267,6 @@ contract VaultSimulationEngine is ISimulationEngine {
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
             uint256 targetValue = (totalValue * asset.targetWeight) / 10000;
-            // uint256 currentValue = assetValues[asset.wrapperAddress]; // Unused variable
             
             // Update asset values to match targets
             assetValues[asset.wrapperAddress] = targetValue;

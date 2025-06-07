@@ -158,19 +158,21 @@ contract MetricsCalculator is IMetricsCalculator {
         uint256 maxValue = results[0].portfolioValue;
         uint256 maxDrawdown = 0;
         
+        // First pass: find the highest peak before each point
         for (uint256 i = 1; i < results.length; i++) {
             uint256 currentValue = results[i].portfolioValue;
             
-            // Update maximum value if current value is higher
-            if (currentValue > maxValue) {
-                maxValue = currentValue;
-            } 
-            // Calculate drawdown if current value is lower than maximum
-            else if (maxValue > 0) {
+            // Calculate drawdown from previous peak
+            if (maxValue > 0 && currentValue < maxValue) {
                 uint256 drawdown = ((maxValue - currentValue) * SCALE) / maxValue;
                 if (drawdown > maxDrawdown) {
                     maxDrawdown = drawdown;
                 }
+            }
+            
+            // Update peak if we have a new high
+            if (currentValue > maxValue) {
+                maxValue = currentValue;
             }
         }
         
