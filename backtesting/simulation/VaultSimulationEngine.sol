@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import "../BacktestingFramework.sol";
 import "../../src/interfaces/IAssetWrapper.sol";
-import "forge-std/console2.sol";
 
 /**
  * @title VaultSimulationEngine
