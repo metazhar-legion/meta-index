@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "../BacktestingFramework.sol";
 import "../../src/interfaces/IAssetWrapper.sol";
+import "forge-std/console2.sol";
 
 /**
  * @title VaultSimulationEngine
@@ -209,17 +210,6 @@ contract VaultSimulationEngine is ISimulationEngine {
                     // This will decrease the asset value when price drops
                     uint256 newValue = (assetValues[asset.wrapperAddress] * price) / previousPrice;
                     assetValues[asset.wrapperAddress] = newValue;
-                    
-                    // Log significant price changes for debugging
-                    if (price < previousPrice && (previousPrice - price) * 100 > previousPrice * 5) {
-                        // Log price drops greater than 5%
-                        console2.log("Price drop detected for asset %d: %d -> %d (%d%)", 
-                            i, 
-                            previousPrice / 1e18, 
-                            price / 1e18, 
-                            ((previousPrice - price) * 100 / previousPrice) / 1e16
-                        );
-                    }
                 }
             }
         }
