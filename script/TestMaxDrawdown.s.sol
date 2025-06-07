@@ -129,8 +129,9 @@ contract TestMaxDrawdown is Script {
             gasCost: 0
         });
         
-        // Calculate max drawdown
-        uint256 maxDrawdown = metricsCalculator.calculateMaxDrawdown(results);
+        // Calculate metrics including max drawdown
+        (int256 sharpeRatio, uint256 maxDrawdown, int256 annualizedReturn, uint256 volatility) = 
+            metricsCalculator.calculateMetrics(results);
         
         // Expected max drawdown: (120 - 80) / 120 = 0.333... = 33.33%
         // Scaled by 1e18, so expected value is 0.333... * 1e18
