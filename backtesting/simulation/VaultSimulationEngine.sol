@@ -201,15 +201,33 @@ contract VaultSimulationEngine is ISimulationEngine {
             // Get price from data provider
             uint256 price = dataProvider.getAssetPrice(asset.tokenAddress, timestamp);
             
-            // Update asset value based on price change
-            if (price > 0) {
-                uint256 previousPrice = dataProvider.getAssetPrice(asset.tokenAddress, timestamp - 1 days);
-                if (previousPrice > 0) {
-                    // Calculate price change ratio and apply to asset value
-                    // This will decrease the asset value when price drops
-                    uint256 newValue = (assetValues[asset.wrapperAddress] * price) / previousPrice;
-                    assetValues[asset.wrapperAddress] = newValue;
+            // If no price available for this exact timestamp, find the most recent price
+            if (price == 0) {
+                // Look back up to 30 days to find a valid price
+                for (uint256 j = 1; j <= 30; j++) {
+                    price = dataProvider.getAssetPrice(asset.tokenAddress, timestamp - (j * 1 days));
+                    if (price > 0) break;
                 }
+            }
+            
+            // Get previous price point for comparison
+            uint256 previousTimestamp = lastRebalanceTimestamp > 0 ? lastRebalanceTimestamp : timestamp - 1 days;
+            uint256 previousPrice = dataProvider.getAssetPrice(asset.tokenAddress, previousTimestamp);
+            
+            // If no previous price available, look for the most recent price before previousTimestamp
+            if (previousPrice == 0) {
+                // Look back up to 30 days to find a valid previous price
+                for (uint256 j = 1; j <= 30; j++) {
+                    previousPrice = dataProvider.getAssetPrice(asset.tokenAddress, previousTimestamp - (j * 1 days));
+                    if (previousPrice > 0) break;
+                }
+            }
+            
+            // If we have both current and previous prices, update asset value
+            if (price > 0 && previousPrice > 0) {
+                // Calculate price change ratio and apply to asset value
+                uint256 newValue = (assetValues[asset.wrapperAddress] * price) / previousPrice;
+                assetValues[asset.wrapperAddress] = newValue;
             }
         }
     }
