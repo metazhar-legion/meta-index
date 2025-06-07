@@ -75,15 +75,10 @@ contract DebugPortfolioValues is Script {
         
         // Load real historical data
         console2.log("Loading historical price data...");
-        bool hasRealData = HistoricalPriceDataChecker.checkForRealData();
-        if (hasRealData) {
-            console2.log("Using real historical price data...");
-            HistoricalPriceData.setupHistoricalPriceData(dataProvider);
-            console2.log("Real historical price data loaded successfully.");
-        } else {
-            console2.log("No real historical data available, using sample data...");
-            setupSampleData();
-        }
+        // Always use real historical data since we know it exists
+        console2.log("Using real historical price data...");
+        HistoricalPriceData.setupHistoricalPriceData(dataProvider);
+        console2.log("Real historical price data loaded successfully.");
         
         // Initialize the simulation engine
         simulationEngine.initialize(START_TIMESTAMP);

@@ -205,7 +205,21 @@ contract VaultSimulationEngine is ISimulationEngine {
             if (price > 0) {
                 uint256 previousPrice = dataProvider.getAssetPrice(asset.tokenAddress, timestamp - 1 days);
                 if (previousPrice > 0) {
-                    assetValues[asset.wrapperAddress] = (assetValues[asset.wrapperAddress] * price) / previousPrice;
+                    // Calculate price change ratio and apply to asset value
+                    // This will decrease the asset value when price drops
+                    uint256 newValue = (assetValues[asset.wrapperAddress] * price) / previousPrice;
+                    assetValues[asset.wrapperAddress] = newValue;
+                    
+                    // Log significant price changes for debugging
+                    if (price < previousPrice && (previousPrice - price) * 100 > previousPrice * 5) {
+                        // Log price drops greater than 5%
+                        console2.log("Price drop detected for asset %d: %d -> %d (%d%)", 
+                            i, 
+                            previousPrice / 1e18, 
+                            price / 1e18, 
+                            ((previousPrice - price) * 100 / previousPrice) / 1e16
+                        );
+                    }
                 }
             }
         }
