@@ -9,7 +9,7 @@ import "../backtesting/simulation/VaultSimulationEngine.sol";
 import "../backtesting/metrics/MetricsCalculator.sol";
 import "../data/historical/HistoricalPriceData.sol";
 
-// Interfaces are already included in the BacktestingFramework.sol
+// No need for additional interface imports
 
 /**
  * @title DebugEndPeriod
@@ -70,8 +70,15 @@ contract DebugEndPeriod is Script {
         simulationEngine.addAsset(RWA_TOKEN, RWA_WRAPPER, 2000, true);    // 20% RWA with yield
         simulationEngine.addAsset(SP500_TOKEN, SP500_WRAPPER, 8000, false); // 80% S&P 500
         
+        // Create metrics calculator
+        metricsCalculator = new MetricsCalculator();
+        
         // Create backtesting framework
-        backtestingFramework = new BacktestingFramework(simulationEngine);
+        backtestingFramework = new BacktestingFramework(
+            dataProvider,
+            simulationEngine,
+            metricsCalculator
+        );
         
         // Initialize the simulation engine
         simulationEngine.initialize(START_TIMESTAMP);
