@@ -35,6 +35,7 @@ contract DebugEndPeriod is Script {
     // Backtest components
     HistoricalDataProvider public dataProvider;
     VaultSimulationEngine public simulationEngine;
+    MetricsCalculator public metricsCalculator;
     BacktestingFramework public backtestingFramework;
     
     function setUp() public {
