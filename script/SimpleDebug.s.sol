@@ -83,7 +83,7 @@ contract SimpleDebug is Script {
         require(success, "Backtest failed to run");
         uint256 resultCount = backtestingFramework.getResultCount();
         
-        console2.log("Backtest completed with %d results", resultCount);
+        console2.log("Backtest completed with", resultCount, "results");
         
         // Debug portfolio values
         console2.log("\n=== Portfolio Value Analysis ===");
@@ -99,31 +99,41 @@ contract SimpleDebug is Script {
             uint256 sp500Price = dataProvider.getAssetPrice(SP500_TOKEN, result.timestamp);
             uint256 rwaYieldRate = dataProvider.getYieldRate(RWA_WRAPPER, result.timestamp);
             
-            // Print detailed information
-            console2.log(
-                "%d, %d, %d, %d, %d, %d", 
-                result.timestamp, 
-                result.portfolioValue / 1e18,
-                result.assetValues.length > 0 ? result.assetValues[0] / 1e18 : 0,
-                result.assetValues.length > 1 ? result.assetValues[1] / 1e18 : 0,
-                rwaYieldRate,
-                result.yieldHarvested / 1e18
-            );
+            // Print detailed information using string concatenation for console2.log
+            string memory dateStr = vm.toString(result.timestamp);
+            string memory portfolioValueStr = vm.toString(result.portfolioValue / 1e18);
+            string memory rwaValueStr = vm.toString(result.assetValues.length > 0 ? result.assetValues[0] / 1e18 : 0);
+            string memory sp500ValueStr = vm.toString(result.assetValues.length > 1 ? result.assetValues[1] / 1e18 : 0);
+            string memory rwaYieldRateStr = vm.toString(rwaYieldRate);
+            string memory yieldHarvestedStr = vm.toString(result.yieldHarvested / 1e18);
+            
+            console2.log(string(abi.encodePacked(
+                dateStr, ", ", portfolioValueStr, ", ", rwaValueStr, ", ", 
+                sp500ValueStr, ", ", rwaYieldRateStr, ", ", yieldHarvestedStr
+            )));
             
             // If we see a large jump in portfolio value, print more details
             if (i > 0 && result.portfolioValue > prevPortfolioValue * 2) {
-                console2.log("LARGE JUMP DETECTED at timestamp %d", result.timestamp);
-                console2.log("Previous value: %d, New value: %d", 
-                    prevPortfolioValue / 1e18, 
-                    result.portfolioValue / 1e18
-                );
-                console2.log("Yield harvested: %d", result.yieldHarvested / 1e18);
-                console2.log("Rebalanced: %s", result.rebalanced ? "Yes" : "No");
+                console2.log(string(abi.encodePacked(
+                    "LARGE JUMP DETECTED at timestamp ", vm.toString(result.timestamp)
+                )));
+                console2.log(string(abi.encodePacked(
+                    "Previous value: ", vm.toString(prevPortfolioValue / 1e18),
+                    ", New value: ", vm.toString(result.portfolioValue / 1e18)
+                )));
+                console2.log(string(abi.encodePacked(
+                    "Yield harvested: ", vm.toString(result.yieldHarvested / 1e18)
+                )));
+                console2.log(string(abi.encodePacked(
+                    "Rebalanced: ", result.rebalanced ? "Yes" : "No"
+                )));
                 
                 // Print asset values
                 console2.log("Asset values:");
                 for (uint256 j = 0; j < result.assetValues.length; j++) {
-                    console2.log("Asset %d: %d", j, result.assetValues[j] / 1e18);
+                    console2.log(string(abi.encodePacked(
+                        "Asset ", vm.toString(j), ": ", vm.toString(result.assetValues[j] / 1e18)
+                    )));
                 }
             }
             
