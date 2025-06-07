@@ -109,29 +109,35 @@ contract DebugEndPeriod is Script {
             uint256 rwaYieldRate = dataProvider.getYieldRate(RWA_WRAPPER, result.timestamp);
             
             // Print detailed information
-            console2.log(
-                "%d, %d, %d, %d, %d, %d/%d, %d", 
-                result.timestamp, 
-                result.portfolioValue / 1e18,
-                sp500Price / 1e18,
-                rwaPrice / 1e18,
-                rwaYieldRate,
-                result.assetValues.length > 0 ? result.assetValues[0] / 1e18 : 0,
-                result.assetValues.length > 1 ? result.assetValues[1] / 1e18 : 0,
-                result.yieldHarvested / 1e18
-            );
+            string memory output = string(abi.encodePacked(
+                vm.toString(result.timestamp), ", ",
+                vm.toString(result.portfolioValue / 1e18), ", ",
+                vm.toString(sp500Price / 1e18), ", ",
+                vm.toString(rwaPrice / 1e18), ", ",
+                vm.toString(rwaYieldRate), ", ",
+                vm.toString(result.assetValues.length > 0 ? result.assetValues[0] / 1e18 : 0), "/",
+                vm.toString(result.assetValues.length > 1 ? result.assetValues[1] / 1e18 : 0), ", ",
+                vm.toString(result.yieldHarvested / 1e18)
+            ));
+            console2.log(output);
             
             // If we see a large jump in portfolio value, print more details
             if (i > 0) {
                 BacktestingFramework.BacktestResult memory prevResult = backtestingFramework.getResult(i-1);
                 if (result.portfolioValue > prevResult.portfolioValue * 2) {
-                    console2.log("LARGE JUMP DETECTED at timestamp %d", result.timestamp);
-                    console2.log("Previous value: %d, New value: %d", 
-                        prevResult.portfolioValue / 1e18, 
-                        result.portfolioValue / 1e18
-                    );
-                    console2.log("Yield harvested: %d", result.yieldHarvested / 1e18);
-                    console2.log("Rebalanced: %s", result.rebalanced ? "Yes" : "No");
+                    console2.log(string(abi.encodePacked(
+                        "LARGE JUMP DETECTED at timestamp ", vm.toString(result.timestamp)
+                    )));
+                    console2.log(string(abi.encodePacked(
+                        "Previous value: ", vm.toString(prevResult.portfolioValue / 1e18),
+                        ", New value: ", vm.toString(result.portfolioValue / 1e18)
+                    )));
+                    console2.log(string(abi.encodePacked(
+                        "Yield harvested: ", vm.toString(result.yieldHarvested / 1e18)
+                    )));
+                    console2.log(string(abi.encodePacked(
+                        "Rebalanced: ", result.rebalanced ? "Yes" : "No"
+                    )));
                 }
             }
         }
