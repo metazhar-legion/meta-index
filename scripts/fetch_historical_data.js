@@ -21,10 +21,10 @@ const END_DATE = '2024-06-30';
 const OUTPUT_DIR = path.join(__dirname, '../data/historical');
 
 // Symbols to fetch
-// ^GSPC is the S&P 500 index
+// Using SPY (SPDR S&P 500 ETF Trust) as a proxy for S&P 500 index
 // Using VTIP as a proxy for RWA (Vanguard Short-Term Inflation-Protected Securities ETF)
 const SYMBOLS = {
-  'SP500': '^GSPC',
+  'SP500': 'SPY',
   'RWA': 'VTIP'
 };
 
