@@ -21,8 +21,9 @@ contract VaultSimulationEngine is ISimulationEngine {
     uint256 public managementFeeRate; // In basis points per year (e.g. 100 = 1%)
     uint256 public performanceFeeRate; // In basis points (e.g. 1000 = 10%)
     
-    // Vault state
+    // Timestamps for tracking events
     uint256 public lastRebalanceTimestamp;
+    uint256 public lastYieldTimestamp;
     uint256 public highWaterMark; // For performance fee calculation
     mapping(address => uint256) public assetValues; // Current value in base asset
     mapping(address => uint256) public assetBaseValues; // Original value in base asset (for yield calculation)
@@ -304,24 +305,44 @@ contract VaultSimulationEngine is ISimulationEngine {
      * @return totalYield The total yield harvested
      */
     function _harvestYield(uint256 timestamp) internal returns (uint256 totalYield) {
+        // If this is the first harvest, initialize lastYieldTimestamp
+        if (lastYieldTimestamp == 0) {
+            lastYieldTimestamp = timestamp;
+            return 0;
+        }
+        
+        // Calculate time elapsed since last yield harvest in days
+        uint256 timeElapsed = timestamp - lastYieldTimestamp;
+        if (timeElapsed == 0) return 0;
+        
+        // Convert time elapsed to fraction of a year (365 days)
+        uint256 yearFraction = (timeElapsed * 1e18) / 365 days;
+        
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
             if (asset.isYieldGenerating) {
-                // Get yield rate from data provider
-                uint256 yieldRate = dataProvider.getYieldRate(asset.wrapperAddress, timestamp);
-                if (yieldRate > 0) {
-                    // Calculate yield based on base value and time since last harvest
+                // Get annual yield rate from data provider (in basis points)
+                uint256 annualYieldRate = dataProvider.getYieldRate(asset.wrapperAddress, timestamp);
+                if (annualYieldRate > 0) {
+                    // Calculate yield for the elapsed time period
                     uint256 baseValue = assetBaseValues[asset.wrapperAddress];
-                    uint256 yield = (baseValue * yieldRate) / 10000;
+                    
+                    // Convert annual yield to the actual yield for the elapsed time period
+                    // annualYieldRate is in basis points (1/100 of a percent)
+                    // 10000 basis points = 100%
+                    uint256 periodYield = (baseValue * annualYieldRate * yearFraction) / (10000 * 1e18);
                     
                     // Add yield to asset value
-                    assetValues[asset.wrapperAddress] += yield;
-                    totalYield += yield;
+                    assetValues[asset.wrapperAddress] += periodYield;
+                    totalYield += periodYield;
                     
-                    emit YieldHarvested(timestamp, asset.wrapperAddress, yield);
+                    emit YieldHarvested(timestamp, asset.wrapperAddress, periodYield);
                 }
             }
         }
+        
+        // Update last yield timestamp
+        lastYieldTimestamp = timestamp;
         return totalYield;
     }
     
