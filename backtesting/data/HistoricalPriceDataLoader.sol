@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "./HistoricalDataProvider.sol";
 import "forge-std/console2.sol";
 import "../../data/historical/HistoricalPriceData.sol";
-import "../../data/historical/HistoricalPriceDataChecker.sol";
 
 /**
  * @title HistoricalPriceDataLoader

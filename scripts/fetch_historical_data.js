@@ -257,9 +257,6 @@ function saveToSolidity(code) {
   const filePath = path.join(OUTPUT_DIR, 'HistoricalPriceData.sol');
   fs.writeFileSync(filePath, code);
   console.log(`Saved Solidity code to ${filePath}`);
-  
-  // Also update the HistoricalPriceDataLoader to use the real data
-  updateDataLoader();
 }
 
 /**
@@ -316,8 +313,8 @@ async function main() {
         
         // Wait 15 seconds between API calls to avoid rate limiting (free tier limit is 5 calls per minute)
         if (Object.keys(SYMBOLS).length > 1) {
-          console.log('Waiting 15 seconds before next API call...');
-          await new Promise(resolve => setTimeout(resolve, 15000));
+          console.log('Waiting 5 seconds before next API call...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
       } catch (error) {
         console.error(`Error fetching data for ${name} (${symbol}):`, error.message);
