@@ -70,8 +70,8 @@ contract DebugEndPeriod is Script {
         simulationEngine.addAsset(RWA_TOKEN, RWA_WRAPPER, 2000, true);    // 20% RWA with yield
         simulationEngine.addAsset(SP500_TOKEN, SP500_WRAPPER, 8000, false); // 80% S&P 500
         
-        // Create metrics calculator
-        metricsCalculator = new MetricsCalculator();
+        // Create metrics calculator with 2% risk-free rate
+        metricsCalculator = new MetricsCalculator(200); // 200 basis points = 2%
         
         // Create backtesting framework
         backtestingFramework = new BacktestingFramework(
