@@ -94,6 +94,7 @@ contract DebugGrowthIssue is Script {
         
         uint256 currentTimestamp = START_TIMESTAMP;
         uint256 lastYieldTimestamp = START_TIMESTAMP;
+        uint256 prevPortfolioValue = INITIAL_DEPOSIT;
         
         while (currentTimestamp <= END_TIMESTAMP) {
             // Run a single step
@@ -134,15 +135,24 @@ contract DebugGrowthIssue is Script {
             }
             
             // If we see a large jump in portfolio value, print more details
-            if (currentTimestamp > START_TIMESTAMP) {
-                if (portfolioValue > 1.5 * simulationEngine.getTotalPortfolioValue()) {
-                    console2.log(string(abi.encodePacked(
-                        "LARGE JUMP DETECTED at timestamp ", vm.toString(currentTimestamp)
-                    )));
-                    console2.log(string(abi.encodePacked(
-                        "Previous value: ", vm.toString(simulationEngine.getTotalPortfolioValue() / 1e18),
-                        ", New value: ", vm.toString(portfolioValue / 1e18)
-                    )));
+            if (currentTimestamp > START_TIMESTAMP && portfolioValue > prevPortfolioValue * 2) {
+                console2.log(string(abi.encodePacked(
+                    "LARGE JUMP DETECTED at timestamp ", vm.toString(currentTimestamp)
+                )));
+                console2.log(string(abi.encodePacked(
+                    "Previous value: ", vm.toString(prevPortfolioValue / 1e18),
+                    ", New value: ", vm.toString(portfolioValue / 1e18)
+                )));
+                console2.log(string(abi.encodePacked(
+                    "Yield harvested: ", vm.toString(yieldHarvested / 1e18)
+                )));
+                console2.log(string(abi.encodePacked(
+                    "Rebalanced: ", rebalanced ? "Yes" : "No"
+                )));
+            }
+            
+            // Store current portfolio value for next iteration
+            prevPortfolioValue = portfolioValue;
                     console2.log(string(abi.encodePacked(
                         "Yield harvested: ", vm.toString(yieldHarvested / 1e18)
                     )));
