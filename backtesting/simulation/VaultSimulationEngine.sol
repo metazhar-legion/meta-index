@@ -120,6 +120,9 @@ contract VaultSimulationEngine is ISimulationEngine {
             assetValues[asset.wrapperAddress] = assetValue;
             assetBaseValues[asset.wrapperAddress] = assetValue;
         }
+        
+        // Initialize timestamps
+        lastYieldTimestamp = timestamp;
     }
     
     /**
