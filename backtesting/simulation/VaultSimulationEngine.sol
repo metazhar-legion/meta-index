@@ -160,7 +160,7 @@ contract VaultSimulationEngine is ISimulationEngine {
         rebalanced = _shouldRebalance(timestamp);
         if (rebalanced) {
             _rebalance(timestamp);
-            gasCost += 100000; // Estimated gas cost for rebalancing
+            gasCost += 10000; // Estimated gas cost for rebalancing on L2
         }
         
         // Charge performance fee if applicable
@@ -177,8 +177,8 @@ contract VaultSimulationEngine is ISimulationEngine {
             assetWeightsArray[i] = currentWeight;
         }
         
-        // Add base gas cost for the transaction
-        gasCost += 50000;
+        // Add base gas cost for the transaction (L2 optimized)
+        gasCost += 5000;
         
         return (
             portfolioValue,

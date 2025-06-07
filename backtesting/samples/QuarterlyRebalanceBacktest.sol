@@ -10,11 +10,11 @@ import "../visualization/ResultsExporter.sol";
 import "../interfaces/IERC20.sol";
 
 /**
- * @title SimplePortfolioBacktest
- * @notice Sample backtest for a 20/80 allocation between RWA and S&P 500
+ * @title QuarterlyRebalanceBacktest
+ * @notice Sample backtest for a 20/80 allocation between RWA and S&P 500 with quarterly rebalancing
  * @dev Demonstrates how to set up and run a backtest with the framework
  */
-contract SimplePortfolioBacktest {
+contract QuarterlyRebalanceBacktest {
     // Addresses (using placeholder addresses for demonstration)
     address constant USDC = address(0x1);
     address constant SP500_TOKEN = address(0x2);
@@ -28,6 +28,14 @@ contract SimplePortfolioBacktest {
     VaultSimulationEngine public simulationEngine;
     MetricsCalculator public metricsCalculator;
     ResultsExporter public resultsExporter;
+    
+    /**
+     * @notice Get the data provider instance
+     * @return The HistoricalDataProvider instance
+     */
+    function getDataProvider() external view returns (HistoricalDataProvider) {
+        return dataProvider;
+    }
     
     // Backtest configuration
     uint256 public startTimestamp;
@@ -81,7 +89,7 @@ contract SimplePortfolioBacktest {
             USDC,              // Base asset
             initialDeposit,    // Initial deposit
             500,               // Rebalance threshold (5%)
-            30 days,           // Rebalance interval
+            90 days,           // Rebalance interval - QUARTERLY
             10,                // Management fee (0.1%)
             0                  // Performance fee (0%)
         );
@@ -99,14 +107,12 @@ contract SimplePortfolioBacktest {
             simulationEngine,
             metricsCalculator
         );
-        
-        // Create results exporter
-        resultsExporter = new ResultsExporter(backtestingFramework);
     }
     
     /**
-     * @notice Set up historical price data for assets
-     * @dev In a real implementation, this would load data from an external source
+     * @notice Set up historical price and yield data
+     * @dev This is a simplified example with quarterly price points
+     * TODO: Replace with higher quality data source with more frequent price points
      */
     function setupHistoricalData() external {
         // Set up S&P 500 price data (simplified example with annual returns)
@@ -166,6 +172,7 @@ contract SimplePortfolioBacktest {
         dataProvider.setAssetPrice(RWA_TOKEN, startTimestamp + 365 days * 4 + 180 days, rwaBasePrice * 125 / 100);
         
         // Set up yield rates for RWA (assuming 4% annual yield)
+        // TODO: Update with historical yield data when available
         uint256 rwaYieldRate = 400; // 4% in basis points
         dataProvider.setYieldRate(RWA_WRAPPER, startTimestamp, rwaYieldRate);
         dataProvider.setYieldRate(RWA_WRAPPER, startTimestamp + 365 days, rwaYieldRate);
