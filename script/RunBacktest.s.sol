@@ -44,7 +44,10 @@ contract RunBacktest is Script {
         console.log("=== Starting Backtest ===");
         
         // Initialize components
-        dataProvider = new HistoricalDataProvider();
+        dataProvider = new HistoricalDataProvider(
+            "Historical S&P 500 and RWA price data 2020-2024",
+            "Historical yield rates for RWA strategies 2020-2024"
+        );
         
         // Create simulation engine with configuration
         simulationEngine = new VaultSimulationEngine(
@@ -87,7 +90,9 @@ contract RunBacktest is Script {
             TIME_STEP
         );
         
-        uint256 resultCount = backtestingFramework.runBacktest();
+        bool success = backtestingFramework.runBacktest();
+        require(success, "Backtest failed to run");
+        uint256 resultCount = backtestingFramework.getResultCount();
         
         console.log("Backtest completed with %d results", resultCount);
         
