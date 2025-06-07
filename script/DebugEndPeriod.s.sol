@@ -9,10 +9,7 @@ import "../backtesting/simulation/VaultSimulationEngine.sol";
 import "../backtesting/metrics/MetricsCalculator.sol";
 import "../data/historical/HistoricalPriceData.sol";
 
-// Import interfaces
-import "../backtesting/interfaces/IHistoricalDataProvider.sol";
-import "../backtesting/interfaces/ISimulationEngine.sol";
-import "../backtesting/interfaces/IMetricsCalculator.sol";
+// Interfaces are already included in the BacktestingFramework.sol
 
 /**
  * @title DebugEndPeriod
