@@ -114,25 +114,28 @@ contract DebugGrowthIssueFixed is Script {
             uint256 rwaYieldRate = dataProvider.getYieldRate(RWA_WRAPPER, timestamp);
             
             // Print results
-            console2.log(
-                vm.toString(timestamp), 
-                vm.toString(portfolioValue / 1e18),
-                vm.toString(assetValues[0] / 1e18),
-                vm.toString(assetValues[1] / 1e18),
-                vm.toString(rwaYieldRate),
+            console2.log(string(abi.encodePacked(
+                vm.toString(timestamp), ", ",
+                vm.toString(portfolioValue / 1e18), ", ",
+                vm.toString(assetValues[0] / 1e18), ", ",
+                vm.toString(assetValues[1] / 1e18), ", ",
+                vm.toString(rwaYieldRate), ", ",
                 vm.toString(yieldHarvested / 1e18)
-            );
+            )));
             
             // Check for large jumps in portfolio value
             if (portfolioValue > prevPortfolioValue * 2) {
-                console2.log(
-                    "LARGE JUMP DETECTED:",
-                    vm.toString(timestamp),
-                    "Previous:", vm.toString(prevPortfolioValue / 1e18),
-                    "Current:", vm.toString(portfolioValue / 1e18),
-                    "Increase:", vm.toString((portfolioValue - prevPortfolioValue) / 1e18),
-                    "Rebalanced:", rebalanced ? "Yes" : "No"
-                );
+                console2.log(string(abi.encodePacked(
+                    "LARGE JUMP DETECTED at timestamp ", vm.toString(timestamp)
+                )));
+                console2.log(string(abi.encodePacked(
+                    "Previous value: ", vm.toString(prevPortfolioValue / 1e18),
+                    ", New value: ", vm.toString(portfolioValue / 1e18)
+                )));
+                console2.log(string(abi.encodePacked(
+                    "Increase: ", vm.toString((portfolioValue - prevPortfolioValue) / 1e18),
+                    ", Rebalanced: ", rebalanced ? "Yes" : "No"
+                )));
             }
             
             prevPortfolioValue = portfolioValue;
