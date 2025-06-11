@@ -325,7 +325,18 @@ contract VaultSimulationEngine is ISimulationEngine {
             AssetConfig memory asset = assets[i];
             if (asset.isYieldGenerating) {
                 // Get annual yield rate from data provider (in basis points)
-                uint256 annualYieldRate = dataProvider.getYieldRate(asset.wrapperAddress, timestamp);
+                // Look back up to 90 days to find the most recent yield rate
+                uint256 annualYieldRate = 0;
+                for (uint256 lookback = 0; lookback <= 90 days; lookback += 1 days) {
+                    if (timestamp > lookback) {
+                        annualYieldRate = dataProvider.getYieldRate(asset.wrapperAddress, timestamp - lookback);
+                        if (annualYieldRate > 0) break;
+                    }
+                }
+                // If still no yield rate found, use a default value for RWA assets (4%)
+                if (annualYieldRate == 0) {
+                    annualYieldRate = 400; // 4% annual yield in basis points
+                }
                 if (annualYieldRate > 0) {
                     // Calculate yield for the elapsed time period
                     uint256 baseValue = assetBaseValues[asset.wrapperAddress];
@@ -339,7 +350,11 @@ contract VaultSimulationEngine is ISimulationEngine {
                     assetValues[asset.wrapperAddress] += periodYield;
                     totalYield += periodYield;
                     
+                    // Log the yield harvested
                     emit YieldHarvested(timestamp, asset.wrapperAddress, periodYield);
+                    
+                    // Debug log is removed to fix compile errors
+                    // We'll rely on the emit event for tracking yield harvests
                 }
             }
         }
