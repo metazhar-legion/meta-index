@@ -48,10 +48,18 @@ contract FixedDebugGrowthIssue is Script {
         HistoricalPriceData.setupHistoricalPriceData(dataProvider);
         
         // Initialize simulation engine
-        simulationEngine = new VaultSimulationEngine(dataProvider);
+        simulationEngine = new VaultSimulationEngine(
+            dataProvider,
+            USDC,              // Base asset
+            INITIAL_DEPOSIT,   // Initial deposit
+            500,               // Rebalance threshold (5%)
+            90 days,           // Rebalance interval (quarterly)
+            10,                // Management fee (0.1%)
+            0                  // Performance fee (0%)
+        );
         
-        // Initialize metrics calculator
-        metricsCalculator = new MetricsCalculator();
+        // Initialize metrics calculator with 2% risk-free rate
+        metricsCalculator = new MetricsCalculator(200); // 200 basis points = 2%
         
         // Initialize backtesting framework
         backtestingFramework = new BacktestingFramework(
@@ -64,21 +72,18 @@ contract FixedDebugGrowthIssue is Script {
         simulationEngine.addAsset(
             SP500_TOKEN,
             SP500_WRAPPER,
-            "S&P 500 Index",
-            false,  // Not yield generating
-            6000    // 60% target weight
+            6000,    // 60% target weight
+            false    // Not yield generating
         );
         
         simulationEngine.addAsset(
             RWA_TOKEN,
             RWA_WRAPPER,
-            "Real World Asset",
-            true,   // Yield generating
-            4000    // 40% target weight
+            4000,    // 40% target weight
+            true     // Yield generating
         );
         
-        // Set initial deposit
-        simulationEngine.deposit(INITIAL_DEPOSIT);
+        // Initial deposit is already set in the constructor
         
         // Initialize the simulation engine
         simulationEngine.initialize(START_TIMESTAMP);
@@ -106,14 +111,14 @@ contract FixedDebugGrowthIssue is Script {
             uint256 rwaYieldRate = dataProvider.getYieldRate(RWA_WRAPPER, currentTimestamp);
             
             // Print results
-            console2.log(
-                vm.toString(currentTimestamp), 
-                vm.toString(portfolioValue / 1e18),
-                vm.toString(assetValues[0] / 1e18),
-                vm.toString(assetValues[1] / 1e18),
-                vm.toString(rwaYieldRate),
+            console2.log(string(abi.encodePacked(
+                vm.toString(currentTimestamp), ", ",
+                vm.toString(portfolioValue / 1e18), ", ",
+                vm.toString(assetValues[0] / 1e18), ", ",
+                vm.toString(assetValues[1] / 1e18), ", ",
+                vm.toString(rwaYieldRate), ", ",
                 vm.toString(yieldHarvested / 1e18)
-            );
+            )));
         }
         
         vm.stopBroadcast();
