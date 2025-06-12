@@ -153,10 +153,58 @@ contract HistoricalDataProvider is IHistoricalDataProvider {
      * @notice Get the yield rate for a strategy at a specific timestamp
      * @param strategy The address of the yield strategy
      * @param timestamp The timestamp to get the yield rate for
-     * @return yieldRate The annualized yield rate (scaled by 1e18)
+     * @return yieldRate The annualized yield rate (in basis points)
      */
     function getYieldRate(address strategy, uint256 timestamp) external view override returns (uint256) {
-        return strategyYieldRates[strategy][timestamp];
+        uint256 yieldRate = strategyYieldRates[strategy][timestamp];
+        if (yieldRate > 0) {
+            return yieldRate;
+        }
+        
+        // If no exact match, try to find the nearest yield rate within 90 days
+        return getNearestYieldRate(strategy, timestamp, 90 days);
+    }
+    
+    /**
+     * @notice Get the nearest yield rate for a strategy within a time window
+     * @param strategy The address of the yield strategy
+     * @param timestamp The target timestamp
+     * @param maxDelta The maximum allowed time difference (in seconds)
+     * @return yieldRate The nearest yield rate (in basis points)
+     */
+    function getNearestYieldRate(address strategy, uint256 timestamp, uint256 maxDelta) public view returns (uint256) {
+        // Start with the exact timestamp
+        uint256 yieldRate = strategyYieldRates[strategy][timestamp];
+        if (yieldRate > 0) {
+            return yieldRate;
+        }
+        
+        // Look for the nearest timestamp within maxDelta
+        uint256 nearestDelta = maxDelta + 1; // Initialize to more than maxDelta
+        
+        // Check timestamps before the target
+        for (uint256 delta = 1; delta <= maxDelta; delta++) {
+            if (timestamp >= delta) {
+                uint256 checkTime = timestamp - delta;
+                uint256 checkYieldRate = strategyYieldRates[strategy][checkTime];
+                if (checkYieldRate > 0 && delta < nearestDelta) {
+                    yieldRate = checkYieldRate;
+                    nearestDelta = delta;
+                }
+            }
+        }
+        
+        // Check timestamps after the target
+        for (uint256 delta = 1; delta <= maxDelta; delta++) {
+            uint256 checkTime = timestamp + delta;
+            uint256 checkYieldRate = strategyYieldRates[strategy][checkTime];
+            if (checkYieldRate > 0 && delta < nearestDelta) {
+                yieldRate = checkYieldRate;
+                nearestDelta = delta;
+            }
+        }
+        
+        return yieldRate;
     }
     
     /**
