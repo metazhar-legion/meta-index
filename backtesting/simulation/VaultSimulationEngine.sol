@@ -311,6 +311,13 @@ contract VaultSimulationEngine is ISimulationEngine {
         // If this is the first harvest, initialize lastYieldTimestamp
         if (lastYieldTimestamp == 0) {
             lastYieldTimestamp = timestamp;
+            // Initialize assetBaseValues to match current assetValues
+            for (uint256 i = 0; i < assets.length; i++) {
+                AssetConfig memory asset = assets[i];
+                if (asset.isYieldGenerating) {
+                    assetBaseValues[asset.wrapperAddress] = assetValues[asset.wrapperAddress];
+                }
+            }
             return 0;
         }
         
@@ -339,7 +346,7 @@ contract VaultSimulationEngine is ISimulationEngine {
                 }
                 if (annualYieldRate > 0) {
                     // Calculate yield for the elapsed time period
-                    uint256 baseValue = assetBaseValues[asset.wrapperAddress];
+                    uint256 baseValue = assetValues[asset.wrapperAddress]; // Use current value instead of base value
                     
                     // Convert annual yield to the actual yield for the elapsed time period
                     // annualYieldRate is in basis points (1/100 of a percent)
@@ -350,11 +357,11 @@ contract VaultSimulationEngine is ISimulationEngine {
                     assetValues[asset.wrapperAddress] += periodYield;
                     totalYield += periodYield;
                     
+                    // Update base value for next yield calculation
+                    assetBaseValues[asset.wrapperAddress] = assetValues[asset.wrapperAddress];
+                    
                     // Log the yield harvested
                     emit YieldHarvested(timestamp, asset.wrapperAddress, periodYield);
-                    
-                    // Debug log is removed to fix compile errors
-                    // We'll rely on the emit event for tracking yield harvests
                 }
             }
         }
