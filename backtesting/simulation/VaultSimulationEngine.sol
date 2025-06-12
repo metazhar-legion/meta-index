@@ -321,25 +321,21 @@ contract VaultSimulationEngine is ISimulationEngine {
             return 0;
         }
         
-        // Calculate time elapsed since last yield harvest in days
+        // Calculate time elapsed since last yield harvest in seconds
         uint256 timeElapsed = timestamp - lastYieldTimestamp;
         if (timeElapsed == 0) return 0;
         
         // Convert time elapsed to fraction of a year (365 days)
+        // Using 1e18 for precision in the calculation
         uint256 yearFraction = (timeElapsed * 1e18) / 365 days;
         
         for (uint256 i = 0; i < assets.length; i++) {
             AssetConfig memory asset = assets[i];
             if (asset.isYieldGenerating) {
                 // Get annual yield rate from data provider (in basis points)
-                // Look back up to 90 days to find the most recent yield rate
-                uint256 annualYieldRate = 0;
-                for (uint256 lookback = 0; lookback <= 90 days; lookback += 1 days) {
-                    if (timestamp > lookback) {
-                        annualYieldRate = dataProvider.getYieldRate(asset.wrapperAddress, timestamp - lookback);
-                        if (annualYieldRate > 0) break;
-                    }
-                }
+                // The enhanced getYieldRate method will find the nearest yield rate within 90 days
+                uint256 annualYieldRate = dataProvider.getYieldRate(asset.wrapperAddress, timestamp);
+                
                 // If still no yield rate found, use a default value for RWA assets (4%)
                 if (annualYieldRate == 0) {
                     annualYieldRate = 400; // 4% annual yield in basis points
