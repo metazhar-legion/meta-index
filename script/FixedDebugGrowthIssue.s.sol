@@ -142,4 +142,53 @@ contract FixedDebugGrowthIssue is Script {
         
         vm.stopBroadcast();
     }
+    
+    /**
+     * @notice Convert a Unix timestamp to a readable date string (YYYY-MM-DD)
+     * @param timestamp The Unix timestamp to convert
+     * @return A string representation of the date
+     */
+    function timestampToDate(uint256 timestamp) internal pure returns (string memory) {
+        // Convert timestamp to days since Unix epoch
+        uint256 daysSinceEpoch = timestamp / 86400;
+        
+        // Use a simplified algorithm to calculate year, month, day
+        // This is an approximation and doesn't account for leap years perfectly
+        uint256 year = 1970;
+        uint256 daysInYear = 365;
+        
+        // Find the year
+        while (daysSinceEpoch >= daysInYear) {
+            daysSinceEpoch -= daysInYear;
+            year++;
+            // Simplified leap year calculation
+            daysInYear = ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) ? 366 : 365;
+        }
+        
+        // Array of days in each month (non-leap year)
+        uint8[12] memory daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        
+        // Adjust February for leap years
+        if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) {
+            daysInMonth[1] = 29;
+        }
+        
+        // Find the month and day
+        uint256 month = 0;
+        while (month < 12 && daysSinceEpoch >= daysInMonth[month]) {
+            daysSinceEpoch -= daysInMonth[month];
+            month++;
+        }
+        
+        // Add 1 to month (1-indexed) and day (1-indexed)
+        month += 1;
+        uint256 day = daysSinceEpoch + 1;
+        
+        // Format the date as YYYY-MM-DD
+        return string(abi.encodePacked(
+            vm.toString(year), "-",
+            month < 10 ? string(abi.encodePacked("0", vm.toString(month))) : vm.toString(month), "-",
+            day < 10 ? string(abi.encodePacked("0", vm.toString(day))) : vm.toString(day)
+        ));
+    }
 }
