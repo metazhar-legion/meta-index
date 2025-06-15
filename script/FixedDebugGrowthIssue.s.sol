@@ -91,9 +91,9 @@ contract FixedDebugGrowthIssue is Script {
         console2.log("\n=== Manual Step-by-Step Execution ===");
         console2.log("Date, Portfolio Value, RWA Value, SP500 Value, RWA Yield Rate, Yield Harvested");
         
-        // Loop through each day
-        for (uint256 i = 0; i <= (END_TIMESTAMP - START_TIMESTAMP) / TIME_STEP; i++) {
-            uint256 currentTimestamp = START_TIMESTAMP + (i * TIME_STEP);
+        // Loop through each month (30 days) instead of each day to reduce output
+        for (uint256 i = 0; i <= (END_TIMESTAMP - START_TIMESTAMP) / (30 days); i++) {
+            uint256 currentTimestamp = START_TIMESTAMP + (i * 30 days);
             
             // Run a single step
             (
@@ -106,19 +106,28 @@ contract FixedDebugGrowthIssue is Script {
             ) = simulationEngine.runStep(currentTimestamp);
             
             // Get asset prices and yield rate
-            uint256 rwaPrice = dataProvider.getAssetPrice(RWA_TOKEN, currentTimestamp);
-            uint256 sp500Price = dataProvider.getAssetPrice(SP500_TOKEN, currentTimestamp);
             uint256 rwaYieldRate = dataProvider.getYieldRate(RWA_WRAPPER, currentTimestamp);
             
             // Print results
             console2.log(string(abi.encodePacked(
                 vm.toString(currentTimestamp), ", ",
                 vm.toString(portfolioValue / 1e18), ", ",
-                vm.toString(assetValues[0] / 1e18), ", ",
                 vm.toString(assetValues[1] / 1e18), ", ",
+                vm.toString(assetValues[0] / 1e18), ", ",
                 vm.toString(rwaYieldRate), ", ",
                 vm.toString(yieldHarvested / 1e18)
             )));
+            
+            // Debug the yield calculation for this step
+            if (i % 3 == 0) { // Every quarter
+                console2.log("--- Debug Yield Calculation ---");
+                console2.log(string(abi.encodePacked(
+                    "Timestamp: ", vm.toString(currentTimestamp),
+                    ", RWA Value: ", vm.toString(assetValues[1] / 1e18),
+                    ", Yield Rate: ", vm.toString(rwaYieldRate),
+                    ", Yield Harvested: ", vm.toString(yieldHarvested / 1e18)
+                )));
+            }
         }
         
         vm.stopBroadcast();
