@@ -91,38 +91,48 @@ contract FixedDebugGrowthIssue is Script {
         console2.log("\n=== Manual Step-by-Step Execution ===");
         console2.log("Date, Portfolio Value, RWA Value, SP500 Value, RWA Yield Rate, Yield Harvested");
         
-        // Loop through each month (30 days) instead of each day to reduce output
-        for (uint256 i = 0; i <= (END_TIMESTAMP - START_TIMESTAMP) / (30 days); i++) {
-            uint256 currentTimestamp = START_TIMESTAMP + (i * 30 days);
+        // Run simulation at key points (monthly) instead of daily to reduce output
+        uint256[] memory checkpoints = new uint256[](12);
+        for (uint256 i = 0; i < 12; i++) {
+            checkpoints[i] = START_TIMESTAMP + (i * 30 days);
+        }
+        
+        // Run simulation at each checkpoint
+        for (uint256 i = 0; i < checkpoints.length; i++) {
+            uint256 currentTimestamp = checkpoints[i];
             
             // Run a single step
-            (
-                uint256 portfolioValue,
-                uint256[] memory assetValues,
-                uint256[] memory assetWeights,
-                uint256 yieldHarvested,
-                bool rebalanced,
-                uint256 gasCost
-            ) = simulationEngine.runStep(currentTimestamp);
+            uint256 portfolioValue;
+            uint256[] memory assetValues;
+            uint256 yieldHarvested;
+            {
+                uint256[] memory assetWeights;
+                bool rebalanced;
+                uint256 gasCost;
+                (portfolioValue, assetValues, assetWeights, yieldHarvested, rebalanced, gasCost) = 
+                    simulationEngine.runStep(currentTimestamp);
+            }
             
-            // Get asset prices and yield rate
+            // Get yield rate
             uint256 rwaYieldRate = dataProvider.getYieldRate(RWA_WRAPPER, currentTimestamp);
             
-            // Print results
+            // Print results in CSV format
+            string memory date = timestampToDate(currentTimestamp);
             console2.log(string(abi.encodePacked(
-                vm.toString(currentTimestamp), ", ",
+                date, ", ",
                 vm.toString(portfolioValue / 1e18), ", ",
-                vm.toString(assetValues[1] / 1e18), ", ",
-                vm.toString(assetValues[0] / 1e18), ", ",
+                vm.toString(assetValues[1] / 1e18), ", ", // RWA value
+                vm.toString(assetValues[0] / 1e18), ", ", // SP500 value
                 vm.toString(rwaYieldRate), ", ",
                 vm.toString(yieldHarvested / 1e18)
             )));
             
-            // Debug the yield calculation for this step
-            if (i % 3 == 0) { // Every quarter
-                console2.log("--- Debug Yield Calculation ---");
+            // Debug yield calculation for quarterly checkpoints
+            if (i % 3 == 0) {
+                console2.log("--- Quarterly Yield Debug ---");
                 console2.log(string(abi.encodePacked(
-                    "Timestamp: ", vm.toString(currentTimestamp),
+                    "Date: ", date,
+                    ", Portfolio: ", vm.toString(portfolioValue / 1e18),
                     ", RWA Value: ", vm.toString(assetValues[1] / 1e18),
                     ", Yield Rate: ", vm.toString(rwaYieldRate),
                     ", Yield Harvested: ", vm.toString(yieldHarvested / 1e18)
