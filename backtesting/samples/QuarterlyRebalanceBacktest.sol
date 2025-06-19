@@ -204,10 +204,10 @@ contract QuarterlyRebalanceBacktest {
         
         // Calculate metrics
         (
-            int256 sharpeRatio /* unused */,
+            /* int256 sharpeRatio */,
             uint256 maxDrawdown,
             int256 annualizedReturn,
-            uint256 volatility /* unused */
+            /* uint256 volatility */
         ) = backtestingFramework.calculateMetrics();
         
         // Get final portfolio value

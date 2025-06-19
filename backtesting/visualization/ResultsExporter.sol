@@ -166,8 +166,6 @@ contract ResultsExporter {
         uint256 initialValue = initialResult.portfolioValue;
         require(initialValue > 0, "Initial portfolio value must be positive");
         
-        int256 cumulativeReturn = 0;
-        
         for (uint256 i = 1; i < resultCount; i++) {
             BacktestingFramework.BacktestResult memory currentResult = backtestingFramework.getResult(i);
             BacktestingFramework.BacktestResult memory previousResult = backtestingFramework.getResult(i - 1);
