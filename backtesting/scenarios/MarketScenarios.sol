@@ -170,7 +170,7 @@ contract MarketScenarios {
         uint256 startTimestamp,
         uint256 duration,
         uint256 priceImpactPercentage,
-        uint256 spreadIncrease /* unused */
+        /* uint256 spreadIncrease */
     ) external {
         for (uint256 a = 0; a < assets.length; a++) {
             address asset = assets[a];
