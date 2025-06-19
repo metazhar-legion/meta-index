@@ -88,7 +88,7 @@ contract SetupLocalFork is Script {
         indexRegistry = new IndexRegistry();
         
         // Mock addresses for dependencies we don't have in the fork
-        address mockPerpetualTrading = address(0x1234); // Mock address
+        // address mockPerpetualTrading = address(0x1234); // Mock address - unused currently
         address mockRWAToken = address(0x2345); // Mock address
         address mockYieldStrategy = address(0x3456); // Mock address
         
