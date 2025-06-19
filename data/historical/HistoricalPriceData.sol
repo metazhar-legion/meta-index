@@ -25,7 +25,7 @@ library HistoricalPriceData {
         console2.log("Setting up S&P 500 historical price data...");
 
     // Base price: 324.87 on 2020-01-02
-    uint256 sp500BasePrice = 324870000000000000000; // Scaled by 1e18
+    // First price point for S&P 500 (2020-01-02)
     
         dataProvider.setAssetPrice(SP500_TOKEN, 1577923200, 324870000000000000000); // 2020-01-02: 324.87
         dataProvider.setAssetPrice(SP500_TOKEN, 1578873600, 327950000000000000000); // 2020-01-13: 327.95
@@ -194,7 +194,7 @@ library HistoricalPriceData {
         console2.log("Setting up RWA historical price data...");
 
     // Base price: 49.31 on 2020-01-02
-    uint256 rwaBasePrice = 49310000000000000000; // Scaled by 1e18
+    // First price point for RWA (2020-01-02)
     
         dataProvider.setAssetPrice(RWA_TOKEN, 1577923200, 49310000000000000000); // 2020-01-02: 49.31
         dataProvider.setAssetPrice(RWA_TOKEN, 1578873600, 49300000000000000000); // 2020-01-13: 49.3
