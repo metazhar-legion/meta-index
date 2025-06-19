@@ -163,7 +163,6 @@ contract MarketScenarios {
      * @param startTimestamp Start timestamp of the scenario
      * @param duration Duration of the crunch in seconds
      * @param priceImpactPercentage Price impact percentage (e.g. 30 = 30%)
-     * @param spreadIncrease Increase in bid-ask spread (basis points) - Not currently used
      */
     function generateLiquidityCrunch(
         address[] calldata assets,
