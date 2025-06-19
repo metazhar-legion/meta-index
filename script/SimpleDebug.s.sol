@@ -104,9 +104,7 @@ contract SimpleDebug is Script {
             }
             prevPortfolioValue = result.portfolioValue;
             
-            // Get asset prices and yield rate
-            uint256 rwaPrice = dataProvider.getAssetPrice(RWA_TOKEN, result.timestamp);
-            uint256 sp500Price = dataProvider.getAssetPrice(SP500_TOKEN, result.timestamp);
+            // Get yield rate
             uint256 rwaYieldRate = dataProvider.getYieldRate(RWA_WRAPPER, result.timestamp);
             
             // Print detailed information using string concatenation for console2.log
