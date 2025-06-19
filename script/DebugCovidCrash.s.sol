@@ -118,11 +118,11 @@ contract DebugCovidCrash is Script {
             // Run simulation step
             (
                 uint256 portfolioValue,
-                uint256[] memory assetValues,
-                uint256[] memory assetWeights,
-                uint256 yieldHarvested,
-                bool rebalanced,
-                uint256 gasCost
+                /* uint256[] memory assetValues */,
+                /* uint256[] memory assetWeights */,
+                /* uint256 yieldHarvested */,
+                /* bool rebalanced */,
+                /* uint256 gasCost */
             ) = simulationEngine.runStep(timestamp);
             
             // Get S&P 500 price for this timestamp
