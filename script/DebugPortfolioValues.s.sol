@@ -104,7 +104,10 @@ contract DebugPortfolioValues is Script {
             uint256 volatility
         ) = backtestingFramework.calculateMetrics();
         
-        console2.log("Max Drawdown: %d", maxDrawdown / 1e16);
+        console2.log("Max Drawdown: %d%%", maxDrawdown / 1e16);
+        console2.log("Sharpe Ratio: %d", sharpeRatio / 1e16);
+        console2.log("Annualized Return: %d%%", annualizedReturn / 1e16);
+        console2.log("Volatility: %d%%", volatility / 1e16);
         
         // Debug portfolio values
         console2.log("\n=== Portfolio Value Analysis ===");

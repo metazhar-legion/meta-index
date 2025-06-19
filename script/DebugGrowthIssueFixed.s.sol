@@ -102,15 +102,13 @@ contract DebugGrowthIssueFixed is Script {
             (
                 uint256 portfolioValue,
                 uint256[] memory assetValues,
-                uint256[] memory assetWeights,
+                /* uint256[] memory assetWeights */,
                 uint256 yieldHarvested,
                 bool rebalanced,
-                uint256 gasCost
+                /* uint256 gasCost */
             ) = simulationEngine.runStep(timestamp);
             
-            // Get asset prices and yield rate
-            uint256 rwaPrice = dataProvider.getAssetPrice(RWA_TOKEN, timestamp);
-            uint256 sp500Price = dataProvider.getAssetPrice(SP500_TOKEN, timestamp);
+            // Get yield rate
             uint256 rwaYieldRate = dataProvider.getYieldRate(RWA_WRAPPER, timestamp);
             
             // Print results

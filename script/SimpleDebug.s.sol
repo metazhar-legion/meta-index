@@ -94,6 +94,16 @@ contract SimpleDebug is Script {
         for (uint256 i = 0; i < resultCount; i++) {
             BacktestingFramework.BacktestResult memory result = backtestingFramework.getResult(i);
             
+            // Calculate growth percentage from previous step if not the first step
+            if (i > 0) {
+                BacktestingFramework.BacktestResult memory prevResult = backtestingFramework.getResult(i-1);
+                int256 growthPercent = int256((result.portfolioValue * 10000) / prevResult.portfolioValue) - 10000;
+                if (growthPercent != 0) {
+                    console2.log("Growth since last step: %d basis points", growthPercent);
+                }
+            }
+            prevPortfolioValue = result.portfolioValue;
+            
             // Get asset prices and yield rate
             uint256 rwaPrice = dataProvider.getAssetPrice(RWA_TOKEN, result.timestamp);
             uint256 sp500Price = dataProvider.getAssetPrice(SP500_TOKEN, result.timestamp);
