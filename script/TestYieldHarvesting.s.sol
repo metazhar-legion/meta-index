@@ -114,7 +114,7 @@ contract TestYieldHarvesting is Script {
         vm.stopBroadcast();
     }
     
-    function printStepResult(uint256 timestamp, uint256 portfolioValue, uint256 yieldHarvested) internal {
+    function printStepResult(uint256 timestamp, uint256 portfolioValue, uint256 yieldHarvested) internal pure {
         console2.log(string(abi.encodePacked(
             vm.toString(timestamp), ", ",
             vm.toString(portfolioValue / 1e18), ", ",

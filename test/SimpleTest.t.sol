@@ -12,7 +12,7 @@ contract SimpleTest is Test {
         // Empty setup
     }
     
-    function test_Simple() public {
+    function test_Simple() public pure {
         // Simple assertion that will always pass
         assertTrue(true, "This test should always pass");
     }

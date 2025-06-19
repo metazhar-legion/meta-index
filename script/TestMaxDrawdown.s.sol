@@ -130,7 +130,7 @@ contract TestMaxDrawdown is Script {
         });
         
         // Calculate metrics including max drawdown
-        (int256 sharpeRatio, uint256 maxDrawdown, int256 annualizedReturn, uint256 volatility) = 
+        (/* int256 sharpeRatio */, uint256 maxDrawdown, /* int256 annualizedReturn */, /* uint256 volatility */) = 
             metricsCalculator.calculateMetrics(results);
         
         // Expected max drawdown: (120 - 80) / 120 = 0.333... = 33.33%
