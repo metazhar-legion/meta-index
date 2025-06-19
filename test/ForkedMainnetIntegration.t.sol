@@ -203,7 +203,7 @@ contract MockIndexFundVault is IERC20 {
         // In a real implementation, this would adjust the portfolio based on target allocations
     }
     
-    function harvestYield() external returns (uint256) {
+    function harvestYield() external pure returns (uint256) {
         // Mock yield harvesting
         // In a real implementation, this would collect yield from strategies
         return 0;
@@ -287,7 +287,7 @@ contract MockRWAAssetWrapper {
         // In a real implementation, this would withdraw tokens from the strategy
     }
     
-    function harvestYield() external returns (uint256) {
+    function harvestYield() external pure returns (uint256) {
         // Mock yield harvesting
         // In a real implementation, this would collect yield from the strategy
         return 0;
