@@ -332,7 +332,8 @@ contract MockTRSProvider is ITRSProvider, Ownable {
         if (contract_.status != TRSStatus.ACTIVE) revert CommonErrors.InvalidState();
 
         int256 oldPnL = contract_.unrealizedPnL;
-        (newValue, int256 newPnL) = _calculateMarkToMarket(contractId);
+        int256 newPnL;
+        (newValue, newPnL) = _calculateMarkToMarket(contractId);
         
         pnlChange = newPnL - oldPnL;
         contract_.unrealizedPnL = newPnL;
