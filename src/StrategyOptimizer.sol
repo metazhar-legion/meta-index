@@ -123,8 +123,8 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
         uint256 implementationCost = _estimateImplementationCost(strategies.length);
         
         // Determine if rebalancing is beneficial
-        bool shouldRebalance = expectedCostSaving > optimizationParams.minCostSavingBps &&
-                              implementationCost < optimizationParams.gasThreshold;
+        bool shouldRebalanceResult = expectedCostSaving > optimizationParams.minCostSavingBps &&
+                                    implementationCost < optimizationParams.gasThreshold;
 
         result = OptimizationResult({
             strategyScores: scores,
