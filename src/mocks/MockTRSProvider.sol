@@ -251,7 +251,8 @@ contract MockTRSProvider is ITRSProvider, Ownable {
         if (contract_.status != TRSStatus.ACTIVE) revert CommonErrors.InvalidState();
 
         // Calculate final settlement
-        (finalValue, int256 finalPnL) = _calculateMarkToMarket(contractId);
+        int256 finalPnL;
+        (finalValue, finalPnL) = _calculateMarkToMarket(contractId);
         
         // Update contract status
         contract_.status = TRSStatus.TERMINATED;
@@ -287,7 +288,8 @@ contract MockTRSProvider is ITRSProvider, Ownable {
         if (block.timestamp < contract_.maturityTime) revert CommonErrors.TooSoon();
 
         // Calculate final settlement
-        (finalValue, int256 finalPnL) = _calculateMarkToMarket(contractId);
+        int256 finalPnL;
+        (finalValue, finalPnL) = _calculateMarkToMarket(contractId);
         
         // Update contract status
         contract_.status = TRSStatus.MATURED;
