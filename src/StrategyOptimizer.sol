@@ -132,7 +132,7 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
             expectedCostSaving: expectedCostSaving,
             expectedRiskReduction: expectedRiskReduction,
             implementationCost: implementationCost,
-            shouldRebalance: shouldRebalance,
+            shouldRebalance: shouldRebalanceResult,
             confidence: _calculateConfidence(scores),
             instructions: new RebalanceInstruction[](0) // Will be populated by getRebalanceInstructions
         });

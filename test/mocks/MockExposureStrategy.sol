@@ -127,7 +127,7 @@ contract MockExposureStrategy is IExposureStrategy {
         if (!isActive) revert CommonErrors.NotActive();
         
         // Transfer collateral from caller
-        uint256 collateralNeeded = getCollateralRequired(amount);
+        uint256 collateralNeeded = this.getCollateralRequired(amount);
         baseAsset.safeTransferFrom(msg.sender, address(this), collateralNeeded);
         
         // Calculate actual exposure with leverage
