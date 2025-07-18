@@ -34,6 +34,9 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
 
     // Position counter for generating unique IDs
     uint256 private positionCounter;
+    
+    // Testing configuration
+    bool public shouldFail;
 
     // Events
     event PositionOpened(
@@ -76,6 +79,7 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
         override
         returns (bytes32 positionId)
     {
+        if (shouldFail) revert CommonErrors.OperationFailed();
         if (marketPrices[marketId] == 0) revert CommonErrors.InvalidValue();
         if (size == 0) revert CommonErrors.ValueTooLow();
         if (leverage == 0) revert CommonErrors.ValueTooLow();
@@ -300,5 +304,13 @@ contract MockPerpetualTrading is IPerpetualTrading, Ownable {
         }
 
         return pnl;
+    }
+
+    /**
+     * @dev Sets the failure mode for testing
+     * @param _shouldFail Whether operations should fail
+     */
+    function setShouldFail(bool _shouldFail) external onlyOwner {
+        shouldFail = _shouldFail;
     }
 }
