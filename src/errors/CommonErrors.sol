@@ -25,11 +25,15 @@ library CommonErrors {
     // Access control errors
     error Unauthorized();
     error CallerNotOwner();
+    error NotAllowed();
 
     // State errors
     error InvalidState();
     error AlreadyInitialized();
     error NotInitialized();
+    error NotActive();
+    error TooSoon();
+    error EmptyString();
 
     // Operation errors
     error OperationFailed();
@@ -38,6 +42,7 @@ library CommonErrors {
     // Array errors
     error EmptyArray();
     error MismatchedArrayLengths();
+    error LengthMismatch();
 
     // Token errors
     error TokenAlreadyExists();

@@ -10,7 +10,7 @@ import {IExposureStrategy} from "../src/interfaces/IExposureStrategy.sol";
 import {MockExposureStrategy} from "./mocks/MockExposureStrategy.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
-import {MockYieldStrategy} from "./mocks/MockYieldStrategy.sol";
+import {MockYieldStrategy} from "../src/mocks/MockYieldStrategy.sol";
 
 contract ComposableRWABundleTest is Test {
     ComposableRWABundle public bundle;
@@ -37,7 +37,7 @@ contract ComposableRWABundleTest is Test {
     function setUp() public {
         // Set up mock contracts
         usdc = new MockUSDC();
-        priceOracle = new MockPriceOracle();
+        priceOracle = new MockPriceOracle(address(usdc));
         
         // Create optimizer
         vm.prank(owner);
@@ -71,7 +71,7 @@ contract ComposableRWABundleTest is Test {
             IExposureStrategy.StrategyType.DIRECT_TOKEN
         );
         
-        yieldStrategy = new MockYieldStrategy(address(usdc));
+        yieldStrategy = new MockYieldStrategy(usdc, "Test Yield Strategy");
         
         // Configure strategies with different costs and risks
         perpetualStrategy.setMockCost(400); // 4% cost (moderate)
@@ -101,8 +101,7 @@ contract ComposableRWABundleTest is Test {
         usdc.approve(address(directStrategy), INITIAL_USDC_BALANCE / 10);
         directStrategy.fundStrategy(INITIAL_USDC_BALANCE / 10);
         
-        usdc.approve(address(yieldStrategy), INITIAL_USDC_BALANCE / 10);
-        yieldStrategy.fundStrategy(INITIAL_USDC_BALANCE / 10);
+        // Note: MockYieldStrategy doesn't have fundStrategy method, so we skip funding it
     }
 
     function test_BundleInitialization() public {

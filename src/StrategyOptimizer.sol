@@ -147,7 +147,7 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
         uint256[] calldata currentAllocations,
         uint256[] calldata optimalAllocations,
         address[] calldata strategies
-    ) external view override returns (bool shouldRebalance, uint256 expectedSaving, uint256 implementationCost) {
+    ) external view override returns (bool shouldRebalanceResult, uint256 expectedSaving, uint256 implementationCost) {
         if (currentAllocations.length != optimalAllocations.length || 
             currentAllocations.length != strategies.length) {
             revert CommonErrors.InvalidValue();
@@ -170,11 +170,11 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
         implementationCost = _estimateImplementationCost(strategies.length);
         
         // Decide if rebalancing is worth it
-        shouldRebalance = expectedSaving > optimizationParams.minCostSavingBps &&
-                         totalDeviation > 500 && // 5% total deviation threshold
-                         implementationCost < optimizationParams.gasThreshold;
+        shouldRebalanceResult = expectedSaving > optimizationParams.minCostSavingBps &&
+                               totalDeviation > 500 && // 5% total deviation threshold
+                               implementationCost < optimizationParams.gasThreshold;
 
-        return (shouldRebalance, expectedSaving, implementationCost);
+        return (shouldRebalanceResult, expectedSaving, implementationCost);
     }
 
     /**
@@ -325,7 +325,8 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
         if (strategy == address(0)) revert CommonErrors.ZeroAddress();
         
         // Store performance data (keep only latest N entries)
-        _addToHistory(strategyReturns[strategy], uint256(returnBps >= 0 ? returnBps : 0));
+        uint256 positiveReturn = returnBps >= 0 ? uint256(returnBps) : 0;
+        _addToHistory(strategyReturns[strategy], positiveReturn);
         _addToHistory(strategyCosts[strategy], costBps);
         _addToHistory(strategyExecutionTimes[strategy], executionTime);
         _addToBoolHistory(strategySuccessHistory[strategy], wasSuccessful);
@@ -399,7 +400,8 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
                 score.isRecommended = score.totalScore >= 6000; // 60% threshold
                 score.reasoning = _generateReasoning(score, info);
                 
-                emit StrategyAnalyzed(strategy, score.totalScore, score.isRecommended);
+                // Note: In a view function, we can't emit events
+                // emit StrategyAnalyzed(strategy, score.totalScore, score.isRecommended);
             } catch {
                 // Strategy doesn't support cost breakdown
                 score.strategy = strategy;

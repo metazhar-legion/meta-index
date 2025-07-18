@@ -152,7 +152,7 @@ contract ComposableRWABundle is IAssetWrapper, Ownable, ReentrancyGuard, Pausabl
      */
     function allocateCapital(uint256 amount) external override nonReentrant whenNotPaused returns (bool success) {
         if (amount == 0) revert CommonErrors.ValueTooLow();
-        if (riskParams.circuitBreakerActive) revert CommonErrors.CircuitBreakerActive();
+        if (riskParams.circuitBreakerActive) revert CommonErrors.NotActive();
 
         // Transfer base asset from caller
         baseAsset.safeTransferFrom(msg.sender, address(this), amount);
@@ -325,19 +325,19 @@ contract ComposableRWABundle is IAssetWrapper, Ownable, ReentrancyGuard, Pausabl
         if (strategy == address(0)) revert CommonErrors.ZeroAddress();
         if (targetAllocation > BASIS_POINTS) revert CommonErrors.ValueTooHigh();
         if (maxAllocation > BASIS_POINTS) revert CommonErrors.ValueTooHigh();
-        if (exposureStrategies.length >= riskParams.maxStrategyCount) revert CommonErrors.LimitExceeded();
+        if (exposureStrategies.length >= riskParams.maxStrategyCount) revert CommonErrors.ValueTooHigh();
 
         // Validate that it implements IExposureStrategy
         try IExposureStrategy(strategy).getExposureInfo() returns (IExposureStrategy.ExposureInfo memory) {
             // Strategy is valid
         } catch {
-            revert CommonErrors.InvalidStrategy();
+            revert CommonErrors.InvalidValue();
         }
 
         // Check if strategy already exists
         for (uint256 i = 0; i < exposureStrategies.length; i++) {
             if (address(exposureStrategies[i].strategy) == strategy) {
-                revert CommonErrors.AlreadyExists();
+                revert CommonErrors.InvalidValue();
             }
         }
 
