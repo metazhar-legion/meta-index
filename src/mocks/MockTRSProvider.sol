@@ -385,7 +385,7 @@ contract MockTRSProvider is ITRSProvider, Ownable {
 
     function rolloverContract(bytes32 contractId, bytes32 newQuoteId) external override returns (bytes32 newContractId) {
         // Terminate old contract
-        (uint256 finalValue, uint256 collateralReturned) = this.terminateContract(contractId);
+        (, uint256 collateralReturned) = this.terminateContract(contractId);
         
         // Create new contract with returned collateral
         newContractId = this.createTRSContract(newQuoteId, collateralReturned);
@@ -425,7 +425,7 @@ contract MockTRSProvider is ITRSProvider, Ownable {
     function updateCounterparty(address counterparty, CounterpartyInfo calldata info) external override onlyOwner {
         if (bytes(counterparties[counterparty].name).length == 0) revert CommonErrors.NotFound();
 
-        uint256 oldRating = counterparties[counterparty].creditRating;
+        // uint256 oldRating = counterparties[counterparty].creditRating;
         counterparties[counterparty] = info;
 
         emit CounterpartyUpdated(counterparty, info.creditRating);

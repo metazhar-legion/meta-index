@@ -284,7 +284,7 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         if (amount == 0) revert CommonErrors.ValueTooLow();
         
         // Check capacity
-        (bool canHandle, string memory reason) = this.canHandleExposure(amount);
+        (bool canHandle, ) = this.canHandleExposure(amount);
         if (!canHandle) revert CommonErrors.OperationFailed();
 
         // Transfer base asset from caller
@@ -413,7 +413,7 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         if (delta == 0) return (true, totalExposureAmount);
         
         if (delta > 0) {
-            (success, ) = this.openExposure(uint256(delta));
+            // Transfer tokens from user first\n            baseAsset.safeTransferFrom(msg.sender, address(this), uint256(delta));\n            \n            // Use internal implementation to avoid reentrancy and msg.sender issues\n            try this._openExposureWithTokens(uint256(delta)) returns (bool _success, uint256 _actualExposure) {\n                success = _success;\n            } catch {\n                success = false;\n            }"
         } else {
             uint256 reduceAmount = uint256(-delta);
             if (reduceAmount <= totalExposureAmount) {
@@ -563,7 +563,7 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
             TRSContractInfo memory info = contractInfo[contractId];
             
             if (block.timestamp >= info.maturityTime) {
-                try trsProvider.settleContract(contractId) returns (uint256 finalValue, uint256 collateralReturned) {
+                try trsProvider.settleContract(contractId) returns (uint256 finalValue, uint256 /*collateralReturned*/) {
                     contractsSettled++;
                     _removeActiveContract(contractId);
                     _updateCounterpartyExposure(info.counterparty, info.notionalAmount, false);
@@ -600,7 +600,7 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
             TRSContractInfo memory info = contractInfo[contractId];
             
             // Get current mark-to-market
-            try trsProvider.getMarkToMarketValue(contractId) returns (uint256 currentValue, int256 unrealizedPnL) {
+            try trsProvider.getMarkToMarketValue(contractId) returns (uint256 /*currentValue*/, int256 unrealizedPnL) {
                 // Calculate optimal collateral
                 uint256 requiredCollateral = trsProvider.calculateCollateralRequirement(
                     info.counterparty,
