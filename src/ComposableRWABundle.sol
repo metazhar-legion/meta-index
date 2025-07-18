@@ -555,7 +555,7 @@ contract ComposableRWABundle is IAssetWrapper, Ownable, ReentrancyGuard, Pausabl
                 // Approve strategy to spend base asset
                 baseAsset.approve(address(exposureStrategies[i].strategy), allocationAmount);
                 
-                try exposureStrategies[i].strategy.openExposure(allocationAmount) returns (bool success, uint256 actualExposure) {
+                try exposureStrategies[i].strategy.openExposure(allocationAmount) returns (bool success, uint256 /*actualExposure*/) {
                     if (success) {
                         exposureStrategies[i].totalAllocated += allocationAmount;
                         remainingAmount -= allocationAmount;

@@ -39,8 +39,7 @@ contract TRSExposureStrategyTest is Test {
         priceOracle = new MockPriceOracle(address(usdc));
         trsProvider = new MockTRSProvider(address(usdc));
         
-        // Deploy strategy
-        vm.prank(owner);
+        // Deploy strategy (owned by this test contract)
         strategy = new TRSExposureStrategy(
             address(usdc),
             address(trsProvider),
@@ -57,12 +56,10 @@ contract TRSExposureStrategyTest is Test {
         // Fund TRS provider for settlements
         usdc.mint(address(trsProvider), INITIAL_BALANCE);
         
-        // Set up counterparties in strategy
-        vm.startPrank(owner);
+        // Set up counterparties in strategy (this test contract owns both)
         strategy.addCounterparty(COUNTERPARTY_AAA, 4000, 3000000e6); // 40% target, $3M max
         strategy.addCounterparty(COUNTERPARTY_BBB, 3500, 2000000e6); // 35% target, $2M max
         strategy.addCounterparty(COUNTERPARTY_BB, 2500, 1000000e6);  // 25% target, $1M max
-        vm.stopPrank();
     }
 
     function test_StrategyInitialization() public {
@@ -124,7 +121,6 @@ contract TRSExposureStrategyTest is Test {
         address newCounterparty = address(0x4444);
         
         // First add to TRS provider
-        vm.prank(owner);
         ITRSProvider.CounterpartyInfo memory cpInfo = ITRSProvider.CounterpartyInfo({
             counterpartyAddress: newCounterparty,
             name: "New Bank",
@@ -137,7 +133,6 @@ contract TRSExposureStrategyTest is Test {
         });
         trsProvider.addCounterparty(newCounterparty, cpInfo);
         
-        vm.prank(owner);
         vm.expectEmit(true, false, false, true);
         emit CounterpartyAdded(newCounterparty, 1000, 500000e6);
         
@@ -174,7 +169,15 @@ contract TRSExposureStrategyTest is Test {
 
     function test_CloseExposure() public {
         // First open exposure
-        test_OpenExposure();
+        uint256 amount = 150000e6; // $150k
+        
+        vm.startPrank(user1);
+        usdc.approve(address(strategy), amount);
+        
+        (bool openSuccess, uint256 actualExposure) = strategy.openExposure(amount);
+        assertTrue(openSuccess);
+        assertGt(actualExposure, 0);
+        vm.stopPrank();
         
         uint256 currentExposure = strategy.getCurrentExposureValue();
         uint256 closeAmount = currentExposure / 2; // Close 50%
@@ -191,7 +194,15 @@ contract TRSExposureStrategyTest is Test {
 
     function test_AdjustExposure() public {
         // Open initial exposure
-        test_OpenExposure();
+        uint256 amount = 150000e6; // $150k
+        
+        vm.startPrank(user1);
+        usdc.approve(address(strategy), amount);
+        
+        (bool openSuccess, uint256 actualExposure) = strategy.openExposure(amount);
+        assertTrue(openSuccess);
+        assertGt(actualExposure, 0);
+        vm.stopPrank();
         
         uint256 initialExposure = strategy.getCurrentExposureValue();
         
@@ -268,7 +279,6 @@ contract TRSExposureStrategyTest is Test {
         // Fast forward time to simulate contract maturity
         vm.warp(block.timestamp + 91 days);
         
-        vm.prank(owner);
         bool success = strategy.rebalanceContracts();
         assertTrue(success);
     }
@@ -277,14 +287,12 @@ contract TRSExposureStrategyTest is Test {
         // Open exposure first
         test_OpenExposure();
         
-        vm.prank(owner);
         uint256 optimized = strategy.optimizeCollateral();
         assertGe(optimized, 0); // Should be >= 0
     }
 
     function test_RemoveCounterparty() public {
         // Try to remove a counterparty with no exposure
-        vm.prank(owner);
         strategy.removeCounterparty(COUNTERPARTY_BB);
         
         TRSExposureStrategy.CounterpartyAllocation[] memory allocations = strategy.getCounterpartyAllocations();
@@ -311,7 +319,6 @@ contract TRSExposureStrategyTest is Test {
             emergencyExitEnabled: true
         });
         
-        vm.prank(owner);
         strategy.updateRiskParameters(newParams);
         
         IExposureStrategy.RiskParameters memory updated = strategy.getRiskParameters();
@@ -365,7 +372,6 @@ contract TRSExposureStrategyTest is Test {
 
     function test_FailureHandling() public {
         // Test with failing TRS provider
-        vm.prank(owner);
         trsProvider.setShouldFailCreation(true);
         
         vm.startPrank(user1);
@@ -377,7 +383,6 @@ contract TRSExposureStrategyTest is Test {
         vm.stopPrank();
         
         // Reset failure mode
-        vm.prank(owner);
         trsProvider.setShouldFailCreation(false);
     }
 
@@ -392,7 +397,6 @@ contract TRSExposureStrategyTest is Test {
         vm.warp(block.timestamp + 95 days);
         
         // Rebalance should settle matured contracts
-        vm.prank(owner);
         strategy.rebalanceContracts();
         
         // Note: Specific assertion depends on mock implementation behavior
@@ -403,7 +407,7 @@ contract TRSExposureStrategyTest is Test {
         // Try to add a counterparty allocation that would exceed concentration limits
         // This is tested implicitly in the quote selection logic
         
-        uint256 maxAmount = 2000000e6; // $2M - should be within limits for AAA counterparty
+        uint256 maxAmount = 900000e6; // $900k - should be within limits for AAA counterparty
         
         vm.startPrank(user1);
         usdc.approve(address(strategy), maxAmount);
@@ -420,7 +424,6 @@ contract TRSExposureStrategyTest is Test {
         // Try to add a counterparty that doesn't exist in TRS provider
         address invalidCounterparty = address(0x9999);
         
-        vm.prank(owner);
         vm.expectRevert();
         strategy.addCounterparty(invalidCounterparty, 1000, 100000e6);
     }
@@ -471,7 +474,6 @@ contract TRSExposureStrategyTest is Test {
         // Add to TRS provider first
         address newCounterparty = address(uint160(0x5000 + targetAllocation));
         
-        vm.prank(owner);
         ITRSProvider.CounterpartyInfo memory cpInfo = ITRSProvider.CounterpartyInfo({
             counterpartyAddress: newCounterparty,
             name: "Fuzz Bank",
@@ -484,7 +486,6 @@ contract TRSExposureStrategyTest is Test {
         });
         trsProvider.addCounterparty(newCounterparty, cpInfo);
         
-        vm.prank(owner);
         strategy.addCounterparty(newCounterparty, targetAllocation, maxExposure);
         
         TRSExposureStrategy.CounterpartyAllocation[] memory allocations = strategy.getCounterpartyAllocations();

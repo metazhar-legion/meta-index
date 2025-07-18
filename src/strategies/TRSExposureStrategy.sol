@@ -706,8 +706,9 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
             if (allocation.currentExposure + notionalAmount > allocation.maxExposure) continue;
             
             // Check concentration limits - use notional amount not collateral amount
-            uint256 totalExposureAfter = totalExposureAmount + notionalAmount;
-            if (totalExposureAfter > 0) {
+            // Only check concentration limits if there's existing exposure
+            if (totalExposureAmount > 0) {
+                uint256 totalExposureAfter = totalExposureAmount + notionalAmount;
                 uint256 newConcentration = ((allocation.currentExposure + notionalAmount) * BASIS_POINTS) / totalExposureAfter;
                 if (newConcentration > counterpartyConcentrationLimit) continue;
             }

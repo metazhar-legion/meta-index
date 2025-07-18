@@ -142,6 +142,11 @@ contract MockTRSProvider is ITRSProvider, Ownable {
             quoteIndex++;
         }
 
+        // Store all quotes in the mapping for later retrieval
+        for (uint256 i = 0; i < quotes_.length; i++) {
+            quotes[quotes_[i].quoteId] = quotes_[i];
+        }
+        
         emit QuoteRequested(underlyingAssetId, notionalAmount, maturityDuration);
         return quotes_;
     }
