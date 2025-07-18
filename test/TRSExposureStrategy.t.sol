@@ -100,6 +100,25 @@ contract TRSExposureStrategyTest is Test {
         assertEq(reason, "Would exceed maximum position size");
     }
 
+    function test_CounterpartySetup() public {
+        // Check that counterparties are set up correctly
+        TRSExposureStrategy.CounterpartyAllocation[] memory allocations = strategy.getCounterpartyAllocations();
+        assertEq(allocations.length, 3);
+        
+        // Verify each counterparty
+        assertEq(allocations[0].counterparty, COUNTERPARTY_AAA);
+        assertEq(allocations[0].targetAllocation, 4000);
+        assertTrue(allocations[0].isActive);
+        
+        assertEq(allocations[1].counterparty, COUNTERPARTY_BBB);
+        assertEq(allocations[1].targetAllocation, 3500);
+        assertTrue(allocations[1].isActive);
+        
+        assertEq(allocations[2].counterparty, COUNTERPARTY_BB);
+        assertEq(allocations[2].targetAllocation, 2500);
+        assertTrue(allocations[2].isActive);
+    }
+
     function test_AddCounterparty() public {
         // Try to add another counterparty
         address newCounterparty = address(0x4444);

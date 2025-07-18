@@ -175,7 +175,7 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         if (amount == 0 || timeHorizon == 0) return 0;
 
         // Get best available quote to estimate costs
-        ITRSProvider.TRSQuote[] memory quotes = trsProvider.requestQuotes(
+        ITRSProvider.TRSQuote[] memory quotes = trsProvider.getQuotesForEstimation(
             underlyingAssetId,
             amount,
             preferredMaturityDuration,
@@ -223,7 +223,7 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         if (exposureAmount == 0) return 0;
         
         // Get quotes to find best collateral requirement
-        ITRSProvider.TRSQuote[] memory quotes = trsProvider.requestQuotes(
+        ITRSProvider.TRSQuote[] memory quotes = trsProvider.getQuotesForEstimation(
             underlyingAssetId,
             exposureAmount,
             preferredMaturityDuration,
@@ -268,7 +268,7 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         }
 
         // Try to get quotes to see if exposure is feasible
-        try trsProvider.requestQuotes(underlyingAssetId, amount, preferredMaturityDuration, 200) returns (ITRSProvider.TRSQuote[] memory quotes) {
+        try trsProvider.getQuotesForEstimation(underlyingAssetId, amount, preferredMaturityDuration, 200) returns (ITRSProvider.TRSQuote[] memory quotes) {
             if (quotes.length == 0) {
                 return (false, "No counterparties willing to provide quotes");
             }
@@ -701,12 +701,16 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
             CounterpartyAllocation memory allocation = counterpartyAllocations[cpIndex - 1];
             if (!allocation.isActive) continue;
             
-            // Check capacity constraints
-            if (allocation.currentExposure + amount > allocation.maxExposure) continue;
+            // Check capacity constraints - calculate notional amount from collateral requirement
+            uint256 notionalAmount = (amount * BASIS_POINTS) / quotes[i].collateralRequirement;
+            if (allocation.currentExposure + notionalAmount > allocation.maxExposure) continue;
             
-            // Check concentration limits
-            uint256 newConcentration = ((allocation.currentExposure + amount) * BASIS_POINTS) / (totalExposureAmount + amount);
-            if (newConcentration > counterpartyConcentrationLimit) continue;
+            // Check concentration limits - use notional amount not collateral amount
+            uint256 totalExposureAfter = totalExposureAmount + notionalAmount;
+            if (totalExposureAfter > 0) {
+                uint256 newConcentration = ((allocation.currentExposure + notionalAmount) * BASIS_POINTS) / totalExposureAfter;
+                if (newConcentration > counterpartyConcentrationLimit) continue;
+            }
             
             // Calculate score (lower borrow rate + higher credit rating = better score)
             ITRSProvider.CounterpartyInfo memory cpInfo = trsProvider.getCounterpartyInfo(quotes[i].counterparty);

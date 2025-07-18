@@ -99,6 +99,21 @@ interface ITRSProvider {
         uint256 notionalAmount,
         uint256 maturityDuration,
         uint256 leverage
+    ) external returns (TRSQuote[] memory quotes);
+
+    /**
+     * @dev Gets quotes for cost estimation without state modification
+     * @param underlyingAssetId The underlying asset identifier
+     * @param notionalAmount The desired notional amount
+     * @param maturityDuration The desired maturity duration in seconds
+     * @param leverage The desired leverage
+     * @return quotes Array of quotes from different counterparties
+     */
+    function getQuotesForEstimation(
+        bytes32 underlyingAssetId,
+        uint256 notionalAmount,
+        uint256 maturityDuration,
+        uint256 leverage
     ) external view returns (TRSQuote[] memory quotes);
 
     /**

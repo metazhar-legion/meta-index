@@ -62,6 +62,7 @@ library CommonErrors {
     error InvalidTimeParameters();
     error TooEarly();
     error TooLate();
+    error Expired();
 
     // Governance errors
     error GovernanceDisabled();

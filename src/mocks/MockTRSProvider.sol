@@ -100,7 +100,7 @@ contract MockTRSProvider is ITRSProvider, Ownable {
         uint256 notionalAmount,
         uint256 maturityDuration,
         uint256 leverage
-    ) external view override returns (TRSQuote[] memory quotes_) {
+    ) external override returns (TRSQuote[] memory quotes_) {
         if (notionalAmount == 0) revert CommonErrors.ValueTooLow();
         if (maturityDuration < MIN_MATURITY || maturityDuration > MAX_MATURITY) revert CommonErrors.ValueOutOfRange(maturityDuration, MIN_MATURITY, MAX_MATURITY);
         if (leverage > MAX_LEVERAGE) revert CommonErrors.ValueTooHigh();
@@ -144,6 +144,68 @@ contract MockTRSProvider is ITRSProvider, Ownable {
 
         emit QuoteRequested(underlyingAssetId, notionalAmount, maturityDuration);
         return quotes_;
+    }
+
+    /**
+     * @dev Internal view function to get quotes without state modification (for cost estimation)
+     */
+    function _getQuotesView(
+        bytes32 underlyingAssetId,
+        uint256 notionalAmount,
+        uint256 maturityDuration,
+        uint256 leverage
+    ) internal view returns (TRSQuote[] memory quotes_) {
+        if (notionalAmount == 0) return new TRSQuote[](0);
+        if (maturityDuration < MIN_MATURITY || maturityDuration > MAX_MATURITY) return new TRSQuote[](0);
+        if (leverage > MAX_LEVERAGE) return new TRSQuote[](0);
+        if (assetPrices[underlyingAssetId] == 0) return new TRSQuote[](0);
+
+        // Generate quotes from available counterparties
+        uint256 activeCounterparties = 0;
+        for (uint256 i = 0; i < counterpartyList.length; i++) {
+            if (counterparties[counterpartyList[i]].isActive) {
+                activeCounterparties++;
+            }
+        }
+
+        quotes_ = new TRSQuote[](activeCounterparties);
+        uint256 quoteIndex = 0;
+
+        for (uint256 i = 0; i < counterpartyList.length; i++) {
+            address counterparty = counterpartyList[i];
+            CounterpartyInfo memory info = counterparties[counterparty];
+            
+            if (!info.isActive) continue;
+            if (info.currentExposure + notionalAmount > info.maxExposure) continue;
+
+            // Generate realistic quote based on counterparty risk
+            uint256 borrowRate = _calculateBorrowRate(info.creditRating, leverage, maturityDuration);
+            uint256 collateralReq = _calculateCollateralRequirement(info.collateralRequirement, leverage);
+
+            quotes_[quoteIndex] = TRSQuote({
+                counterparty: counterparty,
+                borrowRate: borrowRate,
+                collateralRequirement: collateralReq,
+                maxNotional: info.maxExposure - info.currentExposure,
+                maxMaturity: MAX_MATURITY,
+                quotedAt: block.timestamp,
+                validUntil: block.timestamp + 10 minutes,
+                quoteId: keccak256(abi.encodePacked(counterparty, block.timestamp, i)) // Use i instead of counter
+            });
+            
+            quoteIndex++;
+        }
+
+        return quotes_;
+    }
+
+    function getQuotesForEstimation(
+        bytes32 underlyingAssetId,
+        uint256 notionalAmount,
+        uint256 maturityDuration,
+        uint256 leverage
+    ) external view override returns (TRSQuote[] memory quotes_) {
+        return _getQuotesView(underlyingAssetId, notionalAmount, maturityDuration, leverage);
     }
 
     function getMarkToMarketValue(bytes32 contractId) external view override returns (uint256 currentValue, int256 unrealizedPnL) {
