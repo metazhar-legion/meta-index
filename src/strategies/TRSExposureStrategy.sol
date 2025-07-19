@@ -352,9 +352,9 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         }
     }
 
-    function closeExposure(uint256 amount) external override nonReentrant returns (bool success, uint256 actualClosed) {
-        if (amount == 0) revert CommonErrors.ValueTooLow();
-        if (amount > totalExposureAmount) revert CommonErrors.InsufficientBalance();
+    function _closeExposureInternal(uint256 amount) internal returns (bool success, uint256 actualClosed) {
+        if (amount == 0) return (false, 0);
+        if (amount > totalExposureAmount) return (false, 0);
 
         uint256 remainingToClose = amount;
         uint256 totalRecovered = 0;
@@ -368,33 +368,42 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
 
             TRSContractInfo memory info = contractInfo[contractId];
             
-            if (info.notionalAmount <= remainingToClose) {
-                // Close entire contract
-                try trsProvider.terminateContract(contractId) returns (uint256 finalValue, uint256 collateralReturned) {
-                    totalRecovered += collateralReturned;
-                    remainingToClose -= info.notionalAmount;
-                    
-                    _removeActiveContract(contractId);
-                    _updateCounterpartyExposure(info.counterparty, info.notionalAmount, false);
-                    
-                    // Calculate realized P&L
-                    int256 realizedPnL = int256(finalValue) - int256(info.notionalAmount);
-                    totalRealizedPnL = realizedPnL >= 0 ? 
-                        totalRealizedPnL + uint256(realizedPnL) : 
-                        totalRealizedPnL;
+            // Always try to close the contract if we need to close any amount
+            // TRS contracts typically need to be closed entirely
+            try trsProvider.terminateContract(contractId) returns (uint256 finalValue, uint256 collateralReturned) {
+                totalRecovered += collateralReturned;
+                
+                // Determine how much exposure we actually closed
+                uint256 exposureClosed = info.notionalAmount > remainingToClose ? 
+                    remainingToClose : info.notionalAmount;
+                remainingToClose = remainingToClose > exposureClosed ? 
+                    remainingToClose - exposureClosed : 0;
+                
+                _removeActiveContract(contractId);
+                _updateCounterpartyExposure(info.counterparty, info.notionalAmount, false);
+                
+                // Calculate realized P&L
+                int256 realizedPnL = int256(finalValue) - int256(info.notionalAmount);
+                totalRealizedPnL = realizedPnL >= 0 ? 
+                    totalRealizedPnL + uint256(realizedPnL) : 
+                    totalRealizedPnL;
 
-                    emit TRSContractSettled(contractId, finalValue, realizedPnL);
-                } catch {
-                    // Skip failed contract and continue
-                    continue;
+                emit TRSContractSettled(contractId, finalValue, realizedPnL);
+                
+                // If this contract was larger than what we wanted to close, break
+                if (info.notionalAmount >= amount) {
+                    break;
                 }
+            } catch {
+                // Skip failed contract and continue
+                continue;
             }
         }
 
         actualClosed = amount - remainingToClose;
         
         // Update state
-        totalExposureAmount -= actualClosed;
+        totalExposureAmount = totalExposureAmount > actualClosed ? totalExposureAmount - actualClosed : 0;
         totalCollateralDeployed = totalCollateralDeployed > totalRecovered ? 
             totalCollateralDeployed - totalRecovered : 0;
         totalCapitalAllocated = totalCapitalAllocated > actualClosed ?
@@ -409,15 +418,30 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         return (true, actualClosed);
     }
 
+    function closeExposure(uint256 amount) external override nonReentrant returns (bool success, uint256 actualClosed) {
+        if (amount == 0) revert CommonErrors.ValueTooLow();
+        if (amount > totalExposureAmount) revert CommonErrors.InsufficientBalance();
+
+        return _closeExposureInternal(amount);
+    }
+
     function adjustExposure(int256 delta) external override nonReentrant returns (bool success, uint256 newExposure) {
         if (delta == 0) return (true, totalExposureAmount);
         
         if (delta > 0) {
-            // Transfer tokens from user first\n            baseAsset.safeTransferFrom(msg.sender, address(this), uint256(delta));\n            \n            // Use internal implementation to avoid reentrancy and msg.sender issues\n            try this._openExposureWithTokens(uint256(delta)) returns (bool _success, uint256 _actualExposure) {\n                success = _success;\n            } catch {\n                success = false;\n            }"
+            // Transfer tokens from user first
+            baseAsset.safeTransferFrom(msg.sender, address(this), uint256(delta));
+            
+            // Use internal implementation to avoid reentrancy and msg.sender issues
+            try this._openExposureWithTokens(uint256(delta)) returns (bool _success, uint256 _actualExposure) {
+                success = _success;
+            } catch {
+                success = false;
+            }
         } else {
             uint256 reduceAmount = uint256(-delta);
             if (reduceAmount <= totalExposureAmount) {
-                (success, ) = this.closeExposure(reduceAmount);
+                (success, ) = _closeExposureInternal(reduceAmount);
             } else {
                 success = false;
             }
@@ -683,6 +707,79 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
 
     // ============ INTERNAL FUNCTIONS ============
 
+    function _openExposureWithTokens(uint256 amount) external returns (bool success, uint256 actualExposure) {
+        // This function is called internally via external call to avoid reentrancy issues
+        // The tokens should already be in the contract
+        require(msg.sender == address(this), "Only self-call allowed");
+        
+        if (amount == 0) return (false, 0);
+        
+        // Check capacity
+        (bool canHandle, ) = this.canHandleExposure(amount);
+        if (!canHandle) return (false, 0);
+
+        // Get quotes from TRS provider
+        ITRSProvider.TRSQuote[] memory quotes = trsProvider.requestQuotes(
+            underlyingAssetId,
+            amount,
+            preferredMaturityDuration,
+            200 // 2x leverage
+        );
+
+        if (quotes.length == 0) return (false, 0);
+
+        // Select best quote (lowest borrow rate with acceptable counterparty)
+        (ITRSProvider.TRSQuote memory bestQuote, bool found) = _selectBestQuote(quotes, amount);
+        if (!found) return (false, 0);
+
+        // Calculate collateral needed
+        uint256 collateralNeeded = (amount * bestQuote.collateralRequirement) / BASIS_POINTS;
+        if (collateralNeeded > amount) return (false, 0);
+
+        // Approve TRS provider to spend collateral
+        baseAsset.approve(address(trsProvider), collateralNeeded);
+
+        // Create TRS contract
+        try trsProvider.createTRSContract(bestQuote.quoteId, collateralNeeded) returns (bytes32 contractId) {
+            // Store contract info
+            uint256 notionalAmount = (collateralNeeded * BASIS_POINTS) / bestQuote.collateralRequirement;
+            
+            contractInfo[contractId] = TRSContractInfo({
+                contractId: contractId,
+                counterparty: bestQuote.counterparty,
+                notionalAmount: notionalAmount,
+                collateralAmount: collateralNeeded,
+                creationTime: block.timestamp,
+                maturityTime: block.timestamp + preferredMaturityDuration,
+                lastKnownStatus: ITRSProvider.TRSStatus.ACTIVE
+            });
+
+            // Update state
+            activeTRSContracts.push(contractId);
+            isActiveContract[contractId] = true;
+            totalExposureAmount += notionalAmount;
+            totalCollateralDeployed += collateralNeeded;
+            totalCapitalAllocated += amount;
+            contractCreationCount++;
+
+            // Update counterparty allocation
+            _updateCounterpartyExposure(bestQuote.counterparty, notionalAmount, true);
+
+            // Return unused capital to caller
+            uint256 unusedCapital = amount - collateralNeeded;
+            if (unusedCapital > 0) {
+                baseAsset.safeTransfer(msg.sender, unusedCapital);
+            }
+
+            emit ExposureOpened(amount, notionalAmount, collateralNeeded);
+            emit TRSContractCreated(contractId, bestQuote.counterparty, notionalAmount, collateralNeeded);
+
+            return (true, notionalAmount);
+        } catch {
+            return (false, 0);
+        }
+    }
+
     function _selectBestQuote(
         ITRSProvider.TRSQuote[] memory quotes,
         uint256 amount
@@ -716,6 +813,14 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
             // Calculate score (lower borrow rate + higher credit rating = better score)
             ITRSProvider.CounterpartyInfo memory cpInfo = trsProvider.getCounterpartyInfo(quotes[i].counterparty);
             uint256 score = (cpInfo.creditRating * 1000) - quotes[i].borrowRate; // Weight credit rating highly
+            
+            // Adjust score to favor diversification - penalize high concentration
+            if (totalExposureAmount > 0) {
+                uint256 currentConcentration = (allocation.currentExposure * BASIS_POINTS) / totalExposureAmount;
+                if (currentConcentration > 2000) { // Above 20%
+                    score = score > (currentConcentration - 2000) ? score - (currentConcentration - 2000) : 0;
+                }
+            }
             
             if (score > bestScore) {
                 bestScore = score;
