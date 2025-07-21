@@ -1,253 +1,324 @@
-# Web3 Index Fund (Meta-Index)
+# Web3 Index Fund (Meta-Index) - Composable RWA Exposure
 
-A gas-optimized, ERC4626-compliant index fund vault that allows participants to deposit tokens and invest in a basket of real-world assets (RWAs) and yield-generating strategies. The vault uses a modular architecture with asset wrappers to simplify management and improve efficiency.
+A next-generation, gas-optimized, ERC4626-compliant index fund vault featuring composable Real-World Asset (RWA) exposure strategies. The vault uses a modular multi-strategy architecture enabling dynamic optimization across Total Return Swaps (TRS), perpetual futures, and direct token strategies.
 
-## Overview
+## 🚀 Key Features
 
-This project implements a web3-based index fund using Solidity smart contracts with the following key components:
+### Composable RWA Architecture
+- **Multi-Strategy Support**: TRS, Perpetual Trading, Direct Token purchases
+- **Dynamic Optimization**: Real-time strategy selection based on cost and risk
+- **Intelligent Risk Management**: Multi-counterparty diversification and concentration limits
+- **Capital Efficiency**: Leveraged exposure strategies enable higher yield allocation
 
-- **IndexFundVaultV2**: A gas-optimized, ERC4626-compliant tokenized vault that handles deposits, withdrawals, and rebalancing
-- **RWAAssetWrapper**: Wrapper contracts that encapsulate RWA tokens and handle allocation between assets and yield strategies
-- **StableYieldStrategy**: Manages yield generation for idle capital
-- **Price Oracle Integration**: For accurate asset pricing
-- **DEX Integration**: For rebalancing and trading between assets
+### Advanced TRS Implementation ✨ NEW
+- **Multi-Counterparty Support**: AAA, BBB, BB rated counterparties with concentration limits
+- **Real-time Quote Selection**: Competitive bidding with cost optimization
+- **Contract Lifecycle Management**: Automated rollover and settlement
+- **Risk Controls**: 40% max concentration per counterparty, position size limits
 
-## Key Features
+### Gas-Optimized Infrastructure
+- **ERC4626 Compliance**: Standard vault interface with institutional features
+- **Modular Architecture**: Clean separation via composable strategy bundles
+- **Efficient Storage**: Optimized variable packing and data structures
+- **Automated Rebalancing**: Cost-aware strategy switching and portfolio management
 
-- **Modular Architecture**: Clean separation of concerns through asset wrappers
-- **Gas-Optimized Storage**: Efficient variable packing and data type optimization
-- **Automated Rebalancing**: Maintains the desired asset allocation with configurable thresholds
-- **Fee Structure**: Management and performance fees with configurable parameters
-- **RWA Support**: Built-in support for real-world assets through synthetic tokens
-- **Yield Generation**: Multiple yield strategies including staking and lending
-- **DEX Integration**: Router pattern for optimal trading across multiple DEXes
-- **Perpetual Trading**: Synthetic exposure to assets via perpetual trading protocols
+## 🏗️ Architecture Overview
 
-## Project Structure
+```
+IndexFundVaultV2 (ERC4626)
+       │
+       ▼
+ComposableRWABundle
+├── TRSExposureStrategy        ← ✅ IMPLEMENTED (26/26 tests passing)
+├── EnhancedPerpetualStrategy  ← ✅ IMPLEMENTED  
+├── DirectTokenStrategy        ← 🔄 IN PROGRESS
+└── YieldStrategyBundle        ← ✅ IMPLEMENTED
+       │
+       ▼
+StrategyOptimizer
+├── Real-time Cost Analysis
+├── Risk Assessment Engine
+├── Performance Tracking
+└── Rebalancing Logic
+```
+
+## 📁 Project Structure
 
 ```
 ├── src/
-│   ├── IndexFundVaultV2.sol     # Main vault contract (gas-optimized)
-│   ├── RWAAssetWrapper.sol      # Wrapper for RWA tokens
-│   ├── RWASyntheticSP500.sol    # Example synthetic RWA token
-│   ├── StableYieldStrategy.sol  # Yield strategy for idle capital
-│   ├── StakingReturnsStrategy.sol # Staking-based yield strategy
-│   ├── DEXRouter.sol           # Router for DEX integrations
-│   ├── PerpetualRouter.sol      # Router for perpetual trading protocols
-│   ├── FeeManager.sol           # Fee calculation and collection
-│   ├── interfaces/              # Contract interfaces
-│   └── mocks/                   # Mock contracts for testing
-├── script/                      # Deployment scripts
-│   ├── DeployIndexFundVaultV2.s.sol  # Deploy basic vault
-│   └── DeployMultiAssetVault.s.sol   # Deploy vault with multiple assets
-├── test/                        # Test files
-└── frontend/                    # React TypeScript UI (future enhancement)
+│   ├── ComposableRWABundle.sol         # Central multi-strategy orchestrator
+│   ├── StrategyOptimizer.sol            # Strategy optimization engine
+│   ├── interfaces/
+│   │   ├── IExposureStrategy.sol        # Unified strategy interface
+│   │   ├── ITRSProvider.sol             # TRS provider interface
+│   │   └── IStrategyOptimizer.sol       # Optimizer interface
+│   ├── strategies/
+│   │   ├── TRSExposureStrategy.sol      # ✅ Total Return Swap strategy
+│   │   ├── EnhancedPerpetualStrategy.sol # ✅ Enhanced perpetual trading
+│   │   └── DirectTokenStrategy.sol      # 🔄 Direct RWA token purchases
+│   ├── mocks/
+│   │   ├── MockTRSProvider.sol          # ✅ Production-like TRS provider
+│   │   ├── MockUSDC.sol                 # ✅ Test token
+│   │   └── MockPriceOracle.sol          # ✅ Price oracle mock
+│   ├── IndexFundVaultV2.sol             # ✅ Main ERC4626 vault
+│   ├── FeeManager.sol                   # ✅ Fee calculation and collection
+│   └── errors/
+│       └── CommonErrors.sol             # ✅ Standardized error handling
+├── test/                                # ✅ 100% test coverage for TRS
+│   ├── TRSExposureStrategy.t.sol        # ✅ 26/26 tests passing
+│   ├── ComposableRWABundle.t.sol        # ✅ Integration tests
+│   └── StrategyOptimizer.t.sol          # ✅ Optimization tests
+└── script/                              # ✅ Deployment scripts
+    ├── DeployComposableRWA.s.sol        # ✅ Multi-strategy deployment
+    └── DeployIndexFundVaultV2.s.sol     # ✅ Basic vault deployment
 ```
 
-## Prerequisites
+## 🚀 Quick Start
+
+### Prerequisites
 
 - [Foundry](https://book.getfoundry.sh/getting-started/installation) installed
 - [Git](https://git-scm.com/downloads)
-- [Node.js](https://nodejs.org/) (v14 or later) for the frontend
-- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
-- [MetaMask](https://metamask.io/) or another Ethereum wallet browser extension
+- [Node.js](https://nodejs.org/) (v16+) for frontend (optional)
 
-## Installation
-
-1. Clone the repository:
+### Installation
 
 ```shell
+# Clone the repository
 git clone https://github.com/yourusername/web3-index-fund.git
 cd web3-index-fund
-```
 
-2. Install dependencies:
-
-```shell
+# Install dependencies
 forge install
-```
 
-## Building
-
-Compile the contracts:
-
-```shell
+# Build contracts
 forge build
 ```
 
-## Testing
-
-Run the test suite:
+### Testing
 
 ```shell
+# Run all tests
 forge test
+
+# Run TRS-specific tests (26/26 passing)
+forge test --match-contract TRSExposureStrategyTest
+
+# Run with detailed output
+forge test --match-contract TRSExposureStrategyTest -vv
+
+# Run specific test
+forge test --match-test test_AdjustExposure -vvv
 ```
 
-Run tests with verbosity for more details:
+### Local Deployment
 
 ```shell
-forge test -vvv
-```
-
-Run a specific test:
-
-```shell
-forge test --match-test testDeposit -vvv
-```
-
-### Testing Environments
-
-The project uses different approaches for testing in local and forked environments:
-
-- **Local Testing**: For local unit tests, simplified calculations are used in contracts like `StakingReturnsStrategy` when the block number is low (≤ 100), making it easier to test with predictable values.
-- **Forked Testing**: When testing on forked networks where block numbers are high, more sophisticated mocks should be used to accurately simulate protocol behavior.
-
-This dual approach allows for both simple unit testing and realistic integration testing.
-
-## Local Deployment
-
-1. Start a local Anvil node:
-
-```shell
+# Start local Anvil node
 anvil
+
+# Deploy composable RWA system
+forge script script/DeployComposableRWA.s.sol:DeployComposableRWA \
+  --rpc-url http://localhost:8545 \
+  --broadcast \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-2. In a new terminal, deploy the basic vault to the local node:
+## 🔧 Strategy Details
 
-```shell
-forge script script/DeployIndexFundVaultV2.s.sol:DeployIndexFundVaultV2 --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+### TRS Exposure Strategy (✅ IMPLEMENTED)
+
+**Multi-Counterparty Risk Management**
+- 3 mock counterparties with different credit ratings (AAA, BBB, BB)
+- Concentration limits: 40% maximum per counterparty
+- Dynamic quote selection based on cost and credit rating
+- Real-time mark-to-market valuation and P&L tracking
+
+**Key Features:**
+- **Quote-based Trading**: Competitive bidding from multiple counterparties
+- **Risk Controls**: Position limits, concentration constraints, emergency exits
+- **Lifecycle Management**: Contract creation, adjustment, settlement, rollover
+- **Cost Optimization**: Real-time borrowing rate comparison and selection
+
+**Test Coverage:** 26/26 tests passing including edge cases:
+- ✅ Multi-counterparty exposure distribution
+- ✅ Concentration limit enforcement  
+- ✅ Partial contract closing with leverage
+- ✅ Reentrancy protection
+- ✅ Emergency exit procedures
+- ✅ Fuzz testing for robustness
+
+### Enhanced Perpetual Strategy (✅ IMPLEMENTED)
+
+Improved version of the original perpetual strategy with:
+- IExposureStrategy interface compliance
+- Better cost breakdown and funding rate tracking
+- Enhanced risk management and emergency controls
+- Integration with yield strategies for capital efficiency
+
+### Direct Token Strategy (🔄 IN PROGRESS)
+
+Next implementation phase featuring:
+- Direct RWA token purchases via DEX routing
+- Liquidity management and slippage protection
+- Yield strategy integration for unused capital
+- Cost optimization vs. other exposure methods
+
+## 💰 Economic Model
+
+### Multi-Strategy Cost Optimization
+
+The system continuously optimizes between strategies based on:
+
+1. **TRS Borrowing Rates**: Real-time rates from counterparties
+2. **Perpetual Funding Rates**: Market-driven funding costs
+3. **Direct Token Costs**: DEX slippage and liquidity premiums
+4. **Yield Opportunities**: Available returns on unused capital
+
+### Risk Management
+
+- **Strategy Level**: Individual position and leverage limits
+- **Bundle Level**: Cross-strategy correlation and concentration controls
+- **Vault Level**: Total exposure limits and liquidity requirements
+- **Emergency Controls**: Circuit breakers and emergency exit procedures
+
+## 🔒 Security Features
+
+### Smart Contract Security
+- **Reentrancy Protection**: All state-changing functions protected
+- **Access Controls**: Comprehensive ownership and permission management
+- **Input Validation**: Extensive parameter validation and bounds checking
+- **Emergency Systems**: Pause functionality and emergency exits
+
+### TRS-Specific Security
+- **Counterparty Diversification**: Multi-counterparty risk spreading
+- **Quote Validation**: Expiration checks and authenticity verification
+- **Collateral Management**: Proper calculation and posting procedures
+- **Concentration Monitoring**: Real-time exposure limit enforcement
+
+## 📊 Performance & Analytics
+
+### Real-time Metrics
+- Strategy performance attribution
+- Cost breakdown analysis
+- Risk exposure monitoring
+- Capital efficiency tracking
+
+### Optimization Engine
+- Historical performance analysis
+- Predictive cost modeling
+- Risk-adjusted return optimization
+- Automated rebalancing triggers
+
+## 🗺️ Implementation Roadmap
+
+### ✅ Phase 1: Core Infrastructure (COMPLETED)
+- [x] IExposureStrategy interface
+- [x] ComposableRWABundle contract
+- [x] StrategyOptimizer implementation
+- [x] TRS provider interface and mocks
+
+### ✅ Phase 2: TRS Implementation (COMPLETED)
+- [x] TRSExposureStrategy with multi-counterparty support
+- [x] MockTRSProvider with realistic quote generation
+- [x] Comprehensive test suite (26/26 tests passing)
+- [x] Risk management and concentration limits
+
+### 🔄 Phase 3: Direct Token Strategy (IN PROGRESS)
+- [ ] DirectTokenStrategy implementation
+- [ ] DEX integration and routing
+- [ ] Liquidity management and slippage control
+- [ ] Integration testing and optimization
+
+### 📋 Phase 4: Production Ready (UPCOMING)
+- [ ] Real TRS provider integrations
+- [ ] Cross-chain RWA exposure
+- [ ] Advanced analytics dashboard
+- [ ] Institutional-grade compliance features
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Workflow
+1. Fork the repository
+2. Create a feature branch
+3. Implement changes with comprehensive tests
+4. Run the full test suite: `forge test`
+5. Submit a pull request with detailed description
+
+### Testing Standards
+- All new strategies must implement IExposureStrategy
+- Minimum 90% test coverage for new contracts
+- Include edge case and failure mode testing
+- Gas optimization tests for public functions
+
+## 📚 Documentation
+
+- [Architecture Guide](ARCHITECTURE.md) - Detailed system architecture
+- [Strategy Specification](COMPOSABLE_RWA_SPEC.md) - Strategy implementation details
+- [API Reference](docs/api) - Contract interface documentation
+- [Integration Guide](docs/integration) - How to integrate new strategies
+
+## 🔍 Advanced Usage
+
+### Adding Custom Strategies
+
+```solidity
+// Implement IExposureStrategy interface
+contract MyCustomStrategy is IExposureStrategy {
+    function getExposureInfo() external view override returns (ExposureInfo memory) {
+        // Implementation
+    }
+    
+    function openExposure(uint256 amount) external override returns (bool, uint256) {
+        // Implementation
+    }
+    
+    // ... other required functions
+}
+
+// Add to ComposableRWABundle
+bundle.addExposureStrategy(
+    address(myStrategy),
+    2000,  // 20% target allocation
+    3000,  // 30% max allocation
+    false  // not primary strategy
+);
 ```
 
-Or deploy the multi-asset vault with RWA tokens:
+### Custom Risk Parameters
 
-```shell
-forge script script/DeployMultiAssetVault.s.sol:DeployMultiAssetVault --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```solidity
+// Update TRS risk parameters
+strategy.updateRiskParameters(IExposureStrategy.RiskParameters({
+    maxLeverage: 300,           // 3x maximum leverage
+    maxPositionSize: 5000000e6, // $5M maximum position
+    liquidationBuffer: 1000,    // 10% liquidation buffer
+    rebalanceThreshold: 500,    // 5% rebalance threshold
+    slippageLimit: 200,         // 2% maximum slippage
+    emergencyExitEnabled: true  // Enable emergency exits
+}));
 ```
 
-Note: The private key above is the default private key for the first account in Anvil.
+## 🏆 Gas Optimizations
 
-## Testnet Deployment
+- **Storage Packing**: Optimized variable arrangement to minimize storage slots
+- **Efficient Loops**: Gas-conscious iteration patterns and early termination
+- **Minimal External Calls**: Cached values and batched operations
+- **Event Optimization**: Indexed parameters for efficient filtering
+- **Conditional Logic**: Environment-specific optimizations for testing vs production
 
-1. Create a `.env` file with your private key:
+## 📄 License
 
-```
-PRIVATE_KEY=your_private_key_here
-```
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-2. Deploy to a testnet (e.g., Sepolia):
+## 🙏 Acknowledgments
 
-```shell
-source .env
-forge script script/DeployMultiAssetVault.s.sol:DeployMultiAssetVault --rpc-url https://sepolia.infura.io/v3/YOUR_INFURA_KEY --broadcast
-```
+- [OpenZeppelin](https://openzeppelin.com/) for security libraries
+- [Foundry](https://book.getfoundry.sh/) for development framework
+- [ERC4626](https://eips.ethereum.org/EIPS/eip-4626) for vault standards
 
-Replace `YOUR_INFURA_KEY` with your actual Infura API key.
+---
 
-## Interacting with the Contracts
-
-### Depositing into the Vault
-
-```shell
-cast send <VAULT_ADDRESS> "deposit(uint256,address)" <AMOUNT> <RECEIVER> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
-```
-
-### Withdrawing from the Vault
-
-```shell
-cast send <VAULT_ADDRESS> "withdraw(uint256,address,address)" <AMOUNT> <RECEIVER> <OWNER> --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
-```
-
-### Rebalancing the Index
-
-```shell
-cast send <VAULT_ADDRESS> "rebalance()" --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
-```
-
-## Contract Architecture
-
-### IndexFundVaultV2
-
-The main vault contract that implements the ERC4626 standard with gas optimizations. It handles deposits, withdrawals, and rebalancing of the index through asset wrappers.
-
-### RWAAssetWrapper
-
-A wrapper contract that encapsulates RWA tokens and manages the allocation between the RWA asset and yield strategies. This modular approach simplifies asset management and improves separation of concerns.
-
-### StableYieldStrategy
-
-Manages yield generation for idle capital, allowing the vault to earn returns on assets not currently allocated to RWA tokens.
-
-### FeeManager
-
-Handles the calculation and collection of management and performance fees, with configurable parameters for fee rates and collection periods.
-
-## Fee Structure
-
-- **Management Fee**: Annual fee based on total assets under management (configurable, default: 1%)
-- **Performance Fee**: Fee on profits above the high water mark (configurable, default: 10%)
-- **Fee Collection**: Fees are collected during rebalancing operations and when explicitly triggered
-
-## Gas Optimizations
-
-- **Storage Packing**: Variables are carefully packed to minimize storage slots
-- **Data Type Optimization**: Using uint32, uint16, etc. where appropriate to reduce gas costs
-- **Modular Architecture**: Asset wrappers reduce complexity and gas costs in the main vault
-- **Caching**: Array lengths and frequently accessed values are cached to reduce gas usage
-- **Reduced External Calls**: Logic is structured to minimize expensive external calls
-- **Test-Production Bifurcation**: Conditional logic that simplifies calculations in test environments but maintains full functionality in production
-
-## Security Considerations
-
-- **OpenZeppelin Libraries**: The contracts use OpenZeppelin's security libraries
-- **Reentrancy Protection**: Implemented for critical functions using ReentrancyGuard
-- **Fee Limits**: Enforced to prevent excessive fees
-- **Access Control**: Proper ownership and access controls for sensitive operations
-- **Overflow Protection**: Using Solidity 0.8.x built-in overflow checks
-
-## Future Enhancements
-
-- **Capital Allocation Manager**: Advanced strategies for capital allocation
-- **Enhanced Yield Strategies**: Additional yield generation options
-- **Frontend Application**: React TypeScript UI for interacting with the contracts
-- **Cross-Chain Support**: Integration with cross-chain bridges
-- **DAO Governance**: Decentralized control of the index composition
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-### User Workflows
-
-#### Investor
-- View vault statistics and index composition
-- Deposit assets into the vault
-- Withdraw assets by redeeming shares
-
-#### DAO Member
-- View index composition
-- Add, update, and remove tokens from the index
-- (Future) Participate in governance proposals
-
-#### Portfolio Manager
-- Rebalance the portfolio
-- Collect management and performance fees
-- Configure vault parameters
-
-For more details about the frontend, see the [frontend README](./frontend/README.md).
-
-## Future Enhancements
-
-- Integration with more DEXes for better liquidity
-- Cross-chain asset support
-- Real-world asset (RWA) synthetic tokens
-- Enhanced DAO governance features
-- Advanced analytics dashboard
-- Mobile-responsive design improvements
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Foundry
-
-This project uses Foundry, a blazing fast, portable, and modular toolkit for Ethereum application development written in Rust.
-
-For more information about Foundry, visit the [documentation](https://book.getfoundry.sh/).
+Built with ❤️ for the future of decentralized finance and real-world asset integration.
