@@ -68,12 +68,14 @@ contract ComposableRWAIntegrationTest is Test {
         
         // Deploy mock providers
         trsProvider = new MockTRSProvider(address(usdc));
-        perpetualRouter = new MockPerpetualRouter(address(usdc));
+        perpetualRouter = new MockPerpetualRouter(address(priceOracle), address(usdc));
         dexRouter = new MockDEXRouter(address(usdc), address(rwaToken));
         
         // Set up DEX exchange rates (RWA token with 6 decimals)
-        dexRouter.setExchangeRate(address(usdc), address(rwaToken), 1e4); // 1 USDC = 0.01 RWA
-        dexRouter.setExchangeRate(address(rwaToken), address(usdc), 100e6); // 1 RWA = 100 USDC
+        // At $100 per RWA token: 1 USDC = 0.01 RWA tokens
+        // Exchange rate formula: output = (input * rate) / 1e18
+        dexRouter.setExchangeRate(address(usdc), address(rwaToken), 1e16); // 1 USDC = 0.01 RWA
+        dexRouter.setExchangeRate(address(rwaToken), address(usdc), 100e18); // 1 RWA = 100 USDC
         
         // Deploy yield strategy
         yieldStrategy = new MockYieldStrategy(IERC20(address(usdc)), "Integration Yield Strategy");
@@ -127,7 +129,18 @@ contract ComposableRWAIntegrationTest is Test {
         // Add yield strategy to DirectTokenStrategy
         vm.startPrank(owner);
         directStrategy.addYieldStrategy(address(yieldStrategy), BASIS_POINTS); // 100% allocation
+        
         vm.stopPrank();
+        
+        // Set up perpetual market (as test contract since we own the router)
+        perpetualRouter.addMarket(
+            MARKET_ID,
+            "SP500 Perpetual",
+            address(usdc),
+            address(0), // No quote token needed for mock
+            500 // 5x max leverage
+        );
+        
         
         // Fund accounts
         usdc.mint(user1, INITIAL_BALANCE);
