@@ -314,9 +314,32 @@ contract ForkedMainnetIntegrationTest is Test {
     MockRWAAssetWrapper spWrapper;
     MockRWAAssetWrapper goldWrapper;
     
+    // Helper function to check if we should skip tests (when ETH_RPC_URL is not available)
+    function _shouldSkipTests() internal view returns (bool) {
+        return owner == address(0x1) && user1 == address(0x2) && user2 == address(0x3);
+    }
+    
     function setUp() public {
-        // Fork mainnet
-        vm.createSelectFork("mainnet");
+        // Check if ETH_RPC_URL is available by trying to read it
+        string memory rpcUrl;
+        try vm.envString("ETH_RPC_URL") returns (string memory url) {
+            rpcUrl = url;
+        } catch {
+            // ETH_RPC_URL not available - mark for skipping tests  
+            rpcUrl = "";
+        }
+        
+        // Only proceed with forking if we have a valid RPC URL
+        if (bytes(rpcUrl).length == 0) {
+            // Create minimal setup for graceful skipping
+            owner = address(0x1);
+            user1 = address(0x2); 
+            user2 = address(0x3);
+            return;
+        }
+        
+        // Fork mainnet using the available RPC URL
+        vm.createSelectFork(rpcUrl);
         
         // Set up test accounts
         owner = makeAddr("owner");
@@ -371,6 +394,12 @@ contract ForkedMainnetIntegrationTest is Test {
     
     // Test basic USDC functionality
     function test_USDCBasicFunctionality() public {
+        // Skip if ETH_RPC_URL is not available
+        if (_shouldSkipTests()) {
+            vm.skip(true);
+            return;
+        }
+        
         // Check that we can access USDC
         assertEq(usdcMetadata.decimals(), 6, "USDC should have 6 decimals");
         assertEq(usdcMetadata.symbol(), "USDC", "Symbol should be USDC");
@@ -410,6 +439,11 @@ contract ForkedMainnetIntegrationTest is Test {
     
     // Test vault deposit and withdrawal
     function test_VaultDepositWithdraw() public {
+        // Skip if ETH_RPC_URL is not available
+        if (_shouldSkipTests()) {
+            vm.skip(true);
+            return;
+        }
         // Set up vault environment
         _setupVaultEnvironment();
         
@@ -434,6 +468,11 @@ contract ForkedMainnetIntegrationTest is Test {
     
     // Test vault rebalance
     function test_VaultRebalance() public {
+        // Skip if ETH_RPC_URL is not available
+        if (_shouldSkipTests()) {
+            vm.skip(true);
+            return;
+        }
         // Set up vault environment
         _setupVaultEnvironment();
         
@@ -454,6 +493,11 @@ contract ForkedMainnetIntegrationTest is Test {
     
     // Test yield harvesting
     function test_YieldHarvesting() public {
+        // Skip if ETH_RPC_URL is not available
+        if (_shouldSkipTests()) {
+            vm.skip(true);
+            return;
+        }
         // Set up vault environment
         _setupVaultEnvironment();
         
@@ -475,6 +519,11 @@ contract ForkedMainnetIntegrationTest is Test {
     
     // Test edge cases
     function test_VaultEdgeCases() public {
+        // Skip if ETH_RPC_URL is not available
+        if (_shouldSkipTests()) {
+            vm.skip(true);
+            return;
+        }
         // Set up vault environment
         _setupVaultEnvironment();
         
