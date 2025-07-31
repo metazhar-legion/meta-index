@@ -125,18 +125,18 @@ export const useContracts = (): UseContractsReturn => {
         }
         
         // Verify contract addresses are valid
-        if (!ethers.isAddress(CONTRACT_ADDRESSES.VAULT)) {
-          throw new Error(`Invalid vault address: ${CONTRACT_ADDRESSES.VAULT}`);
+        if (!ethers.isAddress(CONTRACT_ADDRESSES.LEGACY_VAULT)) {
+          throw new Error(`Invalid vault address: ${CONTRACT_ADDRESSES.LEGACY_VAULT}`);
         }
-        if (!ethers.isAddress(CONTRACT_ADDRESSES.REGISTRY)) {
-          throw new Error(`Invalid registry address: ${CONTRACT_ADDRESSES.REGISTRY}`);
+        if (!ethers.isAddress(CONTRACT_ADDRESSES.LEGACY_REGISTRY)) {
+          throw new Error(`Invalid registry address: ${CONTRACT_ADDRESSES.LEGACY_REGISTRY}`);
         }
         
         // Create contracts with error handling
         let vault, registry, capitalManager;
         try {
           vault = new ethers.Contract(
-            CONTRACT_ADDRESSES.VAULT,
+            CONTRACT_ADDRESSES.LEGACY_VAULT,
             IndexFundVaultABI,
             provider
           );
@@ -168,7 +168,7 @@ export const useContracts = (): UseContractsReturn => {
         
         try {
           registry = new ethers.Contract(
-            CONTRACT_ADDRESSES.REGISTRY,
+            CONTRACT_ADDRESSES.LEGACY_REGISTRY,
             IndexRegistryABI,
             provider
           );
@@ -343,7 +343,7 @@ export const useContracts = (): UseContractsReturn => {
                 if (isLocalNetwork) {
                   console.log('Using local testnet token addresses for index');
                   tokenAddresses = [
-                    CONTRACT_ADDRESSES.USDC, // USDC
+                    CONTRACT_ADDRESSES.MOCK_USDC, // USDC
                     CONTRACT_ADDRESSES.WETH, // WETH
                     CONTRACT_ADDRESSES.WBTC  // WBTC
                   ];
@@ -373,7 +373,7 @@ export const useContracts = (): UseContractsReturn => {
           } else {
             try {
               console.log('Calling getTokensWithWeights on registry contract...');
-              console.log('Registry contract address:', CONTRACT_ADDRESSES.REGISTRY);
+              console.log('Registry contract address:', CONTRACT_ADDRESSES.LEGACY_REGISTRY);
               console.log('Registry contract methods:', Object.keys(registryContract));
               
               // Check if the method exists
@@ -391,7 +391,7 @@ export const useContracts = (): UseContractsReturn => {
                 console.log('Encoded function call:', calldata);
                 
                 const rawResult = await provider.call({
-                  to: CONTRACT_ADDRESSES.REGISTRY,
+                  to: CONTRACT_ADDRESSES.LEGACY_REGISTRY,
                   data: calldata
                 });
                 
@@ -759,7 +759,7 @@ export const useContracts = (): UseContractsReturn => {
                 // Add local testnet token addresses with their symbols and decimals
                 knownTokens = {
                   // Convert addresses to lowercase for case-insensitive matching
-                  [CONTRACT_ADDRESSES.USDC.toLowerCase()]: { symbol: 'USDC', decimals: 6 },
+                  [CONTRACT_ADDRESSES.MOCK_USDC.toLowerCase()]: { symbol: 'USDC', decimals: 6 },
                   [CONTRACT_ADDRESSES.WBTC.toLowerCase()]: { symbol: 'WBTC', decimals: 8 },
                   [CONTRACT_ADDRESSES.WETH.toLowerCase()]: { symbol: 'WETH', decimals: 18 },
                   [CONTRACT_ADDRESSES.LINK.toLowerCase()]: { symbol: 'LINK', decimals: 18 },

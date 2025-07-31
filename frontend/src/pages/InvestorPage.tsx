@@ -142,7 +142,7 @@ const InvestorPage: React.FC = () => {
       console.log('Amount in wei:', amountInWei.toString());
       
       // Use the vault address from contract addresses
-      const vaultAddress = CONTRACT_ADDRESSES.VAULT;
+      const vaultAddress = CONTRACT_ADDRESSES.LEGACY_VAULT;
       console.log('Vault address for approval:', vaultAddress);
       
       // Approve tokens
