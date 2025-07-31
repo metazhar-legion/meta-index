@@ -36,14 +36,8 @@ import { useComposableRWA } from '../hooks/useComposableRWA';
 import { StrategyType, StrategyAllocation } from '../contracts/composableRWATypes';
 import { ethers } from 'ethers';
 
-// Color scheme for different strategy types
-const STRATEGY_COLORS = {
-  [StrategyType.TRS]: '#FF6B6B',
-  [StrategyType.PERPETUAL]: '#4ECDC4',
-  [StrategyType.DIRECT_TOKEN]: '#45B7D1',
-  [StrategyType.SYNTHETIC_TOKEN]: '#96CEB4',
-  [StrategyType.OPTIONS]: '#FFEAA7',
-};
+// Color scheme for strategies
+const STRATEGY_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
 
 const STRATEGY_NAMES = {
   [StrategyType.TRS]: 'Total Return Swap',
@@ -79,18 +73,14 @@ const StrategyDashboard: React.FC<StrategyDashboardProps> = ({ onOptimize, onReb
   const totalAllocationPercent = strategyAllocations.reduce((sum, strategy) => sum + strategy.targetAllocation, 0) / 100;
 
   // Prepare data for charts
-  const allocationData = strategyAllocations.map((strategy, index) => {
-    const colorKeys = Object.keys(STRATEGY_COLORS) as Array<keyof typeof STRATEGY_COLORS>;
-    const colorKey = colorKeys[index % colorKeys.length];
-    return {
-      name: `Strategy ${index + 1}`,
-      value: strategy.targetAllocation / 100,
-      address: strategy.strategy,
-      isPrimary: strategy.isPrimary,
-      isActive: strategy.isActive,
-      color: STRATEGY_COLORS[colorKey],
-    };
-  });
+  const allocationData = strategyAllocations.map((strategy, index) => ({
+    name: `Strategy ${index + 1}`,
+    value: strategy.targetAllocation / 100,
+    address: strategy.strategy,
+    isPrimary: strategy.isPrimary,
+    isActive: strategy.isActive,
+    color: STRATEGY_COLORS[index % STRATEGY_COLORS.length],
+  }));
 
   const performanceData = [
     { name: 'Total Value', value: bundleStats ? parseFloat(ethers.formatUnits(bundleStats.totalValue, 6)) : 0 },

@@ -110,11 +110,10 @@ export interface PerformanceMetrics {
 
 // Contract interface types
 export interface ComposableRWABundleInterface extends ethers.Contract {
-  // Core functions
-  allocateCapital(amount: string): Promise<ethers.ContractTransactionResponse>;
-  withdrawCapital(amount: string): Promise<ethers.ContractTransactionResponse>;
-  getValueInBaseAsset(): Promise<string>;
-  harvestYield(): Promise<ethers.ContractTransactionResponse>;
+  allocateCapital: (amount: string) => Promise<ethers.ContractTransactionResponse>;
+  withdrawCapital: (amount: string) => Promise<ethers.ContractTransactionResponse>;
+  getValueInBaseAsset: () => Promise<string>;
+  harvestYield: () => Promise<ethers.ContractTransactionResponse>;
   
   // Strategy management
   addExposureStrategy(

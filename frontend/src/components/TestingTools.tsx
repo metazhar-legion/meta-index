@@ -10,9 +10,9 @@ import { CONTRACT_ADDRESSES } from '../contracts/addresses';
 // Use the centralized contract addresses from the addresses.ts file
 const ADDRESSES = {
   // USDC address from CONTRACT_ADDRESSES
-  USDC: CONTRACT_ADDRESSES.USDC,
+  USDC: CONTRACT_ADDRESSES.MOCK_USDC,
   // Vault address from CONTRACT_ADDRESSES
-  VAULT: CONTRACT_ADDRESSES.VAULT,
+  VAULT: CONTRACT_ADDRESSES.LEGACY_VAULT,
 };
 
 // Only log addresses in development mode
