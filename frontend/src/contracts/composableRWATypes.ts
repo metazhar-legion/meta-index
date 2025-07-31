@@ -116,40 +116,40 @@ export interface ComposableRWABundleInterface extends ethers.Contract {
   harvestYield: () => Promise<ethers.ContractTransactionResponse>;
   
   // Strategy management
-  addExposureStrategy(
+  addExposureStrategy: (
     strategy: string,
     targetAllocation: number,
     maxAllocation: number,
     isPrimary: boolean
-  ): Promise<ethers.ContractTransactionResponse>;
-  removeExposureStrategy(strategy: string): Promise<ethers.ContractTransactionResponse>;
-  getExposureStrategies(): Promise<StrategyAllocation[]>;
+  ) => Promise<ethers.ContractTransactionResponse>;
+  removeExposureStrategy: (strategy: string) => Promise<ethers.ContractTransactionResponse>;
+  getExposureStrategies: () => Promise<StrategyAllocation[]>;
   
   // Yield management
-  updateYieldBundle(
+  updateYieldBundle: (
     strategies: string[],
     allocations: number[]
-  ): Promise<ethers.ContractTransactionResponse>;
-  getYieldBundle(): Promise<YieldStrategyBundle>;
+  ) => Promise<ethers.ContractTransactionResponse>;
+  getYieldBundle: () => Promise<YieldStrategyBundle>;
   
   // Optimization and rebalancing
-  optimizeStrategies(): Promise<ethers.ContractTransactionResponse>;
-  rebalanceStrategies(): Promise<ethers.ContractTransactionResponse>;
+  optimizeStrategies: () => Promise<ethers.ContractTransactionResponse>;
+  rebalanceStrategies: () => Promise<ethers.ContractTransactionResponse>;
   
   // Risk management
-  updateRiskParameters(newParams: RiskParameters): Promise<ethers.ContractTransactionResponse>;
-  getRiskParameters(): Promise<RiskParameters>;
-  emergencyExitAll(): Promise<ethers.ContractTransactionResponse>;
+  updateRiskParameters: (newParams: RiskParameters) => Promise<ethers.ContractTransactionResponse>;
+  getRiskParameters: () => Promise<RiskParameters>;
+  emergencyExitAll: () => Promise<ethers.ContractTransactionResponse>;
   
   // Stats and monitoring
-  getBundleStats(): Promise<BundleStats>;
-  totalAllocatedCapital(): Promise<string>;
+  getBundleStats: () => Promise<BundleStats>;
+  totalAllocatedCapital: () => Promise<string>;
   
   // Core properties
-  name(): Promise<string>;
-  baseAsset(): Promise<string>;
-  priceOracle(): Promise<string>;
-  optimizer(): Promise<string>;
+  name: () => Promise<string>;
+  baseAsset: () => Promise<string>;
+  priceOracle: () => Promise<string>;
+  optimizer: () => Promise<string>;
 }
 
 export interface TRSExposureStrategyInterface extends ethers.Contract {
