@@ -79,14 +79,18 @@ const StrategyDashboard: React.FC<StrategyDashboardProps> = ({ onOptimize, onReb
   const totalAllocationPercent = strategyAllocations.reduce((sum, strategy) => sum + strategy.targetAllocation, 0) / 100;
 
   // Prepare data for charts
-  const allocationData = strategyAllocations.map((strategy, index) => ({
-    name: `Strategy ${index + 1}`,
-    value: strategy.targetAllocation / 100,
-    address: strategy.strategy,
-    isPrimary: strategy.isPrimary,
-    isActive: strategy.isActive,
-    color: STRATEGY_COLORS[index % Object.keys(STRATEGY_COLORS).length],
-  }));
+  const allocationData = strategyAllocations.map((strategy, index) => {
+    const colorKeys = Object.keys(STRATEGY_COLORS) as Array<keyof typeof STRATEGY_COLORS>;
+    const colorKey = colorKeys[index % colorKeys.length];
+    return {
+      name: `Strategy ${index + 1}`,
+      value: strategy.targetAllocation / 100,
+      address: strategy.strategy,
+      isPrimary: strategy.isPrimary,
+      isActive: strategy.isActive,
+      color: STRATEGY_COLORS[colorKey],
+    };
+  });
 
   const performanceData = [
     { name: 'Total Value', value: bundleStats ? parseFloat(ethers.formatUnits(bundleStats.totalValue, 6)) : 0 },
