@@ -1,0 +1,1292 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_priceOracle",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "BASIS_POINTS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_STRATEGIES",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PERFORMANCE_HISTORY_LENGTH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "analyzeStrategies",
+    "inputs": [
+      {
+        "name": "strategies",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "targetExposure",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "timeHorizon",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "scores",
+        "type": "tuple[]",
+        "internalType": "struct IStrategyOptimizer.StrategyScore[]",
+        "components": [
+          {
+            "name": "strategy",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "costScore",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "riskScore",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "liquidityScore",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "reliabilityScore",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "capacityScore",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "totalScore",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "recommendedAllocation",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "isRecommended",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "reasoning",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "baseGasPerInstruction",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "calculateOptimalAllocation",
+    "inputs": [
+      {
+        "name": "strategies",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "totalCapital",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "targetExposure",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "tuple",
+        "internalType": "struct IStrategyOptimizer.OptimizationResult",
+        "components": [
+          {
+            "name": "strategyScores",
+            "type": "tuple[]",
+            "internalType": "struct IStrategyOptimizer.StrategyScore[]",
+            "components": [
+              {
+                "name": "strategy",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "costScore",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "riskScore",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "liquidityScore",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "reliabilityScore",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "capacityScore",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "totalScore",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "recommendedAllocation",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "isRecommended",
+                "type": "bool",
+                "internalType": "bool"
+              },
+              {
+                "name": "reasoning",
+                "type": "string",
+                "internalType": "string"
+              }
+            ]
+          },
+          {
+            "name": "optimalAllocations",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
+          },
+          {
+            "name": "expectedCostSaving",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "expectedRiskReduction",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "implementationCost",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "shouldRebalance",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "confidence",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "instructions",
+            "type": "tuple[]",
+            "internalType": "struct IStrategyOptimizer.RebalanceInstruction[]",
+            "components": [
+              {
+                "name": "fromStrategy",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "toStrategy",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "priority",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "maxSlippageBps",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "isEmergency",
+                "type": "bool",
+                "internalType": "bool"
+              },
+              {
+                "name": "reasoning",
+                "type": "string",
+                "internalType": "string"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "checkEmergencyStates",
+    "inputs": [
+      {
+        "name": "strategies",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "hasEmergency",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "emergencyStrategies",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "estimateRebalanceGasCost",
+    "inputs": [
+      {
+        "name": "instructions",
+        "type": "tuple[]",
+        "internalType": "struct IStrategyOptimizer.RebalanceInstruction[]",
+        "components": [
+          {
+            "name": "fromStrategy",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "toStrategy",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "priority",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxSlippageBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "isEmergency",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "reasoning",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "gasEstimate",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "gasPerStrategySwitch",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getOptimizationParams",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "params",
+        "type": "tuple",
+        "internalType": "struct IStrategyOptimizer.OptimizationParams",
+        "components": [
+          {
+            "name": "gasThreshold",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minCostSavingBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxSlippageBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "timeHorizon",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "riskPenalty",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "liquidityWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "diversificationBonus",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "enableEmergencyMode",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getPerformanceMetrics",
+    "inputs": [
+      {
+        "name": "strategies",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "lookbackPeriod",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "metrics",
+        "type": "tuple[]",
+        "internalType": "struct IStrategyOptimizer.PerformanceMetrics[]",
+        "components": [
+          {
+            "name": "totalReturnBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "volatilityBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxDrawdownBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "sharpeRatio",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "averageCostBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "successRate",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "avgExecutionTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "reliabilityScore",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getRebalanceInstructions",
+    "inputs": [
+      {
+        "name": "currentAllocations",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "optimalAllocations",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "strategies",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "totalValue",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "instructions",
+        "type": "tuple[]",
+        "internalType": "struct IStrategyOptimizer.RebalanceInstruction[]",
+        "components": [
+          {
+            "name": "fromStrategy",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "toStrategy",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "priority",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxSlippageBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "isEmergency",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "reasoning",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lastPerformanceUpdate",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "optimizationParams",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "gasThreshold",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "minCostSavingBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxSlippageBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "timeHorizon",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "riskPenalty",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidityWeight",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "diversificationBonus",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "enableEmergencyMode",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "priceOracle",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IPriceOracle"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "recordPerformance",
+    "inputs": [
+      {
+        "name": "strategy",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "returnBps",
+        "type": "int256",
+        "internalType": "int256"
+      },
+      {
+        "name": "costBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "executionTime",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "wasSuccessful",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "recordRebalanceOutcome",
+    "inputs": [
+      {
+        "name": "instructions",
+        "type": "tuple[]",
+        "internalType": "struct IStrategyOptimizer.RebalanceInstruction[]",
+        "components": [
+          {
+            "name": "fromStrategy",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "toStrategy",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "amount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "priority",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxSlippageBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "isEmergency",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "reasoning",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      },
+      {
+        "name": "actualCosts",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "actualSlippage",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "wasSuccessful",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "shouldRebalance",
+    "inputs": [
+      {
+        "name": "currentAllocations",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "optimalAllocations",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "strategies",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "shouldRebalanceResult",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "expectedSaving",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "implementationCost",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "strategyRiskScores",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateGasEstimation",
+    "inputs": [
+      {
+        "name": "_baseGasPerInstruction",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_gasPerStrategySwitch",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateOptimizationParams",
+    "inputs": [
+      {
+        "name": "newParams",
+        "type": "tuple",
+        "internalType": "struct IStrategyOptimizer.OptimizationParams",
+        "components": [
+          {
+            "name": "gasThreshold",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minCostSavingBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxSlippageBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "timeHorizon",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "riskPenalty",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "liquidityWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "diversificationBonus",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "enableEmergencyMode",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updatePriceOracle",
+    "inputs": [
+      {
+        "name": "_priceOracle",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateRiskAssessment",
+    "inputs": [
+      {
+        "name": "strategy",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "newRiskScore",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "reasoning",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "EmergencyDetected",
+    "inputs": [
+      {
+        "name": "strategy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OptimalAllocationCalculated",
+    "inputs": [
+      {
+        "name": "strategies",
+        "type": "address[]",
+        "indexed": false,
+        "internalType": "address[]"
+      },
+      {
+        "name": "allocations",
+        "type": "uint256[]",
+        "indexed": false,
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "expectedSaving",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OptimizationParamsUpdated",
+    "inputs": [
+      {
+        "name": "newParams",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct IStrategyOptimizer.OptimizationParams",
+        "components": [
+          {
+            "name": "gasThreshold",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minCostSavingBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxSlippageBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "timeHorizon",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "riskPenalty",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "liquidityWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "diversificationBonus",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "enableEmergencyMode",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PerformanceRecorded",
+    "inputs": [
+      {
+        "name": "strategy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "returnBps",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      },
+      {
+        "name": "costBps",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "wasSuccessful",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RebalanceOutcomeRecorded",
+    "inputs": [
+      {
+        "name": "wasSuccessful",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "totalCost",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalSlippage",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RebalanceRecommended",
+    "inputs": [
+      {
+        "name": "expectedSaving",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "implementationCost",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "confidence",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RiskAssessmentUpdated",
+    "inputs": [
+      {
+        "name": "strategy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldScore",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "newScore",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reasoning",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StrategyAnalyzed",
+    "inputs": [
+      {
+        "name": "strategy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "totalScore",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "isRecommended",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "EmptyArray",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ValueOutOfRange",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "min",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "max",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ValueTooHigh",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ValueTooLow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]
