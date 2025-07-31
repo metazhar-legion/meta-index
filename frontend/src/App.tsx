@@ -21,6 +21,7 @@ import UserRoleSelector from './components/UserRoleSelector';
 import InvestorPage from './pages/InvestorPage';
 import DAOMemberPage from './pages/DAOMemberPage';
 import PortfolioManagerPage from './pages/PortfolioManagerPage';
+import ComposableRWAPage from './pages/ComposableRWAPage';
 
 // Import connectors
 import { connectors } from './connectors';
@@ -61,7 +62,7 @@ const MainContent: React.FC = () => {
               Web3 Index Fund
             </Typography>
             <Typography variant="h6" sx={{ maxWidth: 700, mb: 4 }}>
-              A decentralized, DAO-governed index fund built on ERC4626 vault standard
+              Advanced composable RWA exposure with multi-strategy optimization and intelligent rebalancing
             </Typography>
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
               <ConnectWallet />
@@ -183,6 +184,8 @@ const MainContent: React.FC = () => {
         return <DAOMemberPage />;
       case UserRole.PORTFOLIO_MANAGER:
         return <PortfolioManagerPage />;
+      case UserRole.COMPOSABLE_RWA_USER:
+        return <ComposableRWAPage />;
       default:
         return <InvestorPage />;
     }

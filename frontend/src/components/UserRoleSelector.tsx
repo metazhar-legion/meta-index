@@ -4,6 +4,7 @@ import { useWeb3, UserRole } from '../contexts/Web3Context';
 import PersonIcon from '@mui/icons-material/Person';
 import GroupsIcon from '@mui/icons-material/Groups';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 
 const UserRoleSelector: React.FC = () => {
   const { userRole, setUserRole, isActive } = useWeb3();
@@ -44,6 +45,10 @@ const UserRoleSelector: React.FC = () => {
         <ToggleButton value={UserRole.PORTFOLIO_MANAGER} aria-label="portfolio manager">
           <AccountBalanceIcon sx={{ mr: 1 }} />
           Portfolio Manager
+        </ToggleButton>
+        <ToggleButton value={UserRole.COMPOSABLE_RWA_USER} aria-label="composable rwa user">
+          <ShowChartIcon sx={{ mr: 1 }} />
+          Composable RWA
         </ToggleButton>
       </ToggleButtonGroup>
     </Box>

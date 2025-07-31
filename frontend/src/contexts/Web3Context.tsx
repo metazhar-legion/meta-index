@@ -8,6 +8,7 @@ export enum UserRole {
   INVESTOR = 'investor',
   DAO_MEMBER = 'dao_member',
   PORTFOLIO_MANAGER = 'portfolio_manager',
+  COMPOSABLE_RWA_USER = 'composable_rwa_user',
 }
 
 // Define Web3 context type
