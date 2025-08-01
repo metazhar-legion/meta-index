@@ -5,56 +5,68 @@ This document provides a detailed overview of the Web3 Index Fund's composable R
 ## System Architecture Overview
 
 ```
-┌───────────────────────────────────────────────────────────────────────┐
-│                                                                       │
-│                    Web3 Index Fund System                             │
-│                         (Meta-Index)                                  │
-│                                                                       │
-└───────────────────────────┬───────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          Web3 Index Fund System                                │
+│                    (Production-Ready ComposableRWA)                            │
+└───────────────────────────┬─────────────────────────────────────────────────────┘
                             │
-        ┌───────────────────┴───────────────────┐
-        │                                       │
-┌───────▼───────────────┐       ┌───────────────▼───────────────┐
-│                       │       │                               │
-│  Smart Contract Layer │       │       Frontend Layer          │
-│                       │       │     (Future Enhancement)      │
-└───────┬───────────────┘       └───────────────────────────────┘
-        │                                       
-        │                                       
-┌───────▼─────────────────────────────────────────────────────────────┐
-│                     IndexFundVaultV2                                │
-│                        (ERC4626)                                    │
-└───────┬─────────────────────────────────────────────────────────────┘
-        │                                       
-        │                                       
-┌───────▼─────────────────────────────────────────────────────────────┐
-│                  ComposableRWABundle                                │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐     │
-│  │ TRS Exposure    │  │ Perpetual       │  │ Direct Token    │     │
-│  │ Strategy        │  │ Strategy        │  │ Strategy        │     │
-│  │                 │  │                 │  │                 │     │
-│  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │     │
-│  │ │Yield Bundle │ │  │ │Yield Bundle │ │  │ │Yield Bundle │ │     │
-│  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │     │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘     │
-└───────┬─────────────────────────────────────────────────────────────┘
-        │                                       
-        │                                       
-┌───────▼─────────────────────────────────────────────────────────────┐
-│                   StrategyOptimizer                                  │
-│  • Real-time Cost Analysis    • Risk Assessment                     │
-│  • Performance Tracking       • Rebalancing Logic                   │
-│  • Multi-counterparty TRS     • Concentration Limits               │
-└─────────────────────────────────────────────────────────────────────┘
-        │                                       
-        │                                       
-┌───────▼─────────────────────────────────────────────────────────────┐
-│               External RWA Infrastructure                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │ MockTRS     │  │ Perpetual   │  │ Price       │  │ DEX         │ │
-│  │ Provider    │  │ Router      │  │ Oracles     │  │ Router      │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
+    ┌───────────────────────┴───────────────────────┐
+    │                                               │
+┌───▼─────────────────────┐         ┌───────────────▼──────────────────┐
+│                         │         │                                  │
+│   Frontend Layer        │         │      Smart Contract Layer       │
+│  (React + TypeScript)   │         │         (Solidity)              │
+│                         │         │                                  │
+│ ┌─────────────────────┐ │         │ ┌──────────────────────────────┐ │
+│ │ ComposableRWA Page  │ │         │ │     ComposableRWABundle      │ │
+│ │                     │ │         │ │                              │ │
+│ │ • Strategy Dashboard│ │ ◄────────► │ ┌──────────────────────────┐ │ │
+│ │ • Capital Allocation│ │         │ │ │   TRS Exposure Strategy  │ │ │
+│ │ • Real-time Charts  │ │         │ │ │                          │ │ │
+│ │ • Optimization UI   │ │         │ │ │ • Multi-counterparty     │ │ │
+│ └─────────────────────┘ │         │ │ │ • Concentration limits   │ │ │
+│                         │         │ │ │ • Risk management        │ │ │
+│ ┌─────────────────────┐ │         │ │ └──────────────────────────┘ │ │
+│ │ Legacy Pages        │ │         │ │                              │ │
+│ │                     │ │         │ │ ┌──────────────────────────┐ │ │
+│ │ • Investor          │ │         │ │ │ Enhanced Perpetual Strat │ │ │
+│ │ • DAO Member        │ │         │ │ │                          │ │ │
+│ │ • Portfolio Manager │ │         │ │ │ • Funding rate tracking │ │ │
+│ └─────────────────────┘ │         │ │ │ • Dynamic leverage       │ │ │
+│                         │         │ │ │ • PnL monitoring         │ │ │
+│ ┌─────────────────────┐ │         │ │ └──────────────────────────┘ │ │
+│ │ Web3 Integration    │ │         │ │                              │ │
+│ │                     │ │         │ │ ┌──────────────────────────┐ │ │
+│ │ • MetaMask Support  │ │         │ │ │  Direct Token Strategy   │ │ │
+│ │ • Contract Hooks    │ │         │ │ │                          │ │ │
+│ │ • Real-time Updates │ │         │ │ │ • DEX integration        │ │ │
+│ │ • Error Handling    │ │         │ │ │ • Yield optimization     │ │ │
+│ └─────────────────────┘ │         │ │ │ • Slippage protection    │ │ │
+└─────────────────────────┘         │ │ └──────────────────────────┘ │ │
+                                    │ └──────────────────────────────┘ │
+                                    │                                  │
+                                    │ ┌──────────────────────────────┐ │
+                                    │ │     StrategyOptimizer        │ │
+                                    │ │                              │ │
+                                    │ │ • Real-time cost analysis    │ │
+                                    │ │ • Performance tracking       │ │
+                                    │ │ • Automatic rebalancing      │ │
+                                    │ │ • Risk assessment            │ │
+                                    │ └──────────────────────────────┘ │
+                                    └──────────────────────────────────┘
+                                                      │
+                    ┌─────────────────────────────────┴─────────────────────────────────┐
+                    │                                                                   │
+            ┌───────▼─────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────▼─┐
+            │                 │  │             │  │             │  │                   │
+            │  Mock TRS       │  │ Mock        │  │ Mock Price  │  │ Mock DEX          │
+            │  Provider       │  │ Perpetual   │  │ Oracle      │  │ Router            │
+            │                 │  │ Router      │  │             │  │                   │
+            │ • Quote system  │  │ • Position  │  │ • Multi-    │  │ • Token swaps     │
+            │ • Contract mgmt │  │   tracking  │  │   asset     │  │ • Exchange rates  │
+            │ • Counterparty  │  │ • PnL calc  │  │   pricing   │  │ • Slippage sim    │
+            │   management    │  │ • Leverage  │  │ • Real-time │  │ • Liquidity mgmt  │
+            └─────────────────┘  └─────────────┘  └─────────────┘  └───────────────────┘
 ```
 
 ## Core Architecture Components
@@ -378,5 +390,90 @@ The project emphasizes comprehensive testing with:
 4. **Fuzz Tests**: Randomized input testing for robustness
 5. **Gas Optimization Tests**: Performance and cost monitoring
 6. **Realistic Mocks**: Production-equivalent test environments
+
+## Frontend Integration Architecture
+
+### React + TypeScript Frontend (IMPLEMENTED)
+
+The frontend provides a comprehensive user interface for interacting with the ComposableRWA system:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Frontend Architecture                       │
+├─────────────────────────────────────────────────────────────────┤
+│ Application Layer:                                              │
+│ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
+│ │ ComposableRWA   │ │ Legacy Pages    │ │ Common          │   │  
+│ │ Page            │ │                 │ │ Components      │   │
+│ │                 │ │ • Investor      │ │                 │   │
+│ │ • Strategy      │ │ • DAO Member    │ │ • ConnectWallet │   │
+│ │   Dashboard     │ │ • Portfolio     │ │ • UserRole      │   │
+│ │ • Capital       │ │   Manager       │ │   Selector      │   │
+│ │   Allocation    │ │                 │ │ • VaultStats    │   │
+│ │ • Analytics     │ │                 │ │                 │   │
+│ └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+├─────────────────────────────────────────────────────────────────┤
+│ Hooks & State Management:                                       │
+│ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
+│ │ useComposable   │ │ useContracts    │ │ Web3Context     │   │
+│ │ RWA             │ │ (Legacy)        │ │                 │   │
+│ │                 │ │                 │ │ • MetaMask      │   │
+│ │ • Bundle mgmt   │ │ • ERC4626 vault │ │   integration   │   │
+│ │ • Strategy ops  │ │ • Token mgmt    │ │ • Provider mgmt │   │
+│ │ • Real-time     │ │                 │ │ • Account state │   │
+│ │   updates       │ │                 │ │                 │   │
+│ └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+├─────────────────────────────────────────────────────────────────┤
+│ Contract Integration:                                           │
+│ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
+│ │ ABIs            │ │ Type Definitions│ │ Address Config  │   │
+│ │                 │ │                 │ │                 │   │
+│ │ • Composable    │ │ • Strategy      │ │ • Contract      │   │
+│ │   RWABundle     │ │   interfaces    │ │   addresses     │   │
+│ │ • TRS Strategy  │ │ • Event types   │ │ • Network       │   │
+│ │ • Perpetual     │ │ • Data models   │ │   config        │   │
+│ │ • DirectToken   │ │                 │ │                 │   │
+│ └─────────────────┘ └─────────────────┘ └─────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Frontend Features
+
+#### 1. Strategy Dashboard
+- **Visual Allocation**: Interactive pie charts showing strategy distribution
+- **Performance Metrics**: Real-time portfolio value, leverage, and efficiency
+- **Action Controls**: Optimize and rebalance buttons with progress indicators
+- **Health Monitoring**: Portfolio health status and warning indicators
+
+#### 2. Capital Allocation Interface
+- **Deposit Flow**: USDC approval → allocation → confirmation
+- **Withdrawal Flow**: Capital withdrawal with slippage protection
+- **Balance Display**: Real-time USDC balance and allowance tracking
+- **Max Buttons**: One-click maximum allocation/withdrawal
+
+#### 3. Real-time Data Integration
+- **Live Updates**: Automatic refresh of bundle stats and allocations
+- **Transaction Tracking**: Real-time transaction status and confirmations
+- **Error Handling**: Comprehensive error messaging and retry logic
+- **Loading States**: Progressive loading indicators throughout UI
+
+#### 4. Multi-Role Support
+- **Composable RWA User**: Full access to multi-strategy dashboard
+- **Legacy Roles**: Investor, DAO Member, Portfolio Manager
+- **Role Switching**: Dynamic UI adaptation based on selected role
+
+### Technical Implementation
+
+#### Web3 Integration Stack
+- **Web3React**: Wallet connection and provider management
+- **Ethers.js v6**: Contract interaction and transaction handling
+- **MetaMask**: Primary wallet connector with auto-reconnect
+- **Provider Management**: Advanced error handling and block height issues
+
+#### UI/UX Stack
+- **Material-UI v6**: Component library with consistent design system
+- **Recharts**: Interactive charts for strategy visualization
+- **React Hooks**: Custom hooks for contract and state management
+- **TypeScript**: Full type safety for contracts and data models
 
 This architecture provides a robust, scalable, and secure foundation for institutional-grade RWA exposure management while maintaining the flexibility to adapt to evolving market conditions and regulatory requirements.
