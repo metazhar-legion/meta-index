@@ -137,7 +137,7 @@ contract DirectTokenStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         return riskParams;
     }
     
-    function estimateExposureCost(uint256 amount, uint256 timeHorizon) external view override returns (uint256) {
+    function estimateExposureCost(uint256 amount, uint256 timeHorizon) external pure override returns (uint256) {
         if (amount == 0) return 0;
         
         uint256 managementFee = 15; // 0.15% annual
@@ -608,7 +608,7 @@ contract DirectTokenStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         return IDEXRouter(dexRouter).getAmountsOut(tokenAmount, address(rwaToken), address(baseAsset));
     }
     
-    function _estimateSlippage(uint256 amount) internal view returns (uint256) {
+    function _estimateSlippage(uint256 amount) internal pure returns (uint256) {
         // Simplified slippage estimation based on trade size
         // Real implementation would query DEX liquidity
         if (amount <= 10000e6) return 10; // 0.1%
@@ -617,7 +617,7 @@ contract DirectTokenStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         return 100; // 1% for large trades
     }
     
-    function _estimateGasCost() internal view returns (uint256) {
+    function _estimateGasCost() internal pure returns (uint256) {
         // Simplified gas cost estimation
         return 50e6; // $50 equivalent
     }
@@ -644,7 +644,7 @@ contract DirectTokenStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
         return baseScore;
     }
     
-    function _checkDEXLiquidity(uint256 amount) internal view returns (bool) {
+    function _checkDEXLiquidity(uint256 amount) internal pure returns (bool) {
         // Simplified liquidity check - real implementation would query DEX
         return amount <= 1000000e6; // Assume $1M liquidity limit
     }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 // Import ComposableRWA contracts
 import {ComposableRWABundle} from "../src/ComposableRWABundle.sol";
@@ -54,8 +54,8 @@ contract DeployComposableRWA is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         deployer = vm.addr(deployerPrivateKey);
         
-        console.log("Deploying ComposableRWA System...");
-        console.log("Deployer address:", deployer);
+        console2.log("Deploying ComposableRWA System...");
+        console2.log("Deployer address:", deployer);
         
         vm.startBroadcast(deployerPrivateKey);
         
@@ -81,45 +81,45 @@ contract DeployComposableRWA is Script {
     }
     
     function deployTokensAndInfrastructure() internal {
-        console.log("\n=== Deploying Tokens and Infrastructure ===");
+        console2.log("\n=== Deploying Tokens and Infrastructure ===");
         
         // Deploy USDC
         usdc = new MockUSDC();
-        console.log("MockUSDC deployed at:", address(usdc));
+        console2.log("MockUSDC deployed at:", address(usdc));
         
         // Deploy RWA Token
         rwaToken = new MockRWAToken("RWA Token", "RWA");
         rwaToken.setDecimals(6); // Match USDC decimals
-        console.log("MockRWAToken deployed at:", address(rwaToken));
+        console2.log("MockRWAToken deployed at:", address(rwaToken));
         
         // Deploy Price Oracle
         priceOracle = new MockPriceOracle(address(usdc));
         priceOracle.setPrice(address(rwaToken), RWA_TOKEN_PRICE);
-        console.log("MockPriceOracle deployed at:", address(priceOracle));
+        console2.log("MockPriceOracle deployed at:", address(priceOracle));
         
         // Deploy TRS Provider
         trsProvider = new MockTRSProvider(address(usdc));
-        console.log("MockTRSProvider deployed at:", address(trsProvider));
+        console2.log("MockTRSProvider deployed at:", address(trsProvider));
         
         // Deploy Perpetual Router
         perpetualRouter = new MockPerpetualRouter(address(priceOracle), address(usdc));
-        console.log("MockPerpetualRouter deployed at:", address(perpetualRouter));
+        console2.log("MockPerpetualRouter deployed at:", address(perpetualRouter));
         
         // Deploy DEX Router
         dexRouter = new MockDEXRouter(address(usdc), address(rwaToken));
-        console.log("MockDEXRouter deployed at:", address(dexRouter));
+        console2.log("MockDEXRouter deployed at:", address(dexRouter));
         
         // Deploy Yield Strategy
         yieldStrategy = new MockYieldStrategy(usdc, "Primary Yield Strategy");
-        console.log("MockYieldStrategy deployed at:", address(yieldStrategy));
+        console2.log("MockYieldStrategy deployed at:", address(yieldStrategy));
     }
     
     function deployCoreSystem() internal {
-        console.log("\n=== Deploying Core System ===");
+        console2.log("\n=== Deploying Core System ===");
         
         // Deploy Strategy Optimizer
         optimizer = new StrategyOptimizer(address(priceOracle));
-        console.log("StrategyOptimizer deployed at:", address(optimizer));
+        console2.log("StrategyOptimizer deployed at:", address(optimizer));
         
         // Deploy ComposableRWA Bundle
         bundle = new ComposableRWABundle(
@@ -128,11 +128,11 @@ contract DeployComposableRWA is Script {
             address(priceOracle), 
             address(optimizer)
         );
-        console.log("ComposableRWABundle deployed at:", address(bundle));
+        console2.log("ComposableRWABundle deployed at:", address(bundle));
     }
     
     function deployStrategies() internal {
-        console.log("\n=== Deploying Strategy Contracts ===");
+        console2.log("\n=== Deploying Strategy Contracts ===");
         
         // Deploy TRS Exposure Strategy
         trsStrategy = new TRSExposureStrategy(
@@ -142,7 +142,7 @@ contract DeployComposableRWA is Script {
             "SP500", // underlying asset ID
             "TRS S&P 500 Strategy"
         );
-        console.log("TRSExposureStrategy deployed at:", address(trsStrategy));
+        console2.log("TRSExposureStrategy deployed at:", address(trsStrategy));
         
         // Deploy Enhanced Perpetual Strategy
         perpetualStrategy = new EnhancedPerpetualStrategy(
@@ -152,7 +152,7 @@ contract DeployComposableRWA is Script {
             "SP500-PERP", // market ID
             "Perpetual S&P 500 Strategy"
         );
-        console.log("EnhancedPerpetualStrategy deployed at:", address(perpetualStrategy));
+        console2.log("EnhancedPerpetualStrategy deployed at:", address(perpetualStrategy));
         
         // Deploy Direct Token Strategy
         directStrategy = new DirectTokenStrategy(
@@ -162,23 +162,23 @@ contract DeployComposableRWA is Script {
             address(dexRouter),
             "Direct RWA Token Strategy"
         );
-        console.log("DirectTokenStrategy deployed at:", address(directStrategy));
+        console2.log("DirectTokenStrategy deployed at:", address(directStrategy));
     }
     
     function configureSystem() internal {
-        console.log("\n=== Configuring System ===");
+        console2.log("\n=== Configuring System ===");
         
         // Configure DEX exchange rates
         // At $100 per RWA token: 1 USDC = 0.01 RWA tokens
         dexRouter.setExchangeRate(address(usdc), address(rwaToken), 1e16); // 1 USDC = 0.01 RWA
         dexRouter.setExchangeRate(address(rwaToken), address(usdc), 100e18); // 1 RWA = 100 USDC
-        console.log("DEX exchange rates configured");
+        console2.log("DEX exchange rates configured");
         
         // Add counterparties to TRS strategy
         trsStrategy.addCounterparty(address(0x1111), 4000, 2000000e6); // 40% allocation, $2M max
         trsStrategy.addCounterparty(address(0x2222), 3500, 1500000e6); // 35% allocation, $1.5M max
         trsStrategy.addCounterparty(address(0x3333), 2500, 1000000e6); // 25% allocation, $1M max
-        console.log("TRS counterparties configured");
+        console2.log("TRS counterparties configured");
         
         // Add perpetual market
         perpetualRouter.addMarket(
@@ -188,17 +188,17 @@ contract DeployComposableRWA is Script {
             address(0), // No quote token needed for mock
             500 // 5x max leverage
         );
-        console.log("Perpetual market configured");
+        console2.log("Perpetual market configured");
         
         // Add yield strategy to DirectTokenStrategy
         directStrategy.addYieldStrategy(address(yieldStrategy), BASIS_POINTS); // 100% allocation
-        console.log("Direct token yield strategy configured");
+        console2.log("Direct token yield strategy configured");
         
         // Add strategies to the bundle
         bundle.addExposureStrategy(address(trsStrategy), 4000, 6000, true);       // 40% target, 60% max, primary
         bundle.addExposureStrategy(address(perpetualStrategy), 3500, 5000, false); // 35% target, 50% max
         bundle.addExposureStrategy(address(directStrategy), 2500, 4000, false);   // 25% target, 40% max
-        console.log("Strategies added to bundle");
+        console2.log("Strategies added to bundle");
         
         // Configure yield bundle
         address[] memory yieldStrategies = new address[](1);
@@ -206,15 +206,15 @@ contract DeployComposableRWA is Script {
         uint256[] memory allocations = new uint256[](1);
         allocations[0] = BASIS_POINTS; // 100% to single yield strategy
         bundle.updateYieldBundle(yieldStrategies, allocations);
-        console.log("Yield bundle configured");
+        console2.log("Yield bundle configured");
     }
     
     function fundTestAccounts() internal {
-        console.log("\n=== Funding Test Accounts ===");
+        console2.log("\n=== Funding Test Accounts ===");
         
         // Fund deployer
         usdc.mint(deployer, INITIAL_MINT);
-        console.log("Deployer funded with", INITIAL_MINT / 1e6, "USDC");
+        console2.log("Deployer funded with USDC");
         
         // Fund some test addresses
         address[] memory testUsers = new address[](3);
@@ -224,7 +224,7 @@ contract DeployComposableRWA is Script {
         
         for (uint i = 0; i < testUsers.length; i++) {
             usdc.mint(testUsers[i], INITIAL_MINT);
-            console.log("Test user", testUsers[i], "funded with", INITIAL_MINT / 1e6, "USDC");
+            console2.log("Test user funded with USDC:", testUsers[i]);
         }
         
         // Fund mock providers for operations
@@ -236,40 +236,40 @@ contract DeployComposableRWA is Script {
         // Mint RWA tokens for DEX operations
         rwaToken.mint(address(dexRouter), 100000e6); // 100k RWA tokens
         
-        console.log("Mock providers funded for operations");
+        console2.log("Mock providers funded for operations");
     }
     
-    function logDeploymentAddresses() internal {
-        console.log("\n=== DEPLOYMENT SUMMARY ===");
-        console.log("");
-        console.log("📋 Copy these addresses to frontend/src/contracts/addresses.ts:");
-        console.log("");
-        console.log("export const CONTRACT_ADDRESSES = {");
-        console.log("  // Core ComposableRWABundle System");
-        console.log("  COMPOSABLE_RWA_BUNDLE: '%s',", address(bundle));
-        console.log("  STRATEGY_OPTIMIZER: '%s',", address(optimizer));
-        console.log("  ");
-        console.log("  // Exposure Strategies");
-        console.log("  TRS_EXPOSURE_STRATEGY: '%s',", address(trsStrategy));
-        console.log("  PERPETUAL_STRATEGY: '%s',", address(perpetualStrategy));
-        console.log("  DIRECT_TOKEN_STRATEGY: '%s',", address(directStrategy));
-        console.log("  ");
-        console.log("  // Mock Infrastructure");
-        console.log("  MOCK_USDC: '%s',", address(usdc));
-        console.log("  MOCK_RWA_TOKEN: '%s',", address(rwaToken));
-        console.log("  MOCK_PRICE_ORACLE: '%s',", address(priceOracle));
-        console.log("  MOCK_TRS_PROVIDER: '%s',", address(trsProvider));
-        console.log("  MOCK_PERPETUAL_ROUTER: '%s',", address(perpetualRouter));
-        console.log("  MOCK_DEX_ROUTER: '%s',", address(dexRouter));
-        console.log("  ");
-        console.log("  // Legacy System (for compatibility)");
-        console.log("  LEGACY_VAULT: '%s',", address(bundle));
-        console.log("  LEGACY_REGISTRY: '%s',", address(optimizer));
-        console.log("};");
-        console.log("");
-        console.log("🚀 Deployment Complete!");
-        console.log("📊 Total deployed contracts: 11");
-        console.log("💰 Bundle ready for capital allocation");
-        console.log("🎯 Frontend ready for testing");
+    function logDeploymentAddresses() internal view {
+        console2.log("\n=== DEPLOYMENT SUMMARY ===");
+        console2.log("");
+        console2.log("Copy these addresses to frontend/src/contracts/addresses.ts:");
+        console2.log("");
+        console2.log("export const CONTRACT_ADDRESSES = {");
+        console2.log("  // Core ComposableRWABundle System");
+        console2.log("  COMPOSABLE_RWA_BUNDLE:", address(bundle));
+        console2.log("  STRATEGY_OPTIMIZER:", address(optimizer));
+        console2.log("  ");
+        console2.log("  // Exposure Strategies");
+        console2.log("  TRS_EXPOSURE_STRATEGY:", address(trsStrategy));
+        console2.log("  PERPETUAL_STRATEGY:", address(perpetualStrategy));
+        console2.log("  DIRECT_TOKEN_STRATEGY:", address(directStrategy));
+        console2.log("  ");
+        console2.log("  // Mock Infrastructure");
+        console2.log("  MOCK_USDC:", address(usdc));
+        console2.log("  MOCK_RWA_TOKEN:", address(rwaToken));
+        console2.log("  MOCK_PRICE_ORACLE:", address(priceOracle));
+        console2.log("  MOCK_TRS_PROVIDER:", address(trsProvider));
+        console2.log("  MOCK_PERPETUAL_ROUTER:", address(perpetualRouter));
+        console2.log("  MOCK_DEX_ROUTER:", address(dexRouter));
+        console2.log("  ");
+        console2.log("  // Legacy System (for compatibility)");
+        console2.log("  LEGACY_VAULT:", address(bundle));
+        console2.log("  LEGACY_REGISTRY:", address(optimizer));
+        console2.log("};");
+        console2.log("");
+        console2.log("Deployment Complete!");
+        console2.log("Total deployed contracts: 11");
+        console2.log("Bundle ready for capital allocation");
+        console2.log("Frontend ready for testing");
     }
 }

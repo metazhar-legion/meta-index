@@ -204,7 +204,7 @@ contract EnhancedPerpetualStrategy is IExposureStrategy, Ownable, ReentrancyGuar
         if (amount == 0) return (false, "Amount cannot be zero");
         
         uint256 leverage = _calculateOptimalLeverage();
-        uint256 requiredCollateral = (amount * 100) / leverage;
+        // uint256 requiredCollateral = (amount * 100) / leverage;
         uint256 proposedExposure = (amount * leverage) / 100;
         
         if (currentExposureAmount + proposedExposure > riskParams.maxPositionSize) {
@@ -229,7 +229,7 @@ contract EnhancedPerpetualStrategy is IExposureStrategy, Ownable, ReentrancyGuar
         if (amount == 0) revert CommonErrors.ValueTooLow();
         
         // Check if we can handle this exposure
-        (bool canHandle, string memory reason) = this.canHandleExposure(amount);
+        (bool canHandle, /* string memory reason */) = this.canHandleExposure(amount);
         if (!canHandle) revert CommonErrors.OperationFailed();
         
         // Transfer base asset from caller
@@ -297,7 +297,7 @@ contract EnhancedPerpetualStrategy is IExposureStrategy, Ownable, ReentrancyGuar
             if (amount == 0) revert CommonErrors.ValueTooLow();
             
             // Check if we can handle this exposure
-            (bool canHandle, string memory reason) = this.canHandleExposure(amount);
+            (bool canHandle, /* string memory reason */) = this.canHandleExposure(amount);
             if (!canHandle) {
                 success = false;
             } else {
@@ -650,7 +650,7 @@ contract EnhancedPerpetualStrategy is IExposureStrategy, Ownable, ReentrancyGuar
     function _managePosition(
         uint256 collateralAmount,
         uint256 leverage,
-        bool isIncrease
+        bool /* isIncrease */
     ) internal returns (uint256 actualExposure) {
         // Approve perpetual router to spend collateral
         baseAsset.approve(address(perpetualRouter), collateralAmount);
@@ -745,7 +745,7 @@ contract EnhancedPerpetualStrategy is IExposureStrategy, Ownable, ReentrancyGuar
             
             baseAsset.approve(address(yieldStrategies[i].strategy), allocationAmount);
             
-            try yieldStrategies[i].strategy.deposit(allocationAmount) returns (uint256 shares) {
+            try yieldStrategies[i].strategy.deposit(allocationAmount) returns (uint256 /* shares */) {
                 yieldStrategies[i].currentDeposit += allocationAmount;
                 totalYieldCapital += allocationAmount;
             } catch {
@@ -840,7 +840,7 @@ contract EnhancedPerpetualStrategy is IExposureStrategy, Ownable, ReentrancyGuar
     function _adjustPositionLeverage(uint256 newLeverage) internal {
         if (activePositionId == bytes32(0)) return;
         
-        try perpetualRouter.getPosition(activePositionId) returns (IPerpetualTrading.Position memory position) {
+        try perpetualRouter.getPosition(activePositionId) returns (IPerpetualTrading.Position memory /* position */) {
             // Calculate new position size for target leverage
             uint256 newSize = (totalCollateralDeployed * newLeverage) / 100;
             

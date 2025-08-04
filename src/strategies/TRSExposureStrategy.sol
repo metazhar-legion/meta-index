@@ -433,7 +433,7 @@ contract TRSExposureStrategy is IExposureStrategy, Ownable, ReentrancyGuard {
             baseAsset.safeTransferFrom(msg.sender, address(this), uint256(delta));
             
             // Use internal implementation to avoid reentrancy and msg.sender issues
-            try this._openExposureWithTokens(uint256(delta)) returns (bool _success, uint256 _actualExposure) {
+            try this._openExposureWithTokens(uint256(delta)) returns (bool _success, uint256 /* _actualExposure */) {
                 success = _success;
             } catch {
                 success = false;

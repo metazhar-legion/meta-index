@@ -386,7 +386,7 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
     function _analyzeStrategy(
         address strategy,
         uint256 targetExposure,
-        uint256 timeHorizon
+        uint256 /* timeHorizon */
     ) internal view returns (StrategyScore memory score) {
         try IExposureStrategy(strategy).getExposureInfo() returns (IExposureStrategy.ExposureInfo memory info) {
             try IExposureStrategy(strategy).getCostBreakdown() returns (IExposureStrategy.CostBreakdown memory costs) {
@@ -423,9 +423,9 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
      */
     function _calculateOptimalAllocations(
         StrategyScore[] memory scores,
-        uint256 totalCapital,
-        uint256 targetExposure
-    ) internal view returns (uint256[] memory allocations) {
+        uint256 /* totalCapital */,
+        uint256 /* targetExposure */
+    ) internal pure returns (uint256[] memory allocations) {
         allocations = new uint256[](scores.length);
         
         // Simple allocation based on inverse cost scores
@@ -550,7 +550,7 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
     /**
      * @dev Calculates total score with weights
      */
-    function _calculateTotalScore(StrategyScore memory score) internal view returns (uint256) {
+    function _calculateTotalScore(StrategyScore memory score) internal pure returns (uint256) {
         // Weights: cost 40%, risk 20%, liquidity 15%, reliability 15%, capacity 10%
         uint256 costComponent = (10000 - score.costScore) * 4000 / 10000; // Invert cost (lower cost = higher score)
         uint256 riskComponent = (100 - score.riskScore) * 2000 / 100;     // Invert risk (lower risk = higher score)
@@ -566,7 +566,7 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
      */
     function _generateReasoning(
         StrategyScore memory score,
-        IExposureStrategy.ExposureInfo memory info
+        IExposureStrategy.ExposureInfo memory /* info */
     ) internal pure returns (string memory) {
         if (!score.isRecommended) {
             if (score.costScore > 1000) return "High cost strategy";
@@ -638,7 +638,7 @@ contract StrategyOptimizer is IStrategyOptimizer, Ownable {
      */
     function _calculatePerformanceMetrics(
         address strategy,
-        uint256 lookbackPeriod
+        uint256 /* lookbackPeriod */
     ) internal view returns (PerformanceMetrics memory metrics) {
         uint256[] storage returns_ = strategyReturns[strategy];
         uint256[] storage costs = strategyCosts[strategy];
