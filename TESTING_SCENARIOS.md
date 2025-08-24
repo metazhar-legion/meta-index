@@ -182,6 +182,8 @@ Before running these scenarios, ensure you have:
    - Attempt a transaction
    - Verify failure is handled with clear error message
 
+**⚠️ Known Issues**: Currently some error states may cause UI freezing or unclear messaging. These are being addressed in the frontend revamp.
+
 ## Advanced Testing Scenarios
 
 ### 8. Strategy-Specific Testing
@@ -258,10 +260,21 @@ Before running these scenarios, ensure you have:
    - Solution: Check browser console for errors
    - Verify contract addresses in `addresses.ts` are correct
    - Refresh page and reconnect wallet
+   - **Known Issue**: Data loading inconsistencies may require page refresh
 
 4. **Anvil Stopped Working**
    - Solution: Restart with `./deploy-and-test.sh`
    - Check anvil.log for error details
+
+5. **Frontend Performance Issues**
+   - **Known Issue**: Excessive re-renders and redundant contract calls
+   - **Temporary Solution**: Refresh page periodically if UI becomes sluggish
+   - **Permanent Fix**: Frontend optimization in progress
+
+6. **Error State Recovery**
+   - **Known Issue**: Some error states don't properly reset UI
+   - **Temporary Solution**: Refresh page and reconnect wallet after errors
+   - **Permanent Fix**: Comprehensive error boundaries being implemented
 
 ### Debug Commands
 

@@ -39,6 +39,14 @@ if ! command -v anvil &> /dev/null; then
     exit 1
 fi
 
+if ! command -v jq &> /dev/null; then
+    echo -e "${YELLOW}⚠️  jq is recommended for automatic address extraction${NC}"
+    echo -e "   Install with: brew install jq (macOS) or apt-get install jq (Linux)"
+    JQ_AVAILABLE=false
+else
+    JQ_AVAILABLE=true
+fi
+
 echo -e "${GREEN}✅ All prerequisites satisfied${NC}"
 
 # Function to check if a port is in use
@@ -133,14 +141,71 @@ echo -e "\n${YELLOW}📝 Updating frontend contract addresses...${NC}"
 # Extract addresses from the deployment broadcast
 BROADCAST_FILE="broadcast/DeployComposableRWA.s.sol/$CHAIN_ID/run-latest.json"
 
-if [ -f "$BROADCAST_FILE" ]; then
+if [ -f "$BROADCAST_FILE" ] && [ "$JQ_AVAILABLE" = true ]; then
     echo -e "${GREEN}✅ Found deployment broadcast file${NC}"
     
-    # For now, we'll use the manual process. In production, you could parse the JSON
-    echo -e "${YELLOW}📋 Please copy the addresses from the deployment output above to:${NC}"
-    echo -e "   ${BLUE}frontend/src/contracts/addresses.ts${NC}"
+    # Function to extract contract address by name from JSON
+    extract_address() {
+        local contract_name="$1"
+        local address=$(jq -r ".transactions[] | select(.contractName == \"$contract_name\") | .contractAddress" "$BROADCAST_FILE" 2>/dev/null | head -n1)
+        echo "$address"
+    }
+    
+    # Extract all contract addresses
+    COMPOSABLE_RWA_BUNDLE=$(extract_address "ComposableRWABundle")
+    STRATEGY_OPTIMIZER=$(extract_address "StrategyOptimizer") 
+    TRS_EXPOSURE_STRATEGY=$(extract_address "TRSExposureStrategy")
+    PERPETUAL_STRATEGY=$(extract_address "EnhancedPerpetualStrategy")
+    DIRECT_TOKEN_STRATEGY=$(extract_address "DirectTokenStrategy")
+    MOCK_USDC=$(extract_address "MockUSDC")
+    MOCK_RWA_TOKEN=$(extract_address "MockRWAToken")
+    MOCK_PRICE_ORACLE=$(extract_address "MockPriceOracle")
+    MOCK_TRS_PROVIDER=$(extract_address "MockTRSProvider")
+    MOCK_PERPETUAL_ROUTER=$(extract_address "MockPerpetualRouter")
+    MOCK_DEX_ROUTER=$(extract_address "MockDEXRouter")
+    
+    # Create new addresses.ts file
+    ADDRESSES_FILE="frontend/src/contracts/addresses.ts"
+    cat > "$ADDRESSES_FILE" << EOF
+// Contract addresses - auto-generated from deployment
+export const CONTRACT_ADDRESSES = {
+  // Core ComposableRWABundle System
+  COMPOSABLE_RWA_BUNDLE: '$COMPOSABLE_RWA_BUNDLE',
+  STRATEGY_OPTIMIZER: '$STRATEGY_OPTIMIZER',
+  
+  // Exposure Strategies
+  TRS_EXPOSURE_STRATEGY: '$TRS_EXPOSURE_STRATEGY',
+  PERPETUAL_STRATEGY: '$PERPETUAL_STRATEGY',
+  DIRECT_TOKEN_STRATEGY: '$DIRECT_TOKEN_STRATEGY',
+  
+  // Mock Infrastructure
+  MOCK_USDC: '$MOCK_USDC',
+  MOCK_RWA_TOKEN: '$MOCK_RWA_TOKEN',
+  MOCK_PRICE_ORACLE: '$MOCK_PRICE_ORACLE',
+  MOCK_TRS_PROVIDER: '$MOCK_TRS_PROVIDER',
+  MOCK_PERPETUAL_ROUTER: '$MOCK_PERPETUAL_ROUTER',
+  MOCK_DEX_ROUTER: '$MOCK_DEX_ROUTER',
+  
+  // Legacy System (for compatibility)
+  LEGACY_VAULT: '$COMPOSABLE_RWA_BUNDLE',
+  LEGACY_REGISTRY: '$STRATEGY_OPTIMIZER',
+  
+  // Mock tokens for testing
+  WBTC: '$MOCK_RWA_TOKEN',
+  WETH: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+  LINK: '$MOCK_PRICE_ORACLE',
+  UNI: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
+  AAVE: '$MOCK_TRS_PROVIDER',
+};
+EOF
+    
+    echo -e "${GREEN}✅ Frontend contract addresses updated automatically${NC}"
+    echo -e "   📄 Updated: ${BLUE}$ADDRESSES_FILE${NC}"
+    
 else
     echo -e "${YELLOW}⚠️  Broadcast file not found. Addresses were logged in deployment output above.${NC}"
+    echo -e "${YELLOW}📋 Please copy the addresses manually to:${NC}"
+    echo -e "   ${BLUE}frontend/src/contracts/addresses.ts${NC}"
 fi
 
 # Step 6: Install frontend dependencies

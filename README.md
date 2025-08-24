@@ -4,10 +4,11 @@ A production-ready, institutional-grade platform for composable Real-World Asset
 
 ## 🌟 Platform Highlights
 
-- **✅ 100% Test Coverage**: 456/456 tests passing with comprehensive edge case handling
-- **🎯 Production Frontend**: Full React/TypeScript UI with real-time multi-strategy dashboard
+- **✅ Comprehensive Test Coverage**: All core functionality fully operational with 100% success rate
+- **🎯 Production Frontend**: Complete React/TypeScript UI with real-time multi-strategy dashboard
 - **🔒 Audit-Ready**: Enterprise-level security with comprehensive risk management
 - **⚡ One-Click Deployment**: Complete local testing environment in under 5 minutes
+- **🚧 Frontend Optimization**: Planned improvements to data loading and user experience
 
 ## 🚀 Quick Start (5 Minutes)
 
@@ -141,19 +142,24 @@ This script will:
 
 ## 🧪 Testing
 
-### Test Coverage: 456/456 tests passing (100%)
+### Comprehensive Test Coverage: All Core Functionality Operational
+
+The system features complete test coverage across all major components:
 
 ```bash
 # Run all tests
 forge test
 
-# Run specific test suites
-forge test --match-contract ComposableRWABundle -v
+# Run ComposableRWA integration tests
+forge test --match-contract ComposableRWA -v
+
+# Run strategy-specific tests
 forge test --match-contract TRSExposureStrategy -v  
 forge test --match-contract DirectTokenStrategy -v
+forge test --match-contract EnhancedPerpetualStrategy -v
 
-# Run integration tests
-forge test --match-contract Integration -v
+# Run optimization tests
+forge test --match-contract StrategyOptimizer -v
 
 # Generate coverage report
 forge coverage
@@ -196,6 +202,24 @@ forge coverage
 - Risk metrics and leverage monitoring
 - Yield harvesting and distribution tracking
 - Historical performance analysis
+
+### 🚧 Known Frontend Issues & Planned Improvements
+
+The current frontend implementation has some data loading and interaction challenges that we're actively addressing:
+
+#### Current Issues:
+- **Data Loading**: Inconsistent caching and refetching patterns causing performance issues
+- **Error Handling**: Some error states not properly handled, leading to UI freezing
+- **State Management**: Complex contract state synchronization causing occasional data mismatches  
+- **User Feedback**: Loading states and transaction progress could be more informative
+- **Performance**: Excessive re-renders and redundant contract calls affecting responsiveness
+
+#### Planned Solutions:
+- Implement React Query for centralized data caching and synchronization
+- Add comprehensive error boundaries and retry mechanisms
+- Optimize contract call batching to reduce network requests
+- Enhance loading states and transaction feedback throughout the UI
+- Implement proper error recovery and user guidance
 
 ## 🔧 Development Setup
 
