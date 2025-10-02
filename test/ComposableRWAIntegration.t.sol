@@ -266,7 +266,7 @@ contract ComposableRWAIntegrationTest is Test {
         vm.startPrank(user1);
         usdc.approve(address(trsStrategy), testAmount);
         
-        (bool canHandleTRS, string memory reasonTRS) = trsStrategy.canHandleExposure(testAmount);
+        (bool canHandleTRS, /* string memory reasonTRS */) = trsStrategy.canHandleExposure(testAmount);
         if (canHandleTRS) {
             try trsStrategy.openExposure(testAmount) returns (bool successTRS, uint256 exposureTRS) {
                 assertTrue(successTRS);
@@ -281,7 +281,7 @@ contract ComposableRWAIntegrationTest is Test {
         vm.startPrank(user1);
         usdc.approve(address(perpetualStrategy), testAmount);
         
-        (bool canHandlePerp, string memory reasonPerp) = perpetualStrategy.canHandleExposure(testAmount);
+        (bool canHandlePerp, /* string memory reasonPerp */) = perpetualStrategy.canHandleExposure(testAmount);
         if (canHandlePerp) {
             try perpetualStrategy.openExposure(testAmount) returns (bool successPerp, uint256 exposurePerp) {
                 assertTrue(successPerp);
@@ -296,9 +296,9 @@ contract ComposableRWAIntegrationTest is Test {
         vm.startPrank(user2);
         usdc.approve(address(directStrategy), testAmount);
         
-        (bool canHandleDirect, string memory reasonDirect) = directStrategy.canHandleExposure(testAmount);
+        (bool canHandleDirect, /* string memory reasonDirect */) = directStrategy.canHandleExposure(testAmount);
         assertTrue(canHandleDirect);
-        
+
         try directStrategy.openExposure(testAmount) returns (bool successDirect, uint256 exposureDirect) {
             assertTrue(successDirect);
             assertGt(exposureDirect, 0);

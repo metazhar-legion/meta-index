@@ -262,11 +262,10 @@ contract ComposableRWABundleTest is Test {
         optimizer.recordPerformance(address(directStrategy), 300, 200, 45, true);    // 3% return, 2% cost
         
         vm.prank(owner);
-        bool optimized = bundle.optimizeStrategies();
-        
+        bundle.optimizeStrategies();
+
         // Optimization may or may not be possible depending on current state
         // This is acceptable behavior - we just want to ensure it doesn't revert
-        // assertTrue(optimized); // Commented out as optimization may return false with current allocations
     }
 
     function test_RebalanceStrategies() public {
@@ -297,8 +296,8 @@ contract ComposableRWABundleTest is Test {
         
         // Try to rebalance - may succeed or fail depending on current state
         vm.prank(owner);
-        try bundle.rebalanceStrategies() returns (bool rebalanced) {
-            // Rebalancing completed successfully (true or false is both valid)
+        try bundle.rebalanceStrategies() {
+            // Rebalancing completed successfully
         } catch {
             // If rebalancing fails, that's also acceptable for this test
             return;
@@ -308,9 +307,7 @@ contract ComposableRWABundleTest is Test {
     function test_EmergencyExit() public {
         // Setup and allocate
         test_AllocateCapital();
-        
-        uint256 initialValue = bundle.getValueInBaseAsset();
-        
+
         vm.prank(owner);
         uint256 recovered = bundle.emergencyExitAll();
         
@@ -356,9 +353,9 @@ contract ComposableRWABundleTest is Test {
             uint256 totalExposure,
             uint256 currentLeverage,
             uint256 capitalEfficiency,
-            bool isHealthy
+            /* bool isHealthy */
         ) = bundle.getBundleStats();
-        
+
         assertGt(totalValue, 0);
         assertGe(totalExposure, 0);
         assertGe(currentLeverage, 100); // At least 1x leverage

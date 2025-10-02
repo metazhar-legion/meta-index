@@ -165,10 +165,10 @@ contract DirectTokenStrategyTest is Test {
             uint256 totalPurchased,
             uint256 totalSold,
             uint256 currentBalance,
-            uint256 totalSlippage,
+            /* uint256 totalSlippage */,
             uint256 yieldHarvested
         ) = strategy.getPerformanceMetrics();
-        
+
         assertGt(totalPurchased, 0);
         assertEq(totalSold, 0);
         assertGt(currentBalance, 0);
@@ -181,7 +181,7 @@ contract DirectTokenStrategyTest is Test {
         
         vm.startPrank(user1);
         usdc.approve(address(strategy), amount);
-        (bool openSuccess, uint256 actualExposure) = strategy.openExposure(amount);
+        (bool openSuccess, /* uint256 actualExposure */) = strategy.openExposure(amount);
         assertTrue(openSuccess);
         vm.stopPrank();
         
