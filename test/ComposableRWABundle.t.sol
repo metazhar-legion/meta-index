@@ -104,7 +104,7 @@ contract ComposableRWABundleTest is Test {
         // Note: MockYieldStrategy doesn't have fundStrategy method, so we skip funding it
     }
 
-    function test_BundleInitialization() public {
+    function test_BundleInitialization() public view {
         assertEq(bundle.name(), "Test RWA Bundle");
         assertEq(address(bundle.baseAsset()), address(usdc));
         assertEq(address(bundle.priceOracle()), address(priceOracle));

@@ -86,7 +86,7 @@ contract DirectTokenStrategyTest is Test {
         usdc.mint(address(yieldStrategy2), INITIAL_BALANCE);
     }
 
-    function test_StrategyInitialization() public {
+    function test_StrategyInitialization() public view {
         IExposureStrategy.ExposureInfo memory info = strategy.getExposureInfo();
         
         assertEq(uint256(info.strategyType), uint256(IExposureStrategy.StrategyType.DIRECT_TOKEN));
@@ -106,7 +106,7 @@ contract DirectTokenStrategyTest is Test {
         assertEq(allocations[1], 4000);
     }
 
-    function test_GetCostBreakdown() public {
+    function test_GetCostBreakdown() public view {
         IExposureStrategy.CostBreakdown memory costs = strategy.getCostBreakdown();
         
         assertEq(costs.fundingRate, 0); // Not applicable for direct tokens
@@ -117,7 +117,7 @@ contract DirectTokenStrategyTest is Test {
         assertGt(costs.totalCostBps, 0);
     }
 
-    function test_CanHandleExposure() public {
+    function test_CanHandleExposure() public view {
         (bool canHandle, string memory reason) = strategy.canHandleExposure(100000e6);
         assertTrue(canHandle);
         assertEq(reason, "");
@@ -250,7 +250,7 @@ contract DirectTokenStrategyTest is Test {
         assertEq(totalYieldHarvested, harvested);
     }
 
-    function test_EstimateExposureCost() public {
+    function test_EstimateExposureCost() public view {
         uint256 amount = 100000e6; // $100k
         uint256 timeHorizon = 365 days; // 1 year
         
@@ -270,7 +270,7 @@ contract DirectTokenStrategyTest is Test {
         assertGt(longerCost, estimatedCost);
     }
 
-    function test_GetCollateralRequired() public {
+    function test_GetCollateralRequired() public view {
         uint256 exposureAmount = 200000e6; // $200k
         
         // Direct token strategy requires 100% collateral
@@ -447,7 +447,7 @@ contract DirectTokenStrategyTest is Test {
         assertLt(remainingExposure, totalExposure);
     }
 
-    function test_ZeroExposureEdgeCases() public {
+    function test_ZeroExposureEdgeCases() public view {
         // Test edge cases with zero exposure
         (bool canHandle, string memory reason) = strategy.canHandleExposure(0);
         assertFalse(canHandle);

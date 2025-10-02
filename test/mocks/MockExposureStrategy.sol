@@ -104,7 +104,7 @@ contract MockExposureStrategy is IExposureStrategy {
         return currentExposure + (currentExposure * 5 / 10000); // 0.05% growth
     }
 
-    function getCollateralRequired(uint256 exposureAmount) external view override returns (uint256 collateralRequired) {
+    function getCollateralRequired(uint256 exposureAmount) external pure override returns (uint256 collateralRequired) {
         return (exposureAmount * 5000) / 10000; // 50% collateral requirement
     }
 

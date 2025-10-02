@@ -59,7 +59,7 @@ contract EnhancedPerpetualStrategyTest is Test {
         perpetualRouter.setFundingRate(MARKET_ID, 50); // 0.5% funding rate
     }
 
-    function test_StrategyInitialization() public {
+    function test_StrategyInitialization() public view {
         IExposureStrategy.ExposureInfo memory info = strategy.getExposureInfo();
         
         assertEq(uint256(info.strategyType), uint256(IExposureStrategy.StrategyType.PERPETUAL));
@@ -69,7 +69,7 @@ contract EnhancedPerpetualStrategyTest is Test {
         assertFalse(info.isActive); // No position opened yet
     }
 
-    function test_GetCostBreakdown() public {
+    function test_GetCostBreakdown() public view {
         IExposureStrategy.CostBreakdown memory costs = strategy.getCostBreakdown();
         
         assertEq(costs.fundingRate, 50); // 0.5% funding rate
@@ -79,7 +79,7 @@ contract EnhancedPerpetualStrategyTest is Test {
         assertEq(costs.lastUpdated, block.timestamp);
     }
 
-    function test_CanHandleExposure() public {
+    function test_CanHandleExposure() public view {
         (bool canHandle, string memory reason) = strategy.canHandleExposure(100000e6);
         assertTrue(canHandle);
         assertEq(reason, "");
@@ -347,7 +347,7 @@ contract EnhancedPerpetualStrategyTest is Test {
         vm.stopPrank();
     }
 
-    function test_EstimateExposureCost() public {
+    function test_EstimateExposureCost() public view {
         uint256 amount = 100000e6; // $100k
         uint256 timeHorizon = 30 days;
         

@@ -62,7 +62,7 @@ contract TRSExposureStrategyTest is Test {
         strategy.addCounterparty(COUNTERPARTY_BB, 2500, 1000000e6);  // 25% target, $1M max
     }
 
-    function test_StrategyInitialization() public {
+    function test_StrategyInitialization() public view {
         IExposureStrategy.ExposureInfo memory info = strategy.getExposureInfo();
         
         assertEq(uint256(info.strategyType), uint256(IExposureStrategy.StrategyType.TRS));
@@ -71,7 +71,7 @@ contract TRSExposureStrategyTest is Test {
         assertFalse(info.isActive);
     }
 
-    function test_GetCostBreakdown() public {
+    function test_GetCostBreakdown() public view {
         IExposureStrategy.CostBreakdown memory costs = strategy.getCostBreakdown();
         
         assertEq(costs.fundingRate, 0); // Not applicable for TRS
@@ -81,7 +81,7 @@ contract TRSExposureStrategyTest is Test {
         assertEq(costs.lastUpdated, block.timestamp);
     }
 
-    function test_CanHandleExposure() public {
+    function test_CanHandleExposure() public view {
         (bool canHandle, string memory reason) = strategy.canHandleExposure(100000e6);
         assertTrue(canHandle);
         assertEq(reason, "");
@@ -97,7 +97,7 @@ contract TRSExposureStrategyTest is Test {
         assertEq(reason, "Would exceed maximum position size");
     }
 
-    function test_CounterpartySetup() public {
+    function test_CounterpartySetup() public view {
         // Check that counterparties are set up correctly
         TRSExposureStrategy.CounterpartyAllocation[] memory allocations = strategy.getCounterpartyAllocations();
         assertEq(allocations.length, 3);
@@ -228,7 +228,7 @@ contract TRSExposureStrategyTest is Test {
         assertEq(harvested, 0);
     }
 
-    function test_EstimateExposureCost() public {
+    function test_EstimateExposureCost() public view {
         uint256 amount = 100000e6; // $100k
         uint256 timeHorizon = 90 days;
         
@@ -240,7 +240,7 @@ contract TRSExposureStrategyTest is Test {
         assertGt(longerCost, estimatedCost);
     }
 
-    function test_GetCollateralRequired() public {
+    function test_GetCollateralRequired() public view {
         uint256 exposureAmount = 200000e6; // $200k
         
         uint256 collateralRequired = strategy.getCollateralRequired(exposureAmount);
@@ -425,7 +425,7 @@ contract TRSExposureStrategyTest is Test {
         strategy.addCounterparty(invalidCounterparty, 1000, 100000e6);
     }
 
-    function test_ZeroExposureEdgeCases() public {
+    function test_ZeroExposureEdgeCases() public view {
         // Test edge cases with zero exposure
         (bool canHandle, string memory reason) = strategy.canHandleExposure(0);
         assertFalse(canHandle);

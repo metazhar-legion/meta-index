@@ -155,7 +155,7 @@ contract ComposableRWAIntegrationTest is Test {
         rwaToken.mint(address(dexRouter), 100000e6); // 100k RWA tokens for swaps
     }
 
-    function test_IntegrationBundleSetup() public {
+    function test_IntegrationBundleSetup() public view {
         assertEq(bundle.name(), "Integration RWA Bundle");
         assertEq(address(bundle.baseAsset()), address(usdc));
         assertEq(address(bundle.priceOracle()), address(priceOracle));
@@ -309,7 +309,7 @@ contract ComposableRWAIntegrationTest is Test {
         vm.stopPrank();
     }
 
-    function test_CostComparison() public {
+    function test_CostComparison() public view {
         // Get cost breakdowns from all strategies
         IExposureStrategy.CostBreakdown memory trsCosts = trsStrategy.getCostBreakdown();
         IExposureStrategy.CostBreakdown memory perpCosts = perpetualStrategy.getCostBreakdown();
