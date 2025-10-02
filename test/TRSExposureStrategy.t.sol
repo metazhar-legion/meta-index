@@ -203,9 +203,7 @@ contract TRSExposureStrategyTest is Test {
         assertTrue(openSuccess);
         assertGt(actualExposure, 0);
         vm.stopPrank();
-        
-        uint256 initialExposure = strategy.getCurrentExposureValue();
-        
+
         // Try to increase exposure - this will likely fail due to concentration limits
         // This tests that the strategy correctly enforces risk management
         vm.startPrank(user1);

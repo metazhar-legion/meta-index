@@ -304,10 +304,10 @@ contract EnhancedPerpetualStrategyTest is Test {
         (
             uint256 totalFunding,
             uint256 totalYield,
-            uint256 netReturn,
+            /* uint256 netReturn */,
             uint256 efficiency
         ) = strategy.getPerformanceMetrics();
-        
+
         // Should have some metrics (even if zero)
         assertGe(totalFunding, 0);
         assertGe(totalYield, 0);
