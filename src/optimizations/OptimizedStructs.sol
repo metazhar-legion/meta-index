@@ -262,7 +262,7 @@ library OptimizedStructs {
         uint256 riskScore,
         bool isActive,
         uint256 liquidationPrice
-    ) internal pure returns (ExposureInfoOptimized memory) {
+    ) internal view returns (ExposureInfoOptimized memory) {
         return ExposureInfoOptimized({
             strategyType: strategyType,
             name: bytes32(bytes(name)),
