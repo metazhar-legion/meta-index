@@ -71,8 +71,8 @@ echo -e "${GREEN}Anvil running with PID: $anvil_pid${NC}"
 echo -e "${BLUE}Local blockchain available at: http://localhost:8545${NC}"
 
 # Deploy contracts to local Anvil
-echo -e "\n${YELLOW}Deploying contracts to local blockchain...${NC}"
-forge script script/DeployBasicSetup.s.sol:DeployBasicSetup --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 > deploy.log 2>&1
+echo -e "\n${YELLOW}Deploying ComposableRWA system to local blockchain...${NC}"
+forge script script/DeployComposableRWA.s.sol:DeployComposableRWA --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 > deploy.log 2>&1
 
 # Check if deployment was successful
 if [ $? -ne 0 ]; then
@@ -86,12 +86,25 @@ echo -e "${GREEN}Contracts deployed successfully!${NC}"
 
 # Extract contract addresses from deployment logs
 echo -e "${YELLOW}Extracting contract addresses...${NC}"
-VAULT_ADDRESS=$(grep "IndexFundVaultV2 deployed at:" deploy.log | awk '{print $NF}')
-USDC_ADDRESS=$(grep "MockUSDC deployed at:" deploy.log | awk '{print $NF}')
-PRICE_ORACLE_ADDRESS=$(grep "MockPriceOracle deployed at:" deploy.log | awk '{print $NF}')
-DEX_ADDRESS=$(grep "MockDEX deployed at:" deploy.log | awk '{print $NF}')
 
-if [ -z "$VAULT_ADDRESS" ] || [ -z "$USDC_ADDRESS" ]; then
+# Legacy/Basic contracts
+VAULT_ADDRESS=$(grep "IndexFundVaultV2 deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+REGISTRY_ADDRESS=$(grep "IndexRegistry deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+USDC_ADDRESS=$(grep "MockUSDC deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+PRICE_ORACLE_ADDRESS=$(grep "EnhancedChainlinkPriceOracle deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+
+# ComposableRWA system contracts
+BUNDLE_ADDRESS=$(grep "ComposableRWABundle deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+OPTIMIZER_ADDRESS=$(grep "StrategyOptimizer deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+TRS_ADDRESS=$(grep "TRSExposureStrategy deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+PERPETUAL_ADDRESS=$(grep "EnhancedPerpetualStrategy deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+DIRECT_ADDRESS=$(grep "DirectTokenStrategy deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+
+# Mock infrastructure
+DEX_ADDRESS=$(grep "MockDEXRouter deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+RWA_TOKEN_ADDRESS=$(grep "MockRWAToken deployed at:" deploy.log | awk '{print $NF}' | tail -1)
+
+if [ -z "$USDC_ADDRESS" ] || [ -z "$BUNDLE_ADDRESS" ]; then
     echo -e "${RED}Error: Could not extract contract addresses.${NC}"
     echo -e "${YELLOW}Check deploy.log for details.${NC}"
     kill $anvil_pid
@@ -99,10 +112,19 @@ if [ -z "$VAULT_ADDRESS" ] || [ -z "$USDC_ADDRESS" ]; then
 fi
 
 echo -e "${GREEN}Contract addresses extracted successfully:${NC}"
-echo -e "${BLUE}Vault: $VAULT_ADDRESS${NC}"
-echo -e "${BLUE}USDC: $USDC_ADDRESS${NC}"
+echo -e "${BLUE}=== Legacy Contracts ===${NC}"
+echo -e "${BLUE}Vault:        $VAULT_ADDRESS${NC}"
+echo -e "${BLUE}Registry:     $REGISTRY_ADDRESS${NC}"
+echo -e "${BLUE}USDC:         $USDC_ADDRESS${NC}"
 echo -e "${BLUE}Price Oracle: $PRICE_ORACLE_ADDRESS${NC}"
-echo -e "${BLUE}DEX: $DEX_ADDRESS${NC}"
+echo -e "${BLUE}=== ComposableRWA System ===${NC}"
+echo -e "${BLUE}Bundle:       $BUNDLE_ADDRESS${NC}"
+echo -e "${BLUE}Optimizer:    $OPTIMIZER_ADDRESS${NC}"
+echo -e "${BLUE}TRS Strategy: $TRS_ADDRESS${NC}"
+echo -e "${BLUE}Perpetual:    $PERPETUAL_ADDRESS${NC}"
+echo -e "${BLUE}Direct Token: $DIRECT_ADDRESS${NC}"
+echo -e "${BLUE}DEX:          $DEX_ADDRESS${NC}"
+echo -e "${BLUE}RWA Token:    $RWA_TOKEN_ADDRESS${NC}"
 
 # Update frontend contract addresses
 echo -e "\n${YELLOW}Updating frontend contract addresses...${NC}"
