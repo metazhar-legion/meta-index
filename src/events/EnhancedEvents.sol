@@ -438,7 +438,7 @@ library EnhancedEvents {
         address strategy,
         string memory eventType,
         uint256 riskScore,
-        bytes32 details
+        string memory details
     ) internal {
         emit SuspiciousActivityDetected(
             user,

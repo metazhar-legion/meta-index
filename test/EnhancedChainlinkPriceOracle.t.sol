@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/EnhancedChainlinkPriceOracle.sol";
 import "../src/interfaces/AggregatorV3Interface.sol";
+import "../src/interfaces/IPriceOracleV2.sol";
 import "./mocks/MockERC20.sol";
 
 contract MockAggregator is AggregatorV3Interface {
@@ -79,7 +80,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
     }
     
     function test_BasicOracleConfiguration() public {
-        EnhancedChainlinkPriceOracle.OracleConfig memory config = EnhancedChainlinkPriceOracle.OracleConfig({
+        IPriceOracleV2.OracleConfig memory config = IPriceOracleV2.OracleConfig({
             primaryOracle: address(primaryAggregator),
             fallbackOracle: address(fallbackAggregator),
             emergencyOracle: address(emergencyAggregator),
@@ -88,10 +89,10 @@ contract EnhancedChainlinkPriceOracleTest is Test {
             isPaused: false,
             lastUpdateTime: block.timestamp
         });
-        
+
         oracle.updateOracleConfig(address(testToken), config);
-        
-        EnhancedChainlinkPriceOracle.OracleConfig memory retrievedConfig = oracle.getOracleConfig(address(testToken));
+
+        IPriceOracleV2.OracleConfig memory retrievedConfig = oracle.getOracleConfig(address(testToken));
         assertEq(retrievedConfig.primaryOracle, address(primaryAggregator));
         assertEq(retrievedConfig.fallbackOracle, address(fallbackAggregator));
         assertEq(retrievedConfig.emergencyOracle, address(emergencyAggregator));
@@ -99,7 +100,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
     
     function test_FreshPriceRetrieval() public {
         // Configure oracle
-        EnhancedChainlinkPriceOracle.OracleConfig memory config = EnhancedChainlinkPriceOracle.OracleConfig({
+        IPriceOracleV2.OracleConfig memory config = IPriceOracleV2.OracleConfig({
             primaryOracle: address(primaryAggregator),
             fallbackOracle: address(fallbackAggregator),
             emergencyOracle: address(emergencyAggregator),
@@ -118,7 +119,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
     
     function test_StalePriceFallback() public {
         // Configure oracle
-        EnhancedChainlinkPriceOracle.OracleConfig memory config = EnhancedChainlinkPriceOracle.OracleConfig({
+        IPriceOracleV2.OracleConfig memory config = IPriceOracleV2.OracleConfig({
             primaryOracle: address(primaryAggregator),
             fallbackOracle: address(fallbackAggregator),
             emergencyOracle: address(emergencyAggregator),
@@ -140,7 +141,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
     
     function test_PriceDeviationProtection() public {
         // Configure oracle with tight deviation tolerance
-        EnhancedChainlinkPriceOracle.OracleConfig memory config = EnhancedChainlinkPriceOracle.OracleConfig({
+        IPriceOracleV2.OracleConfig memory config = IPriceOracleV2.OracleConfig({
             primaryOracle: address(primaryAggregator),
             fallbackOracle: address(fallbackAggregator),
             emergencyOracle: address(emergencyAggregator),
@@ -165,7 +166,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
     
     function test_CircuitBreakerTriggered() public {
         // Configure oracle
-        EnhancedChainlinkPriceOracle.OracleConfig memory config = EnhancedChainlinkPriceOracle.OracleConfig({
+        IPriceOracleV2.OracleConfig memory config = IPriceOracleV2.OracleConfig({
             primaryOracle: address(primaryAggregator),
             fallbackOracle: address(fallbackAggregator),
             emergencyOracle: address(emergencyAggregator),
@@ -188,7 +189,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
     
     function test_ManualPriceOverride() public {
         // Configure oracle
-        EnhancedChainlinkPriceOracle.OracleConfig memory config = EnhancedChainlinkPriceOracle.OracleConfig({
+        IPriceOracleV2.OracleConfig memory config = IPriceOracleV2.OracleConfig({
             primaryOracle: address(primaryAggregator),
             fallbackOracle: address(fallbackAggregator),
             emergencyOracle: address(emergencyAggregator),
@@ -216,7 +217,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
     
     function test_OracleHealthMonitoring() public {
         // Configure oracle
-        EnhancedChainlinkPriceOracle.OracleConfig memory config = EnhancedChainlinkPriceOracle.OracleConfig({
+        IPriceOracleV2.OracleConfig memory config = IPriceOracleV2.OracleConfig({
             primaryOracle: address(primaryAggregator),
             fallbackOracle: address(fallbackAggregator),
             emergencyOracle: address(emergencyAggregator),
@@ -229,7 +230,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
         oracle.updateOracleConfig(address(testToken), config);
         
         // Check initial health
-        EnhancedChainlinkPriceOracle.OracleHealth memory health = oracle.getOracleHealth(address(testToken));
+        IPriceOracleV2.OracleHealth memory health = oracle.getOracleHealth(address(testToken));
         assertTrue(health.isPrimaryHealthy);
         assertTrue(health.isFallbackHealthy);
         assertEq(health.failureCount, 0);
@@ -246,7 +247,7 @@ contract EnhancedChainlinkPriceOracleTest is Test {
     
     function test_BatchOperations() public {
         // Configure oracle for test token
-        EnhancedChainlinkPriceOracle.OracleConfig memory config = EnhancedChainlinkPriceOracle.OracleConfig({
+        IPriceOracleV2.OracleConfig memory config = IPriceOracleV2.OracleConfig({
             primaryOracle: address(primaryAggregator),
             fallbackOracle: address(fallbackAggregator),
             emergencyOracle: address(emergencyAggregator),
@@ -268,8 +269,8 @@ contract EnhancedChainlinkPriceOracleTest is Test {
         
         // Test batch health updates
         oracle.updateOracleHealthBatch(assets);
-        
-        EnhancedChainlinkPriceOracle.OracleHealth memory health = oracle.getOracleHealth(address(testToken));
+
+        IPriceOracleV2.OracleHealth memory health = oracle.getOracleHealth(address(testToken));
         assertTrue(health.isPrimaryHealthy);
     }
 }
