@@ -125,9 +125,7 @@ contract EnhancedChainlinkPriceOracle is IPriceOracleV2, Ownable, Pausable {
                         return _tryEmergencyOracle(asset, config);
                     }
                 }
-                
-                emit FallbackOracleUsed(asset, config.fallbackOracle, fallbackPrice, "Primary oracle stale/failed");
-                
+
                 return PriceData({
                     price: fallbackPrice,
                     timestamp: fallbackTimestamp,
@@ -178,13 +176,8 @@ contract EnhancedChainlinkPriceOracle is IPriceOracleV2, Ownable, Pausable {
         } else {
             deviation = ((fallbackPrice - primaryPrice) * BASIS_POINTS) / primaryPrice;
         }
-        
-        if (deviation > maxDeviation) {
-            emit PriceDeviationAlert(asset, primaryPrice, fallbackPrice, deviation);
-            return false;
-        }
-        
-        return true;
+
+        return deviation <= maxDeviation;
     }
 
     function convertToBaseAsset(address asset, uint256 amount) external view override returns (uint256) {
@@ -381,13 +374,11 @@ contract EnhancedChainlinkPriceOracle is IPriceOracleV2, Ownable, Pausable {
         return block.timestamp <= timestamp + maxStaleness;
     }
 
-    function _tryEmergencyOracle(address asset, OracleConfig memory config) internal view returns (PriceData memory) {
+    function _tryEmergencyOracle(address /* asset */, OracleConfig memory config) internal view returns (PriceData memory) {
         if (config.emergencyOracle != address(0)) {
             (bool emergencySuccess, uint256 emergencyPrice, uint256 emergencyTimestamp) = _tryGetPrice(config.emergencyOracle);
-            
+
             if (emergencySuccess && emergencyPrice > 0) {
-                emit FallbackOracleUsed(asset, config.emergencyOracle, emergencyPrice, "Primary and fallback failed");
-                
                 return PriceData({
                     price: emergencyPrice,
                     timestamp: emergencyTimestamp,
@@ -397,7 +388,7 @@ contract EnhancedChainlinkPriceOracle is IPriceOracleV2, Ownable, Pausable {
                 });
             }
         }
-        
+
         // All oracles failed
         return PriceData({
             price: 0,
