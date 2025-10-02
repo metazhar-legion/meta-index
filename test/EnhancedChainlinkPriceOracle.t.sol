@@ -130,10 +130,11 @@ contract EnhancedChainlinkPriceOracleTest is Test {
         });
         
         oracle.updateOracleConfig(address(testToken), config);
-        
-        // Make primary oracle stale
+
+        // Make primary oracle stale but keep fallback fresh
         vm.warp(block.timestamp + 7200); // 2 hours later
-        
+        fallbackAggregator.setPrice(99000000, block.timestamp); // Update fallback with fresh timestamp
+
         // Price should fallback to fallback oracle
         uint256 price = oracle.getPrice(address(testToken));
         assertEq(price, 99000000); // $990 from fallback oracle
@@ -155,9 +156,11 @@ contract EnhancedChainlinkPriceOracleTest is Test {
         
         // Set fallback price with high deviation
         fallbackAggregator.setPrice(80000000, block.timestamp); // $800 (20% deviation)
-        
-        // Make primary stale to force fallback
-        primaryAggregator.setPrice(100000000, block.timestamp - 7200); // 2 hours old
+
+        // Warp time forward then make primary stale to force fallback
+        vm.warp(block.timestamp + 7200); // Move forward 2 hours
+        uint256 staleTimestamp = block.timestamp - 7200; // 2 hours old
+        primaryAggregator.setPrice(100000000, staleTimestamp);
         
         // Should reject fallback due to high deviation and use emergency oracle
         uint256 price = oracle.getPrice(address(testToken));
@@ -234,11 +237,14 @@ contract EnhancedChainlinkPriceOracleTest is Test {
         assertTrue(health.isPrimaryHealthy);
         assertTrue(health.isFallbackHealthy);
         assertEq(health.failureCount, 0);
-        
-        // Make primary oracle stale and update health
-        primaryAggregator.setPrice(100000000, block.timestamp - 7200);
+
+        // Warp time forward then make primary oracle stale and update health
+        vm.warp(block.timestamp + 7200); // Move forward 2 hours
+        uint256 staleTimestamp = block.timestamp - 7200; // 2 hours old
+        primaryAggregator.setPrice(100000000, staleTimestamp);
+        fallbackAggregator.setPrice(99000000, block.timestamp); // Keep fallback fresh
         oracle.updateOracleHealth(address(testToken));
-        
+
         health = oracle.getOracleHealth(address(testToken));
         assertFalse(health.isPrimaryHealthy);
         assertTrue(health.isFallbackHealthy);

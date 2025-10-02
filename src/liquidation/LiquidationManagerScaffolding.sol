@@ -80,11 +80,11 @@ contract LiquidationManagerScaffolding is ILiquidationManager, Ownable, Pausable
         return liquidationParams[strategy];
     }
     
-    function getPositionHealth(address strategy, bytes32 positionId) external view override returns (PositionHealth memory) {
+    function getPositionHealth(address /* strategy */, bytes32 positionId) external view override returns (PositionHealth memory) {
         return positionHealths[positionId];
     }
     
-    function isPositionLiquidatable(address strategy, bytes32 positionId) external view override returns (bool, uint256) {
+    function isPositionLiquidatable(address /* strategy */, bytes32 positionId) external view override returns (bool, uint256) {
         PositionHealth memory health = positionHealths[positionId];
         
         // 🚧 SCAFFOLDING: Basic health check - needs full implementation
@@ -108,7 +108,7 @@ contract LiquidationManagerScaffolding is ILiquidationManager, Ownable, Pausable
     
     function estimateLiquidationReward(
         address strategy,
-        bytes32 positionId,
+        bytes32 /* positionId */,
         uint256 liquidationAmount
     ) external view override validStrategy(strategy) returns (uint256 reward, uint256 penalty) {
         LiquidationParams memory params = liquidationParams[strategy];
@@ -291,7 +291,7 @@ contract LiquidationManagerScaffolding is ILiquidationManager, Ownable, Pausable
 
     // ============ KEEPER FUNCTIONS ============
     
-    function performLiquidationCheck(uint256 maxLiquidations) external override onlyKeeper returns (uint256 liquidationsExecuted) {
+    function performLiquidationCheck(uint256 /* maxLiquidations */) external override onlyKeeper returns (uint256 liquidationsExecuted) {
         // 🚧 SCAFFOLDING: Framework for automated liquidation checks
         
         uint256 gasStart = gasleft();

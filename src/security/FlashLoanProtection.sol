@@ -175,8 +175,7 @@ contract FlashLoanProtection is Ownable, Pausable {
         uint256 amount
     ) external onlyOperator whenNotPaused whenNotEmergencyPaused {
         if (isWhitelisted[user]) return; // Skip checks for whitelisted users
-        
-        UserInteraction storage userInt = userInteractions[user];
+
         ProtectionParams memory params = protectionParams[strategy];
         
         // Check same-block restrictions
@@ -208,8 +207,7 @@ contract FlashLoanProtection is Ownable, Pausable {
         uint256 amount
     ) external onlyOperator whenNotPaused whenNotEmergencyPaused {
         if (isWhitelisted[user]) return; // Skip checks for whitelisted users
-        
-        UserInteraction storage userInt = userInteractions[user];
+
         ProtectionParams memory params = protectionParams[strategy];
         
         // Check minimum holding period
@@ -331,7 +329,7 @@ contract FlashLoanProtection is Ownable, Pausable {
         address user,
         address strategy,
         uint256 amount,
-        string memory operationType
+        string memory /* operationType */
     ) internal {
         UserInteraction storage userInt = userInteractions[user];
         

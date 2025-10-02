@@ -270,7 +270,7 @@ contract FeeCollectionManagerScaffolding is IFeeCollectionManager, Ownable, Paus
         }
     }
     
-    function recordEntryFee(address strategy, address user, uint256 depositAmount) external override validStrategy(strategy) returns (uint256 entryFee) {
+    function recordEntryFee(address strategy, address /* user */, uint256 depositAmount) external override validStrategy(strategy) returns (uint256 entryFee) {
         FeeConfig memory config = feeConfigs[strategy];
         
         if (config.entryFeeRate > 0) {
@@ -286,7 +286,7 @@ contract FeeCollectionManagerScaffolding is IFeeCollectionManager, Ownable, Paus
         return entryFee;
     }
     
-    function recordExitFee(address strategy, address user, uint256 withdrawAmount) external override validStrategy(strategy) returns (uint256 exitFee) {
+    function recordExitFee(address strategy, address /* user */, uint256 withdrawAmount) external override validStrategy(strategy) returns (uint256 exitFee) {
         FeeConfig memory config = feeConfigs[strategy];
         
         if (config.exitFeeRate > 0) {
@@ -411,7 +411,7 @@ contract FeeCollectionManagerScaffolding is IFeeCollectionManager, Ownable, Paus
         emit EmergencyWithdrawal(recipient, amount, reason);
     }
     
-    function emergencyCollectFees(address strategy, uint256 amount, string calldata reason) external override onlyEmergencyOperator {
+    function emergencyCollectFees(address strategy, uint256 amount, string calldata /* reason */) external override onlyEmergencyOperator {
         require(strategy != address(0), "Zero address");
         require(amount > 0, "Zero amount");
         
@@ -437,9 +437,10 @@ contract FeeCollectionManagerScaffolding is IFeeCollectionManager, Ownable, Paus
         // 1. Get strategies needing collection
         // 2. Collect fees up to maxStrategies limit
         // 3. Track gas usage for reimbursement
-        
-        uint256 gasUsed = gasStart - gasleft();
-        
+
+        // Track gas usage for future implementation
+        // uint256 gasUsed = gasStart - gasleft();
+
         // For scaffolding, simulate some work
         strategiesProcessed = Math.min(maxStrategies, 3); // Simulate processing 3 strategies
         totalCollected = strategiesProcessed * 1000e6; // $1000 per strategy
