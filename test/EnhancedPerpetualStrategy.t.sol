@@ -170,7 +170,7 @@ contract EnhancedPerpetualStrategyTest is Test {
         
         vm.startPrank(user1);
         usdc.approve(address(strategy), amount);
-        (bool success, uint256 actualExposure) = strategy.openExposure(amount);
+        (bool success, /* uint256 actualExposure */) = strategy.openExposure(amount);
         assertTrue(success);
         vm.stopPrank();
         
