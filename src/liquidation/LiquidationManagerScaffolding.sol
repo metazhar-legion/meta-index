@@ -93,14 +93,14 @@ contract LiquidationManagerScaffolding is ILiquidationManager, Ownable, Pausable
         return (liquidatable, health.healthFactor);
     }
     
-    function getPositionsNeedingHealthCheck() external view override returns (address[] memory strategies, bytes32[] memory positionIds) {
+    function getPositionsNeedingHealthCheck() external pure override returns (address[] memory strategies, bytes32[] memory positionIds) {
         // 🚧 SCAFFOLDING: Would implement logic to find positions needing updates
         // For now, return empty arrays
         strategies = new address[](0);
         positionIds = new bytes32[](0);
     }
-    
-    function getLiquidatablePositions() external view override returns (PositionHealth[] memory liquidatablePositions) {
+
+    function getLiquidatablePositions() external pure override returns (PositionHealth[] memory liquidatablePositions) {
         // 🚧 SCAFFOLDING: Would scan all positions and return liquidatable ones
         // For now, return empty array
         liquidatablePositions = new PositionHealth[](0);

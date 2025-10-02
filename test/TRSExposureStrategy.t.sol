@@ -453,7 +453,7 @@ contract TRSExposureStrategyTest is Test {
         vm.stopPrank();
     }
 
-    function testFuzz_EstimateExposureCost(uint256 amount, uint256 timeHorizon) public {
+    function testFuzz_EstimateExposureCost(uint256 amount, uint256 timeHorizon) public view {
         amount = bound(amount, 1000e6, 1000000e6); // $1k to $1M
         timeHorizon = bound(timeHorizon, 7 days, 365 days); // 1 week to 1 year
         

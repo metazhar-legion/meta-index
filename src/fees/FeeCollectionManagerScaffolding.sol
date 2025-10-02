@@ -156,7 +156,7 @@ contract FeeCollectionManagerScaffolding is IFeeCollectionManager, Ownable, Paus
         return (isReady, timeSinceLastCollection);
     }
     
-    function getStrategiesNeedingCollection() external view override returns (address[] memory strategies) {
+    function getStrategiesNeedingCollection() external pure override returns (address[] memory strategies) {
         // 🚧 SCAFFOLDING: Would implement logic to scan all strategies
         // For now, return empty array
         strategies = new address[](0);
@@ -425,10 +425,9 @@ contract FeeCollectionManagerScaffolding is IFeeCollectionManager, Ownable, Paus
 
     // ============ AUTOMATION FUNCTIONS ============
     
-    function performAutomatedCollection(uint256 maxStrategies) external override onlyAutomator returns (uint256 strategiesProcessed, uint256 totalCollected) {
+    function performAutomatedCollection(uint256 maxStrategies) external view override onlyAutomator returns (uint256 strategiesProcessed, uint256 totalCollected) {
         // 🚧 SCAFFOLDING: Framework for automated collection
-        
-        uint256 gasStart = gasleft();
+
         strategiesProcessed = 0;
         totalCollected = 0;
         
