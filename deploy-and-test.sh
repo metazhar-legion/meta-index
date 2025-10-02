@@ -167,35 +167,38 @@ if [ -f "$BROADCAST_FILE" ] && [ "$JQ_AVAILABLE" = true ]; then
     # Create new addresses.ts file
     ADDRESSES_FILE="frontend/src/contracts/addresses.ts"
     cat > "$ADDRESSES_FILE" << EOF
-// Contract addresses - auto-generated from deployment
+// Contract addresses - auto-generated from deployment on $(date)
 export const CONTRACT_ADDRESSES = {
-  // Core ComposableRWABundle System
+  // Core ComposableRWA System
   COMPOSABLE_RWA_BUNDLE: '$COMPOSABLE_RWA_BUNDLE',
   STRATEGY_OPTIMIZER: '$STRATEGY_OPTIMIZER',
-  
+
   // Exposure Strategies
   TRS_EXPOSURE_STRATEGY: '$TRS_EXPOSURE_STRATEGY',
   PERPETUAL_STRATEGY: '$PERPETUAL_STRATEGY',
   DIRECT_TOKEN_STRATEGY: '$DIRECT_TOKEN_STRATEGY',
-  
-  // Mock Infrastructure
+
+  // Mock tokens
+  USDC: '$MOCK_USDC',
   MOCK_USDC: '$MOCK_USDC',
-  MOCK_RWA_TOKEN: '$MOCK_RWA_TOKEN',
-  MOCK_PRICE_ORACLE: '$MOCK_PRICE_ORACLE',
-  MOCK_TRS_PROVIDER: '$MOCK_TRS_PROVIDER',
-  MOCK_PERPETUAL_ROUTER: '$MOCK_PERPETUAL_ROUTER',
-  MOCK_DEX_ROUTER: '$MOCK_DEX_ROUTER',
-  
-  // Legacy System (for compatibility)
-  LEGACY_VAULT: '$COMPOSABLE_RWA_BUNDLE',
-  LEGACY_REGISTRY: '$STRATEGY_OPTIMIZER',
-  
-  // Mock tokens for testing
-  WBTC: '$MOCK_RWA_TOKEN',
+  WBTC: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
   WETH: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-  LINK: '$MOCK_PRICE_ORACLE',
+  LINK: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
   UNI: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
-  AAVE: '$MOCK_TRS_PROVIDER',
+  AAVE: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
+
+  // Mock Infrastructure
+  RWA_TOKEN: '$MOCK_RWA_TOKEN',
+  PRICE_ORACLE: '$MOCK_PRICE_ORACLE',
+  DEX: '$MOCK_DEX_ROUTER',
+  TRS_PROVIDER: '$MOCK_TRS_PROVIDER',
+  PERPETUAL_ROUTER: '$MOCK_PERPETUAL_ROUTER',
+
+  // Legacy addresses (for backward compatibility)
+  VAULT: '$COMPOSABLE_RWA_BUNDLE',
+  LEGACY_VAULT: '$COMPOSABLE_RWA_BUNDLE',
+  REGISTRY: '$STRATEGY_OPTIMIZER',
+  LEGACY_REGISTRY: '$STRATEGY_OPTIMIZER',
 };
 EOF
     
