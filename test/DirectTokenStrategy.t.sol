@@ -213,7 +213,7 @@ contract DirectTokenStrategyTest is Test {
         
         vm.startPrank(user1);
         usdc.approve(address(strategy), amount);
-        (bool openSuccess, uint256 actualExposure) = strategy.openExposure(amount);
+        (bool openSuccess, /* uint256 actualExposure */) = strategy.openExposure(amount);
         assertTrue(openSuccess);
         
         uint256 initialExposure = strategy.getCurrentExposureValue();
