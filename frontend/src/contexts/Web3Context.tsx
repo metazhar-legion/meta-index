@@ -60,59 +60,62 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
   // Get the raw provider from web3-react but don't store it directly
   const rawProviderFromHook = useProvider();
   
-  // Create a function to get a provider on demand instead of storing it
-  const getProvider = useCallback(async () => {
+  // Create a function to get a provider on demand with retry logic
+  const getProvider = useCallback(async (retries = 3) => {
     if (!rawProviderFromHook) {
       return null;
     }
     
-    try {
-      // Create a minimal provider that only uses the ethereum object
-      // This approach completely avoids circular references
-      if (typeof window !== 'undefined' && window.ethereum) {
-        // Try to get the chainId using the request method with timeout protection
-        try {
-          if (window.ethereum && 'request' in window.ethereum) {
-            // Use Promise.race to add timeout protection
-            await Promise.race([
-              window.ethereum.request({ method: 'eth_chainId' }),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('chainId request timed out')), 3000))
-            ]);
-          }
-        } catch (chainIdError) {
-          // Continue despite this error - it's not critical
+    // Retry loop with exponential backoff to prevent MetaMask circuit breaker
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        // Add delay between retries (exponential backoff)
+        if (attempt > 0) {
+          const delay = 500 * Math.pow(2, attempt - 1); // 500ms, 1000ms, 2000ms
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
-        
-        // Create provider with timeout protection
-        try {
+
+        // Create a minimal provider that only uses the ethereum object
+        // This approach completely avoids circular references
+        if (typeof window !== 'undefined' && window.ethereum) {
+          // Try to get the chainId using the request method with timeout protection
+          try {
+            if (window.ethereum && 'request' in window.ethereum) {
+              // Use Promise.race to add timeout protection
+              await Promise.race([
+                window.ethereum.request({ method: 'eth_chainId' }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('chainId request timed out')), 5000))
+              ]);
+            }
+          } catch (chainIdError) {
+            // Continue despite this error - it's not critical
+          }
+          
+          // Create provider with timeout protection
           const provider = new ethers.BrowserProvider(window.ethereum);
           
           // Verify provider is working by checking network with timeout
           await Promise.race([
             provider.getNetwork(),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Network check timed out')), 3000)
+              setTimeout(() => reject(new Error('Network check timed out')), 5000)
             )
           ]);
           
           return provider;
-        } catch (providerError) {
-          // If provider creation or verification fails, try a different approach
-          // Force a refresh of accounts first
-          try {
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
-            const freshProvider = new ethers.BrowserProvider(window.ethereum);
-            return freshProvider;
-          } catch (alternativeError) {
-            return null;
-          }
+        } else {
+          return null;
         }
-      } else {
-        return null;
+      } catch (error) {
+        // If this is the last attempt, return null
+        if (attempt === retries - 1) {
+          console.error('Failed to create provider after retries:', error);
+          return null;
+        }
+        // Otherwise, continue to next retry
       }
-    } catch (error) {
-      return null;
     }
+    return null;
   }, [rawProviderFromHook]);
   
   // Update the provider when the raw provider changes
@@ -210,8 +213,9 @@ export const Web3ContextProvider: React.FC<Web3ProviderProps> = ({ children }) =
         try {
           if (isMounted) setIsLoading(true);
           
-          // Use a timeout to ensure MetaMask has time to initialize
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Use a longer timeout to ensure MetaMask has time to initialize
+          // This helps prevent the circuit breaker from triggering
+          await new Promise(resolve => setTimeout(resolve, 1000));
           
           // Check if MetaMask is unlocked before trying to connect
           let isUnlocked = false;

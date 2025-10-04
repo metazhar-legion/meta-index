@@ -11,6 +11,10 @@ import {TRSExposureStrategy} from "../src/strategies/TRSExposureStrategy.sol";
 import {EnhancedPerpetualStrategy} from "../src/strategies/EnhancedPerpetualStrategy.sol";
 import {DirectTokenStrategy} from "../src/strategies/DirectTokenStrategy.sol";
 
+// Import Vault contracts
+import {IndexFundVaultV2} from "../src/IndexFundVaultV2.sol";
+import {FeeManager} from "../src/FeeManager.sol";
+
 // Import mock infrastructure
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 import {MockRWAToken} from "../src/mocks/MockRWAToken.sol";
@@ -37,6 +41,8 @@ contract DeployComposableRWA is Script {
     // Core system
     StrategyOptimizer public optimizer;
     ComposableRWABundle public bundle;
+    IndexFundVaultV2 public vault;
+    FeeManager public feeManager;
     
     // Mock infrastructure
     MockTRSProvider public trsProvider;
@@ -117,6 +123,10 @@ contract DeployComposableRWA is Script {
     function deployCoreSystem() internal {
         console2.log("\n=== Deploying Core System ===");
         
+        // Deploy Fee Manager
+        feeManager = new FeeManager();
+        console2.log("FeeManager deployed at:", address(feeManager));
+        
         // Deploy Strategy Optimizer
         optimizer = new StrategyOptimizer(address(priceOracle));
         console2.log("StrategyOptimizer deployed at:", address(optimizer));
@@ -129,6 +139,19 @@ contract DeployComposableRWA is Script {
             address(optimizer)
         );
         console2.log("ComposableRWABundle deployed at:", address(bundle));
+        
+        // Deploy IndexFundVaultV2 (ERC4626 Vault)
+        vault = new IndexFundVaultV2(
+            usdc,
+            feeManager,
+            priceOracle,
+            dexRouter
+        );
+        console2.log("IndexFundVaultV2 deployed at:", address(vault));
+        
+        // Transfer fee manager ownership to vault
+        feeManager.transferOwnership(address(vault));
+        console2.log("FeeManager ownership transferred to vault");
     }
     
     function deployStrategies() internal {
@@ -207,6 +230,14 @@ contract DeployComposableRWA is Script {
         allocations[0] = BASIS_POINTS; // 100% to single yield strategy
         bundle.updateYieldBundle(yieldStrategies, allocations);
         console2.log("Yield bundle configured");
+        
+        // Add ComposableRWABundle as an asset to the vault
+        vault.addAsset(address(bundle), BASIS_POINTS); // 100% weight to the bundle
+        console2.log("ComposableRWABundle added to vault as asset wrapper");
+        
+        // Transfer bundle ownership to vault for proper management
+        bundle.transferOwnership(address(vault));
+        console2.log("Bundle ownership transferred to vault");
     }
     
     function fundTestAccounts() internal {
@@ -245,6 +276,10 @@ contract DeployComposableRWA is Script {
         console2.log("Copy these addresses to frontend/src/contracts/addresses.ts:");
         console2.log("");
         console2.log("export const CONTRACT_ADDRESSES = {");
+        console2.log("  // ERC4626 Vault (Main user interface)");
+        console2.log("  VAULT:", address(vault));
+        console2.log("  FEE_MANAGER:", address(feeManager));
+        console2.log("  ");
         console2.log("  // Core ComposableRWABundle System");
         console2.log("  COMPOSABLE_RWA_BUNDLE:", address(bundle));
         console2.log("  STRATEGY_OPTIMIZER:", address(optimizer));
@@ -261,15 +296,12 @@ contract DeployComposableRWA is Script {
         console2.log("  MOCK_TRS_PROVIDER:", address(trsProvider));
         console2.log("  MOCK_PERPETUAL_ROUTER:", address(perpetualRouter));
         console2.log("  MOCK_DEX_ROUTER:", address(dexRouter));
-        console2.log("  ");
-        console2.log("  // Legacy System (for compatibility)");
-        console2.log("  LEGACY_VAULT:", address(bundle));
-        console2.log("  LEGACY_REGISTRY:", address(optimizer));
         console2.log("};");
         console2.log("");
         console2.log("Deployment Complete!");
-        console2.log("Total deployed contracts: 11");
-        console2.log("Bundle ready for capital allocation");
+        console2.log("Total deployed contracts: 13");
+        console2.log("Vault ready for deposits and withdrawals");
+        console2.log("Bundle integrated as asset wrapper");
         console2.log("Frontend ready for testing");
     }
 }

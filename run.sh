@@ -72,7 +72,8 @@ echo -e "${BLUE}Local blockchain available at: http://localhost:8545${NC}"
 
 # Deploy contracts to local Anvil
 echo -e "\n${YELLOW}Deploying ComposableRWA system to local blockchain...${NC}"
-forge script script/DeployComposableRWA.s.sol:DeployComposableRWA --rpc-url http://localhost:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 > deploy.log 2>&1
+export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+forge script script/DeployComposableRWA.s.sol:DeployComposableRWA --rpc-url http://localhost:8545 --broadcast > deploy.log 2>&1
 
 # Check if deployment was successful
 if [ $? -ne 0 ]; then
@@ -131,6 +132,10 @@ echo -e "\n${YELLOW}Updating frontend contract addresses...${NC}"
 FRONTEND_ADDRESSES_FILE="./frontend/src/contracts/addresses.ts"
 
 # Use default addresses if extraction failed for optional contracts
+# If no legacy vault was deployed, use the ComposableRWABundle as the vault
+if [ -z "$VAULT_ADDRESS" ] || [ "$VAULT_ADDRESS" = "" ]; then
+  VAULT_ADDRESS=$BUNDLE_ADDRESS
+fi
 VAULT_ADDRESS=${VAULT_ADDRESS:-"0x0000000000000000000000000000000000000000"}
 REGISTRY_ADDRESS=${REGISTRY_ADDRESS:-"0x0000000000000000000000000000000000000000"}
 BUNDLE_ADDRESS=${BUNDLE_ADDRESS:-"0x0000000000000000000000000000000000000000"}

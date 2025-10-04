@@ -110,8 +110,9 @@ const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
           console.log(`Found ${assetCount} assets`);
         }
 
-        // Get the last rebalance timestamp
-        const lastRebalanceTimestamp = await vaultContract.lastRebalance();
+        // Note: lastRebalance is not available in ComposableRWABundle
+        // Using current timestamp as fallback
+        const lastRebalanceTimestamp = Math.floor(Date.now() / 1000);
 
         // Get the total weight
         let totalWeight = 0;
@@ -143,7 +144,7 @@ const CapitalAllocation: React.FC<CapitalAllocationProps> = ({
           rwaPercentage: rwaPercentage,
           yieldPercentage: 0, // We don't have this in the new architecture
           liquidityBufferPercentage: liquidityBufferPercentage,
-          lastRebalanced: Number(lastRebalanceTimestamp)
+          lastRebalanced: lastRebalanceTimestamp
         });
 
         // Get RWA tokens info

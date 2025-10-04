@@ -27,13 +27,12 @@ echo ""
 
 # Deploy ComposableRWA system
 echo -e "${BLUE}Deploying ComposableRWA system...${NC}"
-PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
 # Deploy and capture output
 DEPLOY_OUTPUT=$(forge script script/DeployComposableRWA.s.sol:DeployComposableRWA \
     --rpc-url http://localhost:8545 \
     --broadcast \
-    --private-key $PRIVATE_KEY \
     2>&1)
 
 echo "$DEPLOY_OUTPUT"
