@@ -5,6 +5,10 @@
 
 set -e  # Exit on error
 
+# Get the repository root directory (two levels up from this script)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
 echo "🚀 Starting ComposableRWA Deployment and Frontend Update..."
 echo ""
 

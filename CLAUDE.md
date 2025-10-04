@@ -22,7 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd frontend && npm run lint:fix` - Fix ESLint issues automatically
 
 ### One-Click Development Setup
-- `./deploy-and-test.sh` - Complete environment setup with contracts and frontend
+- `./scripts/deployment/deploy-and-test.sh` - Complete environment setup with contracts and frontend
 
 ## Architecture Overview
 
@@ -84,7 +84,10 @@ All test suites are fully operational with comprehensive coverage:
 
 - `script/DeployComposableRWA.s.sol` - Complete ComposableRWA system deployment with all strategies
 - `script/DeployBasicSetup.s.sol` - Basic setup for testing
-- `deploy-and-test.sh` - One-click deployment with frontend startup
+- `scripts/deployment/deploy-and-test.sh` - One-click deployment with frontend startup
+- `scripts/deployment/deploy-and-update-frontend.sh` - Deploy contracts and update frontend addresses
+- `scripts/testing/test_withdrawal.sh` - Test withdrawal functionality
+- `scripts/utilities/view_coverage.sh` - View test coverage report
 
 ### Frontend Architecture
 
@@ -113,12 +116,27 @@ All test suites are fully operational with comprehensive coverage:
 
 ### Important Files to Reference
 
+#### Core Documentation
+- `README.md` - Complete setup and usage instructions with quick start guide
+- `CLAUDE.md` - Development guide and commands reference (this file)
+- `PROJECT_SUMMARY.md` - Project overview and goals
+- `LitePaper.md` - Project whitepaper and technical specification
+
+#### Technical Documentation (`docs/technical/`)
 - `ARCHITECTURE.md` - Comprehensive system architecture with frontend integration details
-- `README.md` - Complete setup and usage instructions with quick start guide  
+- `SYSTEM_ARCHITECTURE.md` - Detailed system design and component interactions
 - `TESTING_SCENARIOS.md` - Comprehensive testing scenarios and troubleshooting guide
-- `deploy-and-test.sh` - One-click deployment script for complete environment
+- `FRONTEND_TESTING_GUIDE.md` - Frontend testing instructions and scenarios
+- `DEPLOYMENT_SCRIPTS_GUIDE.md` - Deployment script usage and configuration
+- `COMPOSABLE_RWA_SPEC.md` - ComposableRWA specification and design
+- `BACKTESTING_GUIDE.md` - Historical backtesting guide and tools
+- `FRONTEND_IMPROVEMENTS.md` - Frontend optimization and enhancements
+
+#### Development Resources
 - `foundry.toml` - Foundry configuration optimized for development
 - Test files in `test/` for understanding contract behavior and integration patterns
+- Deployment scripts in `script/` for contract deployment
+- Shell scripts in `scripts/` for automation and utilities
 
 ### Contract Addresses Structure
 
@@ -151,15 +169,15 @@ export const CONTRACT_ADDRESSES = {
 5. Update documentation if architecture changes
 
 #### For Frontend Development:
-1. Use `./deploy-and-test.sh` for complete environment setup
+1. Use `./scripts/deployment/deploy-and-test.sh` for complete environment setup
 2. Start local development with frontend running on `http://localhost:3000`
 3. Connect MetaMask to `http://localhost:8545` (Chain ID: 31337)
 4. Select appropriate user role for testing different interfaces
 5. Test transaction flows with funded test accounts
 
 #### For Full Integration Testing:
-1. Run `./deploy-and-test.sh` to start complete environment
-2. Follow test scenarios in `TESTING_SCENARIOS.md`
+1. Run `./scripts/deployment/deploy-and-test.sh` to start complete environment
+2. Follow test scenarios in `docs/technical/TESTING_SCENARIOS.md`
 3. Verify frontend displays real-time data correctly
 4. Test all user roles and transaction types
 5. Ensure error handling works properly

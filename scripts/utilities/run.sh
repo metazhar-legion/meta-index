@@ -3,6 +3,10 @@
 # Web3 Index Fund - Run Script
 # This script starts both the local blockchain and the frontend application
 
+# Get the repository root directory (two levels up from this script)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

@@ -5,6 +5,10 @@
 
 set -e  # Exit on any error
 
+# Get the repository root directory (two levels up from this script)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

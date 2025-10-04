@@ -7,8 +7,8 @@ out/
 /broadcast/*/31337/
 /broadcast/**/dry-run/
 
-# Docs
-docs/
+# Docs - only ignore ephemeral docs
+docs/ephemeral/
 
 # Dotenv file
 .env
@@ -19,8 +19,7 @@ lcov.info
 *.lcov
 
 # Log files
-anvil.log
-deploy.log
-frontend-install.log
-frontend.log
+*.log
+localhost-*.log
+localhost-*.txt.log
 .claude/settings.local.json

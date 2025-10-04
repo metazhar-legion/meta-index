@@ -18,7 +18,7 @@ A production-ready, institutional-grade platform for composable Real-World Asset
 # Clone and deploy everything
 git clone <repository>
 cd web3-index-fund
-./deploy-and-test.sh
+./scripts/deployment/deploy-and-test.sh
 ```
 
 This script will:
@@ -134,9 +134,19 @@ This script will:
 ├── script/                               # Deployment scripts
 │   ├── DeployComposableRWA.s.sol         # Complete system deployment
 │   └── DeployBasicSetup.s.sol           # Basic testing deployment
-├── deploy-and-test.sh                    # One-click deployment script
-├── TESTING_SCENARIOS.md                  # Comprehensive testing guide
-├── ARCHITECTURE.md                       # Detailed architecture documentation
+├── docs/                                 # Documentation
+│   ├── technical/                        # Technical documentation
+│   │   ├── ARCHITECTURE.md               # System architecture and design
+│   │   ├── TESTING_SCENARIOS.md          # Testing guide
+│   │   ├── DEPLOYMENT_SCRIPTS_GUIDE.md   # Deployment scripts guide
+│   │   └── ...
+│   └── ephemeral/                        # Temporary documentation
+├── scripts/                              # Utility scripts
+│   ├── deployment/                       # Deployment scripts
+│   │   ├── deploy-and-test.sh            # One-click deployment
+│   │   └── deploy-and-update-frontend.sh # Deploy and update frontend
+│   ├── testing/                          # Testing scripts
+│   └── utilities/                        # Utility scripts
 └── CLAUDE.md                            # Development guidance
 ```
 
@@ -229,7 +239,7 @@ The current frontend implementation has some data loading and interaction challe
 - **Foundry** ([Installation Guide](https://book.getfoundry.sh/getting-started/installation))
 - **MetaMask** browser extension
 
-### Manual Setup (if not using deploy-and-test.sh)
+### Manual Setup (if not using scripts/deployment/deploy-and-test.sh)
 
 1. **Clone Repository**
    ```bash
@@ -272,8 +282,9 @@ The current frontend implementation has some data loading and interaction challe
 
 ## 📖 Documentation
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Detailed system architecture and design patterns
-- **[TESTING_SCENARIOS.md](TESTING_SCENARIOS.md)**: Comprehensive testing scenarios and troubleshooting
+- **[ARCHITECTURE.md](docs/technical/ARCHITECTURE.md)**: Detailed system architecture and design patterns
+- **[TESTING_SCENARIOS.md](docs/technical/TESTING_SCENARIOS.md)**: Comprehensive testing scenarios and troubleshooting
+- **[DEPLOYMENT_SCRIPTS_GUIDE.md](docs/technical/DEPLOYMENT_SCRIPTS_GUIDE.md)**: Deployment scripts usage guide
 - **[CLAUDE.md](CLAUDE.md)**: Development guidance and project context
 
 ## 🔐 Security Features
@@ -360,8 +371,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
-- **Documentation**: See `ARCHITECTURE.md` and `TESTING_SCENARIOS.md`
+- **Documentation**: See `docs/technical/ARCHITECTURE.md` and `docs/technical/TESTING_SCENARIOS.md`
 
 ---
 
-**Ready to explore the future of RWA exposure? Start with `./deploy-and-test.sh` and experience the full platform in minutes!** 🚀
+**Ready to explore the future of RWA exposure? Start with `./scripts/deployment/deploy-and-test.sh` and experience the full platform in minutes!** 🚀

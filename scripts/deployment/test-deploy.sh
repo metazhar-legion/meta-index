@@ -5,6 +5,10 @@
 
 set -e
 
+# Get the repository root directory (two levels up from this script)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
 echo "🧪 Testing ComposableRWA Deployment Script"
 echo "=========================================="
 
