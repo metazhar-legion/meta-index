@@ -14,6 +14,8 @@ import {DirectTokenStrategy} from "../src/strategies/DirectTokenStrategy.sol";
 // Import Vault contracts
 import {IndexFundVaultV2} from "../src/IndexFundVaultV2.sol";
 import {FeeManager} from "../src/FeeManager.sol";
+import {IFeeManager} from "../src/interfaces/IFeeManager.sol";
+import {IDEX} from "../src/interfaces/IDEX.sol";
 
 // Import mock infrastructure
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
@@ -143,9 +145,9 @@ contract DeployComposableRWA is Script {
         // Deploy IndexFundVaultV2 (ERC4626 Vault)
         vault = new IndexFundVaultV2(
             usdc,
-            feeManager,
+            IFeeManager(address(feeManager)),
             priceOracle,
-            dexRouter
+            IDEX(address(dexRouter))
         );
         console2.log("IndexFundVaultV2 deployed at:", address(vault));
         

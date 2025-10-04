@@ -23,3 +23,7 @@ lcov.info
 localhost-*.log
 localhost-*.txt.log
 .claude/settings.local.json
+
+# Deprecated/backup files
+*.bak
+script/deprecated/

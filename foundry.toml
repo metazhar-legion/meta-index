@@ -2,6 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+exclude = ["script/deprecated/**"]
 
 # Enable optimizations for deployment (required for large contracts)
 via_ir = false
