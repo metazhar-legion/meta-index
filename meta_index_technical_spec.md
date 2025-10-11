@@ -1050,19 +1050,19 @@ event Deposited(
 ### Multi-Source Price Aggregation
 
 ```
-┌─────────────────────────────────────────────┐
-│          Price Oracle System                 │
-├─────────────────────────────────────────────┤
-│                                              │
-│  Primary: Chainlink ────┐                   │
-│                         ├─→ Aggregator ──→ Price
-│  Backup: Band Protocol ─┘                   │
-│                                              │
-│  Validation:                                 │
-│  - Deviation check (< 2%)                    │
-│  - Freshness check (< 1 hour)                │
-│  - Circuit breaker (> 10% move)              │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│          Price Oracle System                     │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│  Primary: Chainlink ────┐                        │
+│                         ├─→ Aggregator ──→ Price │
+│  Backup: Band Protocol ─┘                        │
+│                                                  │
+│  Validation:                                     │
+│  - Deviation check (< 2%)                        │
+│  - Freshness check (< 1 hour)                    │
+│  - Circuit breaker (> 10% move)                  │
+└──────────────────────────────────────────────────┘
 ```
 
 ### TWAP Implementation
